@@ -370,8 +370,16 @@ def main() -> int:
         label_run.italic = True
         label_run.font.size = Pt(9)
         render_markdown(document, text)
-    document.save(combined)
-    print(f"OK  combined -> {combined.relative_to(ROOT)}")
+    try:
+        document.save(combined)
+        print(f"OK  combined -> {combined.relative_to(ROOT)}")
+    except PermissionError:
+        fallback = combined.with_name(f"{combined.stem}_v0.2{combined.suffix}")
+        document.save(fallback)
+        print(
+            "WARN combined file is open/locked; saved -> "
+            f"{fallback.relative_to(ROOT)}"
+        )
     print(f"Generated {len(generated)} individual DOCX files.")
     return 0
 

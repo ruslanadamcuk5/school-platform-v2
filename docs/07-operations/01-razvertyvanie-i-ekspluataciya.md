@@ -3,8 +3,8 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 0.1 |
-| Статус | Черновик |
+| Версия | 0.2 |
+| Статус | Рабочий |
 | Дата | 27.10.2026 |
 
 ## 1. Среды
@@ -32,10 +32,18 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r backend\requirements.txt
 copy .env.example .env
-docker compose up -d
+# заполнить DATABASE_URL, SECRET_KEY, ADMIN_PASSWORD, JWT_*
 cd backend
-uvicorn app.main:app --reload
+$env:PYTHONPATH='.'
+python -m alembic upgrade head
+python -m app.db.seed
+uvicorn app.main:app --reload --port 8000
 ```
+
+Если Docker недоступен, используется managed PostgreSQL (пилотный контур
+Alwaysdata) или локальный PostgreSQL, установленный отдельно. В текущей
+рабочей среде Docker, Node.js и локальный PostgreSQL отсутствуют; пилот
+работает на managed PostgreSQL.
 Frontend:
 ```powershell
 cd frontend
@@ -51,14 +59,20 @@ npm run dev
 
 ## 3. Alwaysdata (пилот)
 ### 3.1. Сайт
-- Текущий тип: **Static files** — временная страница-заглушка.
+- Текущий тип: **User program** (ASGI/Uvicorn).
 - Адрес пилота: `https://school-platform-v2.185.31.40.24.nip.io`.
 - SSL: Let's Encrypt, срок действия до 2027-01-25, `Force HTTPS` включён.
-- Корень сайта: `/home/virusadk/school-platform-v2/public`.
-- После появления FastAPI: тип **User program** (ASGI/Uvicorn).
-- Команда: `uvicorn app.main:app --host $IP --port $PORT --proxy-headers`.
 - Рабочая директория: `/home/virusadk/school-platform-v2/backend`.
+- В панели Alwaysdata рабочая директория задаётся **относительно**
+  `/home/virusadk`: `school-platform-v2/backend`. Абсолютный путь панель
+  удваивает, и процесс не стартует.
+- Команда:
+  `/home/virusadk/.virtualenvs/school-platform/bin/uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers --forwarded-allow-ips="*"`.
+- Переменные: `PYTHONPATH=. PYTHONUNBUFFERED=1`.
+- Кэш сайта отключён; WAF — basic.
 - Сайт отдельный и не затрагивает `virusadk.alwaysdata.net`.
+- `robots.txt` закрывает пилот от индексации; добавлены security headers
+  (`X-Robots-Tag`, `X-Content-Type-Options`, `X-Frame-Options`, HSTS).
 
 Технический домен `nip.io` выбран потому, что бесплатный аккаунт Alwaysdata
 не позволяет занять произвольное имя в зоне `alwaysdata.net`. Для сдачи
@@ -89,17 +103,29 @@ npm run dev
 
 ### 3.4. Деплой
 1. Подключиться по SSH.
-2. Перейти в каталог проекта.
-3. `git pull`.
-4. Активировать venv.
-5. `pip install -r requirements.txt`.
-6. `alembic upgrade head`.
-7. Перезапустить процесс сайта.
+2. Перейти в `/home/virusadk/school-platform-v2`.
+3. Доставить backend-архив (текущий способ) или `git pull` после настройки
+   deploy-ключа.
+4. Распаковать в `backend/`.
+5. Установить зависимости:
+   `/home/virusadk/.virtualenvs/school-platform/bin/pip install --no-cache-dir -r backend/requirements.txt`.
+6. Выполнить `PYTHONPATH=. python -m alembic upgrade head` в `backend/`.
+7. Выполнить `python -m app.db.seed` при первом развёртывании.
+8. Перезапустить процесс сайта: **Advanced → Processes → Terminate** для
+   `uvicorn app.main:app`; новый процесс стартует при следующем запросе.
+9. Проверить `/health`, `/docs`, `/robots.txt`, старый сайт.
+
+Текущий архив backend собирается локально и копируется через `scp`; ключ
+Alwaysdata не добавлялся в GitHub-репозиторий. Для регулярного деплоя нужно
+создать отдельный read-only deploy key и перейти на `git pull`.
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет
 аттестованный ЦОД для промышленной эксплуатации. Для промышленного контура
 требуется отдельная инфраструктура на территории Республики Беларусь.
+В пилоте нет Redis, фоновых задач, rate limiting и WAF уровня приложения;
+внешние AI-сервисы выключены. Пароль супер-администратора хранится в
+`backend/.env` и должен быть сменён после передачи заказчику.
 
 ## 4. Промышленная инфраструктура
 - Kubernetes или отказоустойчивый кластер ВМ.
