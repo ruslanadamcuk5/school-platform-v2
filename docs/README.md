@@ -37,6 +37,7 @@
 | ШК-10-02 | Шаблон отчёта о тестировании | `10-reporting/02-shablon-otcheta-o-testirovanii.md` |
 | ШК-10-03 | Журнал рисков | `10-reporting/03-zhurnal-riskov.md` |
 | ШК-10-04 | Журнал изменений | `10-reporting/04-zhurnal-izmeneniy.md` |
+| ШК-10-05 | Отчёт о завершении этапа 0 | `10-reporting/05-otchet-o-zavershenii-etapa-0.md` |
 | ШК-11-01 | Правила OpenCode и промпты | `11-opencode/01-pravila-i-prompty.md` |
 
 ## Форматы
