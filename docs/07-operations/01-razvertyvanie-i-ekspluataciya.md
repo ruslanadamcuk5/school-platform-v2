@@ -51,14 +51,28 @@ npm run dev
 
 ## 3. Alwaysdata (пилот)
 ### 3.1. Сайт
-- Тип: **User program** (ASGI/Uvicorn) для FastAPI.
+- Текущий тип: **Static files** — временная страница-заглушка.
+- Адрес пилота: `http://school-platform-v2.185.31.40.24.nip.io`.
+- Корень сайта: `/home/virusadk/school-platform-v2/public`.
+- После появления FastAPI: тип **User program** (ASGI/Uvicorn).
 - Команда: `uvicorn app.main:app --host $IP --port $PORT --proxy-headers`.
 - Рабочая директория: `/home/virusadk/school-platform-v2/backend`.
-- Домен: новый поддомен, не затрагивающий `virusadk.alwaysdata.net`.
+- Сайт отдельный и не затрагивает `virusadk.alwaysdata.net`.
+
+Технический домен `nip.io` выбран потому, что бесплатный аккаунт Alwaysdata
+не позволяет занять произвольное имя в зоне `alwaysdata.net`. Для сдачи
+пилота и промышленной эксплуатации нужен собственный домен.
 
 ### 3.2. PostgreSQL
-- Отдельная БД и отдельный пользователь.
+- Отдельная БД: `virusadk_school_platform`.
+- Хост: `postgresql-virusadk.alwaysdata.net:5432`.
+- Пользователь: `virusadk`.
 - Пароль хранится в `.env` и менеджере секретов.
+- Созданы схемы: `iam`, `org`, `lms`, `assessment`, `journal`,
+  `communication`, `safety`, `documents`, `analytics`, `ai`, `audit`,
+  `system`.
+- Подключены расширения: `citext`, `pgcrypto`, `pg_trgm`, `vector`,
+  `unaccent`, `uuid-ossp`.
 - Доступ только с IP/хостов приложения, если возможно.
 - Ежедневный дамп и проверка восстановления.
 

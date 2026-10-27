@@ -5,8 +5,22 @@
 существующий функционал переносится поэтапно, без остановки текущего сервиса.
 
 ## Текущий статус
-**Этап 0 — инициализация.** Создана структура проекта, документация, правила
-OpenCode, заготовки инфраструктуры. Прикладной код ещё не переносился.
+**Этап 0 — инициализация завершена.** Созданы структура проекта,
+документация, правила OpenCode, GitHub-репозиторий, отдельная база
+PostgreSQL и отдельный пилотный сайт на Alwaysdata. Прикладной код ещё не
+переносился.
+
+### Пилотные ресурсы
+
+| Ресурс | Адрес |
+|---|---|
+| GitHub | `https://github.com/newvirusadk-cmd/school-platform-v2` (private) |
+| Сайт-заглушка | `http://school-platform-v2.185.31.40.24.nip.io` |
+| PostgreSQL | `postgresql-virusadk.alwaysdata.net:5432/virusadk_school_platform` |
+| Документация Word | `docs/word/` |
+
+Пароли и ключи хранятся только в локальном `.env` и `secrets/`
+(оба каталога исключены из Git).
 
 ## Целевой стек
 - Backend: FastAPI + SQLAlchemy 2.0 async + PostgreSQL 16 + Redis.
@@ -29,14 +43,17 @@ school-platform-v2/
 ```
 
 ## Быстрый старт
-1. Установить Python 3.12+ и PostgreSQL 16+ (или использовать managed PostgreSQL).
+1. Установить Python 3.12+; PostgreSQL можно не устанавливать локально —
+   пилотная БД уже развёрнута на Alwaysdata.
 2. Создать виртуальное окружение: `python -m venv .venv`.
 3. Активировать: `.venv\Scripts\Activate.ps1`.
-4. Установить зависимости backend: `pip install -r backend/requirements.txt`
-   (файл появится на этапе 1).
-5. Скопировать `.env.example` в `.env` и заполнить значения.
-6. Запустить инфраструктуру: `docker compose up -d` (если установлен Docker).
-7. Запустить API: `uvicorn app.main:app --reload` из `backend/`.
+4. Установить зависимости backend: `pip install -r backend/requirements.txt`.
+5. Скопировать `.env.example` в `.env` и заполнить значения; рабочий `.env`
+   для пилота уже создан локально и исключён из Git.
+6. При наличии Docker поднять локальную инфраструктуру:
+   `docker compose up -d`. Без Docker использовать managed PostgreSQL.
+7. После появления `backend/app/main.py` запустить API:
+   `uvicorn app.main:app --reload` из `backend/`.
 
 ## Документация
 - [Реестр документов](docs/00-register/01-register-dokumentacii.md)
