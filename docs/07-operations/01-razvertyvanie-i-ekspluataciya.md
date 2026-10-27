@@ -1,4 +1,4 @@
-# Развёртывание и эксплуатация
+﻿# Развёртывание и эксплуатация
 
 | Параметр | Значение |
 |---|---|
@@ -52,7 +52,8 @@ npm run dev
 ## 3. Alwaysdata (пилот)
 ### 3.1. Сайт
 - Текущий тип: **Static files** — временная страница-заглушка.
-- Адрес пилота: `http://school-platform-v2.185.31.40.24.nip.io`.
+- Адрес пилота: `https://school-platform-v2.185.31.40.24.nip.io`.
+- SSL: Let's Encrypt, срок действия до 2027-01-25, `Force HTTPS` включён.
 - Корень сайта: `/home/virusadk/school-platform-v2/public`.
 - После появления FastAPI: тип **User program** (ASGI/Uvicorn).
 - Команда: `uvicorn app.main:app --host $IP --port $PORT --proxy-headers`.

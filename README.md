@@ -1,4 +1,4 @@
-# ЕООП «Школьник» — school-platform-v2
+﻿# ЕООП «Школьник» — school-platform-v2
 
 Новая версия единой общеобразовательной обучающей платформы для Республики
 Беларусь. Проект создаётся как преемник работающего Flask/SQLite-приложения:
@@ -15,7 +15,7 @@ PostgreSQL и отдельный пилотный сайт на Alwaysdata. Пр
 | Ресурс | Адрес |
 |---|---|
 | GitHub | `https://github.com/newvirusadk-cmd/school-platform-v2` (private) |
-| Сайт-заглушка | `http://school-platform-v2.185.31.40.24.nip.io` |
+| Сайт-заглушка | `https://school-platform-v2.185.31.40.24.nip.io` |
 | PostgreSQL | `postgresql-virusadk.alwaysdata.net:5432/virusadk_school_platform` |
 | Документация Word | `docs/word/` |
 

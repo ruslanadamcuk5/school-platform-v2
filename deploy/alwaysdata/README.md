@@ -1,11 +1,12 @@
-# Alwaysdata: пилотный контур
+﻿# Alwaysdata: пилотный контур
 
 ## 1. Фактически созданные ресурсы
 
 | Ресурс | Значение |
 |---|---|
 | GitHub | `newvirusadk-cmd/school-platform-v2` (private) |
-| Сайт (пилот) | `http://school-platform-v2.185.31.40.24.nip.io` |
+| Сайт (пилот) | `https://school-platform-v2.185.31.40.24.nip.io` |
+| SSL | Let's Encrypt, до 2027-01-25, Force HTTPS включён |
 | Тип сайта | Static files (временная страница-заглушка) |
 | Корень сайта | `/home/virusadk/school-platform-v2/public` |
 | PostgreSQL host | `postgresql-virusadk.alwaysdata.net` |

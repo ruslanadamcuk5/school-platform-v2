@@ -14,16 +14,17 @@
    `virusadk_school_platform` на `postgresql-virusadk.alwaysdata.net:5432`,
    пользователь `virusadk`, схемы и расширения настроены.
 6. Создан отдельный пилотный сайт:
-   `http://school-platform-v2.185.31.40.24.nip.io`.
+   `https://school-platform-v2.185.31.40.24.nip.io`.
    Сейчас это Static files со страницей-заглушкой из
    `deploy/alwaysdata/public/index.html`.
-7. Локальные секреты вынесены в `.env` и `secrets/`, исключены из Git.
-8. Проверено подключение к PostgreSQL (PostgreSQL 17.11).
+7. Выпущен SSL-сертификат Let's Encrypt (до 2027-01-25), включён
+   `Force HTTPS`; HTTP перенаправляется на HTTPS.
+8. Локальные секреты вынесены в `.env` и `secrets/`, исключены из Git.
+9. Проверено подключение к PostgreSQL (PostgreSQL 17.11).
 
 ## Что происходит сейчас
-Ожидается выпуск автоматического SSL-сертификата Alwaysdata для
-`school-platform-v2.185.31.40.24.nip.io`. После выпуска нужно включить
-`Force HTTPS` и проверить сайт по HTTPS.
+Этап 0 закрыт. Пилотный сайт и БД доступны. Следующий этап — анализ
+существующего Flask-приложения и перенос ядра.
 
 ## Запреты
 - Не трогать работающий проект `C:\Users\adamrv\Documents\edu-math`.
