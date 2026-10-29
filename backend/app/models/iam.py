@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -74,6 +75,9 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     middle_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    parent_code: Mapped[str | None] = mapped_column(
+        String(16), nullable=True, unique=True, index=True
+    )
     avatar: Mapped[str] = mapped_column(
         String(32), nullable=False, default="👤", server_default="👤"
     )
@@ -111,6 +115,16 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    child_relations: Mapped[list["UserRelation"]] = relationship(
+        back_populates="parent",
+        foreign_keys="UserRelation.parent_id",
+        cascade="all, delete-orphan",
+    )
+    parent_relations: Mapped[list["UserRelation"]] = relationship(
+        back_populates="child",
+        foreign_keys="UserRelation.child_id",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def full_name(self) -> str:
@@ -120,6 +134,52 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     @property
     def is_superadmin(self) -> bool:
         return self.role == "superadmin"
+
+
+class UserRelation(Base, UUIDPrimaryKeyMixin):
+    """Parent/guardian to child relation."""
+
+    __tablename__ = "user_relations"
+    __table_args__ = (
+        UniqueConstraint("parent_id", "child_id", name="uq_user_relations_parent_child"),
+        CheckConstraint(
+            "relation_type IN ('mother','father','guardian','other')",
+            name="relation_type",
+        ),
+        {"schema": "iam"},
+    )
+
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    relation_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="other", server_default="other"
+    )
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    parent: Mapped["User"] = relationship(
+        back_populates="child_relations", foreign_keys=[parent_id]
+    )
+    child: Mapped["User"] = relationship(
+        back_populates="parent_relations", foreign_keys=[child_id]
+    )
 
 
 class RefreshToken(Base, UUIDPrimaryKeyMixin):

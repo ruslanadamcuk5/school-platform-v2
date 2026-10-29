@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -26,13 +27,48 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def _verify_legacy_pbkdf2(password: str, password_hash: str) -> bool:
+    """Verify the PBKDF2-HMAC-SHA256 format used by the old Flask app.
+
+    Imported accounts keep their original hashes. On the first successful
+    login the hash is transparently upgraded to bcrypt by ``needs_rehash``.
+    """
+    try:
+        algorithm, iterations, salt_hex, digest_hex = password_hash.split("$")
+        if algorithm != "pbkdf2":
+            return False
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            bytes.fromhex(salt_hex),
+            int(iterations),
+        )
+        return hmac.compare_digest(digest.hex(), digest_hex)
+    except (ValueError, TypeError):
+        return False
+
+
 def verify_password(password: str, password_hash: str | None) -> bool:
     if not password or not password_hash:
         return False
+    if password_hash.startswith("pbkdf2$"):
+        return _verify_legacy_pbkdf2(password, password_hash)
     try:
         return pwd_context.verify(password, password_hash)
     except (ValueError, TypeError):
         return False
+
+
+def needs_rehash(password_hash: str | None) -> bool:
+    """Return True for legacy or outdated hashes that should be upgraded."""
+    if not password_hash:
+        return True
+    if password_hash.startswith("pbkdf2$"):
+        return True
+    try:
+        return pwd_context.needs_update(password_hash)
+    except (ValueError, TypeError):
+        return True
 
 
 def _read_key(raw_path: str) -> str:

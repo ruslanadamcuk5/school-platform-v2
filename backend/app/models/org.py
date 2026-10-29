@@ -22,6 +22,45 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.iam import User
+    from app.models.lms import Subject
+
+
+class Region(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "regions"
+    __table_args__ = {"schema": "org"}
+
+    code: Mapped[str] = mapped_column(CITEXT, nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    cities: Mapped[list["City"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
+
+
+class City(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "cities"
+    __table_args__ = {"schema": "org"}
+
+    region_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.regions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    code: Mapped[str] = mapped_column(CITEXT, nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    city_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="city", server_default="city"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    region: Mapped["Region"] = relationship(back_populates="cities")
+    schools: Mapped[list["School"]] = relationship(back_populates="city_ref")
 
 
 class School(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -31,6 +70,12 @@ class School(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     code: Mapped[str] = mapped_column(CITEXT, nullable=False, unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     short_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    city_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.cities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     director: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -43,6 +88,7 @@ class School(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    city_ref: Mapped["City | None"] = relationship(back_populates="schools")
     users: Mapped[list["User"]] = relationship(
         back_populates="school", foreign_keys="User.school_id"
     )
@@ -140,3 +186,50 @@ class ClassMembership(Base, UUIDPrimaryKeyMixin):
 
     school_class: Mapped["SchoolClass"] = relationship(back_populates="memberships")
     user: Mapped["User"] = relationship()
+
+
+class TeacherSubject(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Teacher workload and subject assignment."""
+
+    __tablename__ = "teacher_subjects"
+    __table_args__ = (
+        UniqueConstraint(
+            "teacher_id",
+            "subject_id",
+            "school_id",
+            "class_id",
+            name="uq_teacher_subjects_scope",
+        ),
+        {"schema": "org"},
+    )
+
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("lms.subjects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    class_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.classes.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    workload_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    teacher: Mapped["User"] = relationship(foreign_keys=[teacher_id])
+    subject: Mapped["Subject"] = relationship()
+    school: Mapped["School"] = relationship()
+    school_class: Mapped["SchoolClass | None"] = relationship()

@@ -54,6 +54,7 @@ app = FastAPI(
         {"name": "auth", "description": "Аутентификация и сессии"},
         {"name": "org", "description": "Школы, классы, мультитенантность"},
         {"name": "admin", "description": "Администрирование школы"},
+        {"name": "lms", "description": "Предметы, темы, учебники и курсы"},
     ],
 )
 

@@ -8,7 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
+    hash_password,
     hash_refresh_token,
+    needs_rehash,
     new_refresh_token,
     refresh_expires_at,
     verify_password,
@@ -73,6 +75,9 @@ async def authenticate(
         )
         await session.commit()
         return None
+
+    if needs_rehash(user.password_hash):
+        user.password_hash = hash_password(password)
 
     user.last_login_at = datetime.now(timezone.utc)
     add_audit_event(

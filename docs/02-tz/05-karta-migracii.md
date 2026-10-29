@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-02-05 |
-| Версия | 0.2 |
+| Версия | 0.3 |
 | Статус | Рабочий |
-| Дата | 27.10.2026 |
+| Дата | 29.10.2026 |
 | Источник анализа | `C:\Users\adamrv\Documents\edu-math` (read-only) |
 | Целевой контур | `C:\Users\adamrv\Documents\school-platform-v2` |
 
@@ -121,14 +121,14 @@
 | `schools` | `org.schools` | `director` → `director_name`, название в JSONB | Пилот: схема готова |
 | `school_classes` | `org.classes` | `grade` → `number`, `teacher_id` → `curator_id`, уникальность сохранить | Пилот: схема готова |
 | `class_students` | `org.class_students` | Добавить `left_at`, `status`; проверять активные дубли | Пилот: `org.class_memberships` |
-| `subjects` | `lms.subjects` | `slug` → `code`, `name` в JSONB (`ru`, `be`, `en`) | Запланировано |
-| `topics` | `lms.topics` | `grade` → `class_number`, `content_json` → `lessons`, сохранить `kind`, `order_index` | Запланировано |
-| `methods` | `lms.lesson_blocks` | Объяснения и шаги → блоки типа `text`/`steps` | Запланировано |
-| `textbooks` | `lms.textbooks` + `lms.files` | PDF в объектное хранилище, метаданные в БД, checksum | Запланировано |
-| `textbook_topics` | `lms.textbook_topics` | `page_start/page_end` → `page_from/page_to` | Запланировано |
-| `courses` | `lms.courses` | Добавить `school_id`, `owner_id`, статус | Запланировано |
-| `course_topics` | `lms.course_topics` | Прямой перенос с `enabled` | Запланировано |
-| `course_classes` | `lms.course_classes` | Прямой перенос | Запланировано |
+| `subjects` | `lms.subjects` | `slug` → `code`, `name` в JSONB (`ru`, `be`, `en`) | API: чтение |
+| `topics` | `lms.topics` | `grade` → `class_number`, `content_json` → `lessons`, сохранить `kind`, `order_index` | API: чтение |
+| `methods` | `lms.methods` + `lms.lesson_blocks` | Объяснения и шаги → `lms.methods`, блоки урока → `lms.lesson_blocks` | API: чтение |
+| `textbooks` | `lms.textbooks` + `lms.files` | PDF в объектное хранилище, метаданные в БД, checksum | API: чтение |
+| `textbook_topics` | `lms.textbook_topics` | `page_start/page_end` → `page_from/page_to` | API: чтение |
+| `courses` | `lms.courses` | Добавить `school_id`, `owner_id`, статус | API: чтение |
+| `course_topics` | `lms.course_topics` | Прямой перенос с `enabled` | API: чтение |
+| `course_classes` | `lms.course_classes` | Прямой перенос | API: чтение |
 | `assignments` | `assessment.quizzes` + `assessment.assignments` | Работа разделяется на шаблон теста и назначение классу/ученику | Запланировано |
 | `assignment_results` | `assessment.submissions` + `assessment.answers` | `answers` JSONB разложить по вопросам, сохранить score/max | Запланировано |
 | `schedules` | `journal.lesson_schedule` | `weekday` + `lesson_no` + время → интервал; добавить `valid_from/to` | Запланировано |
@@ -206,7 +206,10 @@
 | FastAPI skeleton, `/health`, OpenAPI | **Выполнено** |
 | SQLAlchemy 2.0 async + Alembic | **Выполнено** |
 | JWT, RBAC, multi-tenancy по `school_id` | **Выполнено (пилот)** |
-| Перенос данных старого контура | **Не начато** |
+| Миграции доменов `lms`, `assessment`, `journal`, `analytics`, `ai`, `communication` | **Выполнено** |
+| Импорт старой SQLite (`app.db.import_legacy`) | **Реализован, требует прогона на Stage** |
+| API учебного контента (`/lms/*`) | **Выполнено (чтение)** |
+| Перенос данных старого контура | **В процессе** |
 | React-интерфейс | **Не начато** |
 | Flutter-клиенты | **Не начато** |
 
