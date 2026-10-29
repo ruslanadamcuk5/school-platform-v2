@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-02-05 |
-| Версия | 0.3 |
+| Версия | 0.4 |
 | Статус | Рабочий |
 | Дата | 29.10.2026 |
 | Источник анализа | `C:\Users\adamrv\Documents\edu-math` (read-only) |
@@ -129,8 +129,8 @@
 | `courses` | `lms.courses` | Добавить `school_id`, `owner_id`, статус | API: чтение |
 | `course_topics` | `lms.course_topics` | Прямой перенос с `enabled` | API: чтение |
 | `course_classes` | `lms.course_classes` | Прямой перенос | API: чтение |
-| `assignments` | `assessment.quizzes` + `assessment.assignments` | Работа разделяется на шаблон теста и назначение классу/ученику | Запланировано |
-| `assignment_results` | `assessment.submissions` + `assessment.answers` | `answers` JSONB разложить по вопросам, сохранить score/max | Запланировано |
+| `assignments` | `assessment.quizzes` + `assessment.assignments` + `assessment.questions` + `assessment.answer_options` | Работа разделяется на шаблон теста и назначение классу/ученику | API: чтение/запись |
+| `assignment_results` | `assessment.submissions` + `assessment.answers` | `answers` JSONB разложить по вопросам, сохранить score/max | API: чтение/запись |
 | `schedules` | `journal.lesson_schedule` | `weekday` + `lesson_no` + время → интервал; добавить `valid_from/to` | Запланировано |
 | `library_books` | `lms.library_items` | `owner_id`, предмет, класс, описание | Запланировано |
 | `library_book_classes` | `lms.library_item_classes` | Прямой перенос | Запланировано |
@@ -209,6 +209,7 @@
 | Миграции доменов `lms`, `assessment`, `journal`, `analytics`, `ai`, `communication` | **Выполнено** |
 | Импорт старой SQLite (`app.db.import_legacy`) | **Реализован, требует прогона на Stage** |
 | API учебного контента (`/lms/*`) | **Выполнено (чтение)** |
+| API тестов и работ (`/assessment/*`) | **Выполнено (создание, назначение, сдача, результаты)** |
 | Перенос данных старого контура | **В процессе** |
 | React-интерфейс | **Не начато** |
 | Flutter-клиенты | **Не начато** |
