@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.3 |
+| Версия | 0.4 |
 | Статус | Рабочий |
 | Дата | 29.10.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.185.31.40.24.nip.io` |
@@ -167,7 +167,39 @@
 - Удаление работы заменено архивированием (`status=archived`) для сохранения
   аудита.
 
-## 7. Системные
+## 7. Журнал: расписание, оценки и посещаемость
+
+| Метод | Путь | Роли | Назначение |
+|---|---|---|---|
+| GET | `/api/v1/journal/classes` | staff, student, parent | Классы, доступные в журнале |
+| GET | `/api/v1/journal/classes/{id}/students` | staff | Ученики класса для выставления оценок |
+| GET | `/api/v1/journal/schedule?class_id=&student_id=&on_date=` | все роли | Недельное расписание |
+| POST | `/api/v1/journal/schedule` | teacher, methodologist, admin | Добавить или заменить урок |
+| PATCH | `/api/v1/journal/schedule/{id}` | teacher, methodologist, admin | Изменить урок |
+| DELETE | `/api/v1/journal/schedule/{id}` | teacher, methodologist, admin | Удалить урок |
+| GET | `/api/v1/journal/entries?class_id=&subject_id=&student_id=&date_from=&date_to=` | все роли | Записи журнала |
+| POST | `/api/v1/journal/entries` | teacher, methodologist, admin | Выставить оценку/посещаемость (upsert) |
+| POST | `/api/v1/journal/entries/bulk` | teacher, methodologist, admin | Массовое выставление по классу |
+| PATCH | `/api/v1/journal/entries/{id}` | teacher, methodologist, admin | Изменить запись |
+| DELETE | `/api/v1/journal/entries/{id}` | teacher, methodologist, admin | Удалить запись |
+| GET | `/api/v1/journal/summary?class_id=&subject_id=&student_id=&date_from=&date_to=` | все роли | Средний балл и посещаемость |
+
+Правила:
+- Расписание задаётся недельной сеткой: `day_of_week` 1–7, `lesson_no` 1–12,
+  `start_time < end_time`, период действия `valid_from/to`.
+- Учитель видит и редактирует классы, где он классный руководитель, указан
+  в `org.teacher_subjects` или ведёт хотя бы один урок в расписании.
+- Ученик видит расписание и записи только своих классов; родитель — только
+  выбранного ребёнка (`student_id` обязателен).
+- Оценка — целое число 1–10; посещаемость: `present`, `absent`, `sick`,
+  `late`, `excused`.
+- Запись журнала upsert-ится по `class_id + subject_id + student_id +
+  lesson_date`; повторная отправка обновляет оценку/посещаемость.
+- Сводка считает количество записей, средний балл (2 знака) и количество
+  отметок каждого типа посещаемости.
+- Все запросы ограничены `school_id`; `superadmin` обязан передать `school_id`.
+
+## 8. Системные
 
 | Метод | Путь | Назначение |
 |---|---|---|
@@ -179,7 +211,7 @@
 `/health` возвращает `200`, если БД доступна, и `503` со статусом `degraded`,
 если нет. В ответе нет секретов, только `jwt_ready` и версия.
 
-## 8. Роли
+## 9. Роли
 
 | Код | Назначение |
 |---|---|
@@ -195,13 +227,13 @@
 RBAC проверяется зависимостью `require_roles`. UI скрывает недоступные
 разделы, но API остаётся единственной точкой принудительной проверки.
 
-## 9. Совместимость со старым API
+## 10. Совместимость со старым API
 
 Старый контур `edu-math` имеет `/api/v1` для Android. На время параллельной
 эксплуатации сохраняются совместимые маршруты или адаптер. Полный перечень
 соответствия — в документе ШК-02-05 «Карта миграции».
 
-## 10. Ограничения пилота
+## 11. Ограничения пилота
 
 - Нет rate limiting на уровне приложения (включён флаг, middleware — следующий этап).
 - Нет Redis-кэша и фоновых задач в текущем контуре.

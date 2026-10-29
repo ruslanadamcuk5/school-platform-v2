@@ -56,6 +56,7 @@ app = FastAPI(
         {"name": "admin", "description": "Администрирование школы"},
         {"name": "lms", "description": "Предметы, темы, учебники и курсы"},
         {"name": "assessment", "description": "Тесты, работы, сдача и результаты"},
+        {"name": "journal", "description": "Расписание, оценки и посещаемость"},
     ],
 )
 
