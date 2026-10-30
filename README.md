@@ -124,6 +124,7 @@ uvicorn app.service_app:create_service_app --factory --port 8101
 - [План разработки](docs/08-roadmap/01-plan-razrabotki.md)
 - [Нормативные документы](docs/09-normative/01-reestr-normativnyh-dokumentov.md)
 - [Отчёт о завершении этапа 1](docs/10-reporting/06-otchet-o-zavershenii-etapa-1.md)
+- [Отчёт о тестировании групп, прав и сервисов](docs/10-reporting/10-otchet-o-testirovanii-groups-services.md)
 
 ## Правила работы
 

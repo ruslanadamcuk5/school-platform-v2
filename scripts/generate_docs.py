@@ -20,8 +20,8 @@ DOCS = ROOT / "docs"
 OUT = DOCS / "word"
 
 PROJECT = "ЕООП «Школьник»"
-VERSION = "0.1"
-DATE = "27.10.2026"
+VERSION = "0.6"
+DATE = "30.10.2026"
 
 
 def set_cell_shading(cell, color: str) -> None:
@@ -356,7 +356,7 @@ def main() -> int:
         generated.append(output)
         print(f"OK  {rel} -> {output.relative_to(ROOT)}")
 
-    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации.docx"
+    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации_v0.6.docx"
     document = Document()
     style_document(document)
     add_title_page(document, "Полный пакет проектной документации", DOCS / "README.md")
