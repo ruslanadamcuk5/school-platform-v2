@@ -1,0 +1,3 @@
+# Dependencies only for Alwaysdata Python WSGI (uWSGI) deployment.
+# The standard project runtime is Uvicorn and does not need this file.
+a2wsgi==1.10.10

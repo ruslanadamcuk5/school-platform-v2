@@ -5,10 +5,8 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import Iterable
 
 from docx import Document
-from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -20,7 +18,7 @@ DOCS = ROOT / "docs"
 OUT = DOCS / "word"
 
 PROJECT = "ЕООП «Школьник»"
-VERSION = "0.7"
+VERSION = "0.7.1"
 DATE = "30.10.2026"
 
 
@@ -356,7 +354,7 @@ def main() -> int:
         generated.append(output)
         print(f"OK  {rel} -> {output.relative_to(ROOT)}")
 
-    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации_v0.7.docx"
+    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации_v0.7.1.docx"
     document = Document()
     style_document(document)
     add_title_page(document, "Полный пакет проектной документации", DOCS / "README.md")

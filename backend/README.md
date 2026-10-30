@@ -85,7 +85,7 @@ ADMIN_PASSWORD=...
 SEED_SCHOOL_CODE=pilot-school
 SEED_SCHOOL_NAME=Пилотная школа «Школьник»
 SEED_ACADEMIC_YEAR=2026/2027
-CORS_ORIGINS=https://school-platform-v2.185.31.40.24.nip.io
+CORS_ORIGINS=https://school-platform-v2.alwaysdata.net
 ```
 
 `.env`, `secrets/` и ключи не коммитятся.

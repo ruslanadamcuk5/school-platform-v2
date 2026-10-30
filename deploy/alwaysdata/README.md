@@ -1,189 +1,199 @@
 ﻿# Alwaysdata: пилотный контур
 
-## 1. Фактически созданные ресурсы
+## 1. Фактические ресурсы
 
 | Ресурс | Значение |
 |---|---|
-| GitHub | `ruslanadamcuk5/school-platform-v2` (private) |
-| Сайт (пилот) | `https://school-platform-v2.185.31.40.24.nip.io` |
-| SSL | Let's Encrypt, до 2027-01-25, Force HTTPS включён |
-| Тип сайта | **User program (Uvicorn)** |
-| Рабочая директория | `/home/virusadk/school-platform-v2/backend` |
-| Команда | `uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers --forwarded-allow-ips="*"` |
-| Venv | `/home/virusadk/.virtualenvs/school-platform` |
-| PostgreSQL host | `postgresql-virusadk.alwaysdata.net` |
-| PostgreSQL port | `5432` |
+| GitHub | `https://github.com/ruslanadamcuk5/school-platform-v2` (private) |
+| Пилотный сайт | `https://school-platform-v2.alwaysdata.net` |
+| Аккаунт Alwaysdata | `school-platform-v2` |
+| SSH-хост | `ssh-school-platform-v2.alwaysdata.net` |
+| SSH-пользователь | `school-platform-v2` |
+| SSH-ключ | `id_ed25519_school_platform` (локально, в Git не попадает) |
+| Домашний каталог | `/home/school-platform-v2` |
+| Каталог проекта | `/home/school-platform-v2/school-platform-v2` |
+| Backend | `/home/school-platform-v2/school-platform-v2/backend` |
+| Frontend dist | `/home/school-platform-v2/school-platform-v2/frontend/dist` |
+| Venv | `/home/school-platform-v2/.virtualenvs/school-platform` |
+| Тип сайта | **Python WSGI (uWSGI 2.0.31)** |
+| PostgreSQL host | `postgresql-virusadk.alwaysdata.net:5432` |
 | База | `virusadk_school_platform` |
-| Пользователь БД | `virusadk` |
-| SSH | `ssh-virusadk.alwaysdata.net`, пользователь `virusadk` |
-| SSH key | `uchus-deploy` (`id_ed25519_uchus`) |
 | Старый сайт | `https://virusadk.alwaysdata.net` — **не изменять** |
 
 Пароль БД и `ADMIN_PASSWORD` хранятся только в локальном `.env`, в
 `backend/.env` на сервере и в панели Alwaysdata. В репозиторий и документацию
 они не записываются.
 
-### Почему адрес `nip.io`
+## 2. Почему WSGI, а не Uvicorn
 
-На бесплатном аккаунте Alwaysdata нельзя занять произвольное имя вида
-`school-platform-v2.alwaysdata.net`: домен `alwaysdata.net` принадлежит
-хостингу. Поэтому для пилота используется технический адрес
-`school-platform-v2.185.31.40.24.nip.io`, который указывает на IP аккаунта.
-Для промышленного контура нужен собственный домен, например
-`school.example.by`, с A-записью на `185.31.40.24`.
+Новый профиль был создан как **Python WSGI**-сайт. Alwaysdata передаёт
+приложение в uWSGI, а проект построен на ASGI/FastAPI. Для совместимости
+используется адаптер `a2wsgi`:
 
-## 2. PostgreSQL
+- `deploy/alwaysdata/wsgi_entry.py` копируется на сервер как
+  `backend/__init__.py`; на текущем сервере используется эквивалентная версия
+  с явным путём к `site-packages`, а шаблон находит venv автоматически;
+- файл добавляет `site-packages` проекта в `sys.path`;
+- FastAPI оборачивается в `a2wsgi.ASGIMiddleware`;
+- uWSGI загружает `backend/__init__.py`, потому что поле `wsgi-file` указывает
+  на каталог `backend/`.
 
-Созданы схемы:
+Установка адаптера:
 
-```text
-iam, org, lms, assessment, journal, communication,
-safety, documents, analytics, ai, audit, system
+```bash
+/home/school-platform-v2/.virtualenvs/school-platform/bin/pip install \
+  --no-cache-dir -r /home/school-platform-v2/school-platform-v2/deploy/alwaysdata/requirements-wsgi.txt
 ```
 
-Подключены расширения:
+### 2.1. Альтернатива: User program (Uvicorn)
 
-```text
-citext, pgcrypto, pg_trgm, vector, unaccent, uuid-ossp
-```
-
-Применена миграция:
-
-```text
-0002_groups_permissions_services (head)
-```
-
-Созданы таблицы:
-
-```text
-iam.users, iam.refresh_tokens,
-org.schools, org.classes, org.class_memberships,
-audit.events
-```
-
-Пилотные данные: школа `pilot-school`, классы 1–11, супер-администратор
-`admin` (пароль — `ADMIN_PASSWORD` в `.env`).
-
-## 3. Сайт
-
-Сайт #1092629 работает как **User program**. Настройки в панели:
+Если сайт переключить на **User program**, адаптер не нужен. Настройки:
 
 | Поле | Значение |
 |---|---|
-| Type | User program |
-| Command | `/home/virusadk/.virtualenvs/school-platform/bin/uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers --forwarded-allow-ips="*"` |
+| Command | `/home/school-platform-v2/.virtualenvs/school-platform/bin/uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers --forwarded-allow-ips="*"` |
 | Working directory | `school-platform-v2/backend` |
 | Environment | `PYTHONPATH=. PYTHONUNBUFFERED=1` |
-| Cache | **выключен** (API не кэшируется) |
+
+Рабочая директория задаётся **относительно** `/home/school-platform-v2`.
+Абсолютный путь панель может удвоить, и процесс не стартует.
+
+## 3. PostgreSQL
+
+Пилот использует существующую базу `virusadk_school_platform` на старом
+аккаунте. Новый хост успешно подключается к ней, поэтому данные и пользователи
+сохранены.
+
+- Миграция: `0002_groups_permissions_services (head)`.
+- Схемы: `iam`, `org`, `lms`, `assessment`, `journal`, `communication`,
+  `safety`, `documents`, `analytics`, `ai`, `audit`, `system`.
+- Расширения: `citext`, `pgcrypto`, `pg_trgm`, `vector`, `unaccent`,
+  `uuid-ossp`.
+- Проверка подключения с сервера:
+
+```bash
+cd /home/school-platform-v2/school-platform-v2/backend
+PYTHONPATH=. /home/school-platform-v2/.virtualenvs/school-platform/bin/python \
+  -m alembic current
+```
+
+Команда должна показать `0002_groups_permissions_services (head)`.
+
+Если позже понадобится отдельная база нового профиля, её нужно создать в
+панели, обновить `DATABASE_URL` в `backend/.env`, применить
+`alembic upgrade head` и выполнить seed только для пустой базы.
+
+## 4. Настройки сайта
+
+| Поле | Значение |
+|---|---|
+| Type | **Python WSGI** |
+| Working directory | `school-platform-v2/backend` |
+| WSGI application | каталог `backend/` (`backend/__init__.py`) |
+| Environment | `PYTHONPATH=. PYTHONUNBUFFERED=1` |
+| Cache | выключен |
 | Force HTTPS | включён |
 | WAF | basic |
 
-Важно: поле **Working directory** в панели Alwaysdata задаётся относительно
-`/home/virusadk`. Если указать абсолютный путь, панель удваивает префикс
-(`/home/virusadk/home/virusadk/...`) и процесс не стартует.
+`backend/__init__.py` — это эквивалент `deploy/alwaysdata/wsgi_entry.py`. При
+пересоздании сайта шаблон нужно скопировать заново.
 
-Проверка:
-
-- `GET /health` → 200, `database: ok`.
-- `GET /docs` → Swagger UI.
-- `GET /openapi.json` → OpenAPI 3.1.
-- `GET /robots.txt` → `Disallow: /`.
-- HTTP → 301 HTTPS.
-- Заголовки: `X-Robots-Tag: noindex`, `X-Content-Type-Options: nosniff`,
-  `X-Frame-Options: DENY`, HSTS.
-
-## 4. Переменные окружения
-
-Локально: `.env` в корне проекта (не коммитится).
-На сервере: `backend/.env` (не коммитится).
-
-Минимально нужны:
-
-```text
-DATABASE_URL=postgresql+asyncpg://virusadk:***@postgresql-virusadk.alwaysdata.net:5432/virusadk_school_platform
-SECRET_KEY=...
-JWT_PRIVATE_KEY_PATH=./secrets/jwt_private.pem
-JWT_PUBLIC_KEY_PATH=./secrets/jwt_public.pem
-ADMIN_LOGIN=admin
-ADMIN_PASSWORD=...
-SEED_SCHOOL_CODE=pilot-school
-CORS_ORIGINS=https://school-platform-v2.185.31.40.24.nip.io
-```
-
-Ключи JWT лежат в `backend/secrets/` на сервере с правами `600` на приватный
-ключ. В Git не попадают.
+После изменения кода перезапустить процесс можно в
+**Advanced → Processes**: остановить/перезапустить процесс uWSGI. Если процесс
+упал, новый стартует при следующем HTTP-запросе.
 
 ## 5. Деплой
 
-Текущий способ — архивы backend и frontend по SSH (GitHub-ключ Alwaysdata
-не добавлялся в репозиторий):
+### 5.1. Backend
 
 ```powershell
 $tar = "$env:TEMP\opencode\school-platform-backend.tgz"
 tar.exe -czf $tar --exclude='__pycache__' --exclude='.ruff_cache' `
   --exclude='*.pyc' --exclude='.pytest_cache' `
-  -C backend .env secrets app alembic alembic.ini requirements.txt README.md pytest.ini tests
-scp -i C:\Users\adamrv\.ssh\id_ed25519_uchus $tar `
-  virusadk@ssh-virusadk.alwaysdata.net:/home/virusadk/school-platform-v2/backend.tgz
-ssh -i C:\Users\adamrv\.ssh\id_ed25519_uchus `
-  virusadk@ssh-virusadk.alwaysdata.net `
-  "cd /home/virusadk/school-platform-v2 && tar -xzf backend.tgz -C backend"
+  -C backend app alembic alembic.ini requirements.txt README.md pytest.ini tests
+scp -i C:\Users\adamrv\.ssh\id_ed25519_school_platform $tar `
+  school-platform-v2@ssh-school-platform-v2.alwaysdata.net:/home/school-platform-v2/school-platform-v2/backend.tgz
+ssh -i C:\Users\adamrv\.ssh\id_ed25519_school_platform `
+  school-platform-v2@ssh-school-platform-v2.alwaysdata.net `
+  "cd /home/school-platform-v2/school-platform-v2 && tar -xzf backend.tgz -C backend && rm backend.tgz"
 ```
 
-Публикация веб-клиента:
+`.env` и `secrets/` в архив не включаются, чтобы не перезаписывать серверные
+секреты.
+
+### 5.2. Frontend
 
 ```powershell
 $dist = "$env:TEMP\opencode\school-platform-frontend.tgz"
 tar.exe -czf $dist -C frontend dist
-scp -i C:\Users\adamrv\.ssh\id_ed25519_uchus $dist `
-  virusadk@ssh-virusadk.alwaysdata.net:/home/virusadk/school-platform-v2/frontend.tgz
-ssh -i C:\Users\adamrv\.ssh\id_ed25519_uchus `
-  virusadk@ssh-virusadk.alwaysdata.net `
-  "cd /home/virusadk/school-platform-v2 && mkdir -p frontend && tar -xzf frontend.tgz -C frontend"
+scp -i C:\Users\adamrv\.ssh\id_ed25519_school_platform $dist `
+  school-platform-v2@ssh-school-platform-v2.alwaysdata.net:/home/school-platform-v2/school-platform-v2/frontend.tgz
+ssh -i C:\Users\adamrv\.ssh\id_ed25519_school_platform `
+  school-platform-v2@ssh-school-platform-v2.alwaysdata.net `
+  "cd /home/school-platform-v2/school-platform-v2 && mkdir -p frontend && tar -xzf frontend.tgz -C frontend && rm frontend.tgz"
 ```
 
-FastAPI отдаёт SPA, если на сервере существует
-`frontend/dist/index.html`. API и Swagger не затрагиваются.
+FastAPI автоматически раздаёт `frontend/dist`: `/` и клиентские маршруты
+отдают `index.html`, `/assets/*` — статику. API, `/health`, `/docs`,
+`/openapi.json` и `/robots.txt` не затрагиваются.
 
-После обновления кода перезапустить процесс сайта:
+### 5.3. WSGI-адаптер и зависимости
 
-1. Открыть **Advanced → Processes**.
-2. Найти процесс `uvicorn app.main:app`.
-3. Нажать **Terminate** (не Kill).
-4. Открыть сайт — Alwaysdata запустит новый процесс.
-
-Установка зависимостей:
-
-```bash
-/home/virusadk/.virtualenvs/school-platform/bin/pip install --no-cache-dir \
-  -r /home/virusadk/school-platform-v2/backend/requirements.txt
+```powershell
+scp -i C:\Users\adamrv\.ssh\id_ed25519_school_platform `
+  deploy\alwaysdata\wsgi_entry.py `
+  school-platform-v2@ssh-school-platform-v2.alwaysdata.net:/home/school-platform-v2/school-platform-v2/backend/__init__.py
 ```
 
-Миграции и seed:
+```bash
+/home/school-platform-v2/.virtualenvs/school-platform/bin/pip install \
+  --no-cache-dir -r /home/school-platform-v2/school-platform-v2/deploy/alwaysdata/requirements-wsgi.txt
+```
+
+Права на секреты:
 
 ```bash
-cd /home/virusadk/school-platform-v2/backend
-export PYTHONPATH=.
-/home/virusadk/.virtualenvs/school-platform/bin/python -m alembic upgrade head
-/home/virusadk/.virtualenvs/school-platform/bin/python -m app.db.seed
+chmod 600 /home/school-platform-v2/school-platform-v2/backend/.env \
+  /home/school-platform-v2/school-platform-v2/backend/secrets/jwt_private.pem
+chmod 644 /home/school-platform-v2/school-platform-v2/backend/secrets/jwt_public.pem
 ```
 
 ## 6. Проверка после деплоя
 
 ```bash
-curl -i https://school-platform-v2.185.31.40.24.nip.io/health
-curl -i https://school-platform-v2.185.31.40.24.nip.io/robots.txt
-curl -i https://school-platform-v2.185.31.40.24.nip.io/openapi.json
-curl -i https://virusadk.alwaysdata.net/healthz
+curl -fsS https://school-platform-v2.alwaysdata.net/health
+curl -I  https://school-platform-v2.alwaysdata.net/
+curl -I  https://school-platform-v2.alwaysdata.net/groups
+curl -I  https://school-platform-v2.alwaysdata.net/docs
+curl -I  https://school-platform-v2.alwaysdata.net/robots.txt
+curl -I  https://virusadk.alwaysdata.net/healthz
 ```
 
-Ожидаемо: новый сайт — 200, старый сайт — 200, HTTP — 301.
+Ожидаемо:
+
+- новый сайт: `/health` 200, `/`, `/groups`, `/docs` — 200, `/robots.txt` —
+  `Disallow: /`;
+- старый сайт `virusadk.alwaysdata.net` — 200, его код и процессы не меняются;
+- HTTP → 301 HTTPS;
+- security headers: `X-Robots-Tag: noindex`, `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, HSTS.
+
+Проверка API после входа:
+
+```text
+GET /api/v1/me/permissions  -> 73 allow, 0 deny, 1 группа
+GET /api/v1/me/services     -> 11
+GET /api/v1/groups          -> 30
+GET /api/v1/services        -> 14
+GET /api/v1/org/schools     -> 1 (pilot-school)
+```
 
 ## 7. Ограничения
 
 - Это пилотный контур, не промышленный.
 - Для аттестации и реальных ПДн нужен согласованный ЦОД.
 - Внешние AI-сервисы включать только после оценки рисков.
-- Домен `nip.io` — технический; для сдачи проекта нужен собственный домен.
 - Redis, фоновые задачи и rate limiting в пилоте не подключены.
 - Пароль супер-администратора сменить после передачи заказчику.
+- uWSGI-адаптер — совместимость для текущего типа сайта; целевой production
+  runtime — Uvicorn/ASGI.

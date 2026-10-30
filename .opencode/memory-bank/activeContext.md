@@ -38,20 +38,29 @@
    тестировании), реестр, журнал изменений, операции, генератор DOCX.
 
 ## Что происходит сейчас
-- Локально запущены backend `127.0.0.1:8000` и Vite `127.0.0.1:5173`.
-- Визуально проверены вход, дашборд, группы, карточка группы, сервисы,
-  профиль; переключение сервиса проверено с возвратом состояния.
-- Пилотный backend ещё не обновлён до последнего коммита; frontend на пилот
-  ещё не опубликован.
+- Пилот опубликован на `https://school-platform-v2.alwaysdata.net`:
+  backend, React-клиент, JWT-ключи и `.env` перенесены на новый профиль.
+- Новый хост подключён к существующей БД `virusadk_school_platform`.
+- API проверен: 73 allow, 0 deny, 1 группа, 11 сервисов из 14, 30 групп,
+  школа `pilot-school`.
+- Визуально проверены вход, дашборд, группы, каталог сервисов и профиль;
+  ошибок в консоли нет.
+- Старый сайт `virusadk.alwaysdata.net` не изменялся.
 
 ## Фактические параметры пилота
-- Backend: `/home/virusadk/school-platform-v2/backend`.
-- Frontend dist: `/home/virusadk/school-platform-v2/frontend/dist`.
-- Venv: `/home/virusadk/.virtualenvs/school-platform`.
-- Working directory в панели Alwaysdata: `school-platform-v2/backend`
-  (относительно `/home/virusadk`).
-- Команда: `uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers`.
-- Пилотный домен: `https://school-platform-v2.185.31.40.24.nip.io`.
+- Профиль: `school-platform-v2`.
+- Домен: `https://school-platform-v2.alwaysdata.net`.
+- SSH: `school-platform-v2@ssh-school-platform-v2.alwaysdata.net`.
+- Backend: `/home/school-platform-v2/school-platform-v2/backend`.
+- Frontend dist: `/home/school-platform-v2/school-platform-v2/frontend/dist`.
+- Venv: `/home/school-platform-v2/.virtualenvs/school-platform`.
+- Тип сайта: **Python WSGI (uWSGI 2.0.31)**.
+- Точка входа: `backend/__init__.py` — эквивалент
+  `deploy/alwaysdata/wsgi_entry.py`, адаптер `a2wsgi`.
+- Working directory в панели: `school-platform-v2/backend`
+  (относительно `/home/school-platform-v2`).
+- Альтернатива: User program + `uvicorn app.main:app`.
+- PostgreSQL: `postgresql-virusadk.alwaysdata.net:5432/virusadk_school_platform`.
 - Кэш сайта отключён; WAF basic; Force HTTPS включён.
 - `robots.txt` закрывает пилот от индексации; security headers включены.
 
@@ -64,18 +73,14 @@
   токены и приватные ключи.
 
 ## Следующая задача
-1. Закоммитить и запушить backend-исправления, frontend и документацию.
-2. Собрать `frontend/dist`, доставить backend и frontend на пилот.
-3. Перезапустить Uvicorn, проверить `/`, `/health`, `/docs`,
-   `/api/v1/me/permissions`, `/api/v1/me/services`, `/api/v1/groups`,
-   `/api/v1/services` на пилоте.
-4. Проверить вход и основные экраны на пилотном домене.
-5. Перевести пользователей пилота в группы; проверить, что мост
+1. Перевести пользователей пилота в группы; проверить, что мост
    `LEGACY_ROLE_PERMISSIONS` не используется.
-6. Подключить `require_permission`/`require_service` к journal, assessment,
+2. Подключить `require_permission`/`require_service` к journal, assessment,
    library, lms.
-7. Полноценные экраны журнала, библиотеки, LMS и оценивания.
-8. Автоматизированные E2E-тесты (Playwright), i18n, Redis-кеш прав и RLS.
+3. Полноценные экраны журнала, библиотеки, LMS и оценивания.
+4. Автоматизированные E2E-тесты (Playwright), i18n, Redis-кеш прав и RLS.
+5. Решить, оставить ли WSGI-адаптер или перевести сайт на Uvicorn.
+6. Проверить async pool/lifespan под uWSGI нагрузкой.
 
 Результат фиксировать в `progress.md`, `docs/02-tz/05-karta-migracii.md` и
 журнале изменений.

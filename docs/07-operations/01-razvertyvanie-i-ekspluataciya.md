@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 0.3 |
+| Версия | 0.4 |
 | Статус | Рабочий |
-| Дата | 27.10.2026 |
+| Дата | 30.10.2026 |
 
 ## 1. Среды
 | Среда | Назначение | Домен |
@@ -64,66 +64,71 @@ npm run dev
 
 ## 3. Alwaysdata (пилот)
 ### 3.1. Сайт
-- Текущий тип: **User program** (ASGI/Uvicorn).
-- Адрес пилота: `https://school-platform-v2.185.31.40.24.nip.io`.
-- SSL: Let's Encrypt, срок действия до 2027-01-25, `Force HTTPS` включён.
-- Рабочая директория: `/home/virusadk/school-platform-v2/backend`.
-- В панели Alwaysdata рабочая директория задаётся **относительно**
-  `/home/virusadk`: `school-platform-v2/backend`. Абсолютный путь панель
-  удваивает, и процесс не стартует.
-- Команда:
-  `/home/virusadk/.virtualenvs/school-platform/bin/uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers --forwarded-allow-ips="*"`.
+- Новый профиль: `school-platform-v2`.
+- Адрес пилота: `https://school-platform-v2.alwaysdata.net`.
+- SSH: `school-platform-v2@ssh-school-platform-v2.alwaysdata.net`,
+  ключ `id_ed25519_school_platform`.
+- Каталог проекта: `/home/school-platform-v2/school-platform-v2`.
+- Backend: `/home/school-platform-v2/school-platform-v2/backend`.
+- Frontend dist: `/home/school-platform-v2/school-platform-v2/frontend/dist`.
+- Venv: `/home/school-platform-v2/.virtualenvs/school-platform`.
+- Текущий тип сайта: **Python WSGI (uWSGI 2.0.31)**.
+- uWSGI загружает `backend/__init__.py` — копию
+  `deploy/alwaysdata/wsgi_entry.py`. Адаптер `a2wsgi` оборачивает FastAPI в
+  WSGI и добавляет `site-packages` проекта в `sys.path`.
+- Альтернатива — переключить сайт на **User program** и использовать Uvicorn:
+  `/home/school-platform-v2/.virtualenvs/school-platform/bin/uvicorn app.main:app --host "$IP" --port "$PORT" --proxy-headers --forwarded-allow-ips="*"`.
+  Рабочая директория в панели: `school-platform-v2/backend` (относительно
+  `/home/school-platform-v2`).
 - Переменные: `PYTHONPATH=. PYTHONUNBUFFERED=1`.
-- Кэш сайта отключён; WAF — basic.
-- Сайт отдельный и не затрагивает `virusadk.alwaysdata.net`.
+- Кэш сайта отключён; WAF — basic; `Force HTTPS` включён.
+- Сайт не затрагивает `virusadk.alwaysdata.net`.
 - `robots.txt` закрывает пилот от индексации; добавлены security headers
   (`X-Robots-Tag`, `X-Content-Type-Options`, `X-Frame-Options`, HSTS).
 
-Технический домен `nip.io` выбран потому, что бесплатный аккаунт Alwaysdata
-не позволяет занять произвольное имя в зоне `alwaysdata.net`. Для сдачи
-пилота и промышленной эксплуатации нужен собственный домен.
-
 ### 3.2. PostgreSQL
-- Отдельная БД: `virusadk_school_platform`.
+- Используется существующая БД: `virusadk_school_platform`.
 - Хост: `postgresql-virusadk.alwaysdata.net:5432`.
-- Пользователь: `virusadk`.
+- Новый хост успешно подключается к ней; данные и пользователи сохранены.
 - Пароль хранится в `.env` и менеджере секретов.
 - Созданы схемы: `iam`, `org`, `lms`, `assessment`, `journal`,
   `communication`, `safety`, `documents`, `analytics`, `ai`, `audit`,
   `system`.
 - Подключены расширения: `citext`, `pgcrypto`, `pg_trgm`, `vector`,
   `unaccent`, `uuid-ossp`.
+- Миграция: `0002_groups_permissions_services (head)`.
 - Доступ только с IP/хостов приложения, если возможно.
 - Ежедневный дамп и проверка восстановления.
 
 ### 3.3. Переменные окружения
-Задаются в панели Alwaysdata или в `.env` на сервере:
+Задаются в `.env` на сервере (не коммитится):
 - `DATABASE_URL`
 - `REDIS_URL`
 - `SECRET_KEY`
 - `JWT_*`
 - `AI_*`
 - `S3_*`
-- `CORS_ORIGINS`
+- `CORS_ORIGINS` — `https://school-platform-v2.alwaysdata.net`
 
 ### 3.4. Деплой
-1. Подключиться по SSH.
-2. Перейти в `/home/virusadk/school-platform-v2`.
-3. Доставить backend-архив (текущий способ) или `git pull` после настройки
-   deploy-ключа.
+1. Подключиться по SSH ключом `id_ed25519_school_platform`.
+2. Перейти в `/home/school-platform-v2/school-platform-v2`.
+3. Доставить backend-архив без `.env` и `secrets/`.
 4. Распаковать в `backend/`.
-5. Установить зависимости:
-   `/home/virusadk/.virtualenvs/school-platform/bin/pip install --no-cache-dir -r backend/requirements.txt`.
-6. Выполнить `PYTHONPATH=. python -m alembic upgrade head` в `backend/`.
-7. Выполнить `python -m app.db.seed` при первом развёртывании.
-8. Перезапустить процесс сайта: **Advanced → Processes → Terminate** для
-   `uvicorn app.main:app`; новый процесс стартует при следующем запросе.
-9. Проверить `/health`, `/docs`, `/robots.txt`, старый сайт.
+5. Скопировать `deploy/alwaysdata/wsgi_entry.py` в `backend/__init__.py`.
+6. Установить зависимости:
+   `/home/school-platform-v2/.virtualenvs/school-platform/bin/pip install --no-cache-dir -r backend/requirements.txt`
+   и `deploy/alwaysdata/requirements-wsgi.txt`.
+7. Выполнить `PYTHONPATH=. python -m alembic upgrade head` в `backend/`.
+8. Выполнить `python -m app.db.seed` только при первом развёртывании пустой БД.
+9. Перезапустить процесс сайта: **Advanced → Processes** (uWSGI). Если процесс
+   упал, новый стартует при следующем HTTP-запросе.
+10. Проверить `/health`, `/`, `/groups`, `/docs`, `/robots.txt`, старый сайт.
 
 ### 3.4.1. Публикация веб-клиента
 1. Собрать клиент локально: `npm run build` в `frontend/`.
 2. Доставить `frontend/dist` на пилот в
-   `/home/virusadk/school-platform-v2/frontend/dist`.
+   `/home/school-platform-v2/school-platform-v2/frontend/dist`.
 3. FastAPI автоматически раздаёт `index.html` на `/` и клиентские
    маршруты, а `/assets/*` — из `frontend/dist/assets`.
 4. API, `/health`, `/docs`, `/openapi.json` и `/robots.txt` сохраняют
@@ -131,9 +136,9 @@ npm run dev
 5. Если `frontend/dist` отсутствует, `/` возвращает JSON-описание
    сервиса, поэтому backend-only развёртывание остаётся совместимым.
 
-Текущий архив backend собирается локально и копируется через `scp`; ключ
-Alwaysdata не добавлялся в GitHub-репозиторий. Для регулярного деплоя нужно
-создать отдельный read-only deploy key и перейти на `git pull`.
+Текущий архив backend и frontend собирается локально и копируется через `scp`.
+Для регулярного деплоя нужно создать отдельный read-only deploy key и перейти
+на `git pull`.
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет

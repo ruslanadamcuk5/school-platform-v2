@@ -26,10 +26,10 @@ journal и library. Добавлены реестр микросервисов, 
 | Ресурс | Адрес / значение |
 |---|---|
 | GitHub | `https://github.com/ruslanadamcuk5/school-platform-v2` (private) |
-| Пилотный API | `https://school-platform-v2.185.31.40.24.nip.io` |
-| Health | `https://school-platform-v2.185.31.40.24.nip.io/health` |
-| Swagger UI | `https://school-platform-v2.185.31.40.24.nip.io/docs` |
-| OpenAPI | `https://school-platform-v2.185.31.40.24.nip.io/openapi.json` |
+| Пилотный API и веб-клиент | `https://school-platform-v2.alwaysdata.net` |
+| Health | `https://school-platform-v2.alwaysdata.net/health` |
+| Swagger UI | `https://school-platform-v2.alwaysdata.net/docs` |
+| OpenAPI | `https://school-platform-v2.alwaysdata.net/openapi.json` |
 | PostgreSQL | `postgresql-virusadk.alwaysdata.net:5432/virusadk_school_platform` |
 | Старый сайт (не изменять) | `https://virusadk.alwaysdata.net` |
 | Документация Word | `docs/word/` |
