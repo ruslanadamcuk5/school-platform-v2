@@ -11,7 +11,7 @@
 |---|---|
 | Название папки | `school-platform-v2` |
 | Полный путь | `C:\Users\adamrv\Documents\school-platform-v2` |
-| GitHub | `https://github.com/newvirusadk-cmd/school-platform-v2` (private) |
+| GitHub | `https://github.com/ruslanadamcuk5/school-platform-v2` (private) |
 | Пилотный сайт | `https://school-platform-v2.185.31.40.24.nip.io` |
 | Основная ветка | `main` |
 
@@ -50,7 +50,7 @@ DOCX-файлы находятся в `docs\word\`. Общий пакет:
 `docs\word\ЕООП_Школьник_Полный_пакет_документации.docx`.
 
 ### 2.3. GitHub
-- Создан приватный репозиторий `newvirusadk-cmd/school-platform-v2`.
+- Создан приватный репозиторий `ruslanadamcuk5/school-platform-v2`.
 - Настроен SSH-доступ через ключ `id_ed25519_uchus`.
 - Ветка `main` отправлена в удалённый репозиторий.
 - Секреты, `.env`, `secrets/`, приватные ключи в Git не попадают.

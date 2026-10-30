@@ -4,7 +4,7 @@
 
 | Ресурс | Значение |
 |---|---|
-| GitHub | `newvirusadk-cmd/school-platform-v2` (private) |
+| GitHub | `ruslanadamcuk5/school-platform-v2` (private) |
 | Сайт (пилот) | `https://school-platform-v2.185.31.40.24.nip.io` |
 | SSL | Let's Encrypt, до 2027-01-25, Force HTTPS включён |
 | Тип сайта | **User program (Uvicorn)** |
@@ -50,7 +50,7 @@ citext, pgcrypto, pg_trgm, vector, unaccent, uuid-ossp
 Применена миграция:
 
 ```text
-0001_initial (head)
+0002_groups_permissions_services (head)
 ```
 
 Созданы таблицы:
@@ -115,8 +115,8 @@ CORS_ORIGINS=https://school-platform-v2.185.31.40.24.nip.io
 
 ## 5. Деплой
 
-Текущий способ — архив backend по SSH (GitHub-ключ Alwaysdata не добавлялся в
-репозиторий):
+Текущий способ — архивы backend и frontend по SSH (GitHub-ключ Alwaysdata
+не добавлялся в репозиторий):
 
 ```powershell
 $tar = "$env:TEMP\opencode\school-platform-backend.tgz"
@@ -130,7 +130,23 @@ ssh -i C:\Users\adamrv\.ssh\id_ed25519_uchus `
   "cd /home/virusadk/school-platform-v2 && tar -xzf backend.tgz -C backend"
 ```
 
+Публикация веб-клиента:
+
+```powershell
+$dist = "$env:TEMP\opencode\school-platform-frontend.tgz"
+tar.exe -czf $dist -C frontend dist
+scp -i C:\Users\adamrv\.ssh\id_ed25519_uchus $dist `
+  virusadk@ssh-virusadk.alwaysdata.net:/home/virusadk/school-platform-v2/frontend.tgz
+ssh -i C:\Users\adamrv\.ssh\id_ed25519_uchus `
+  virusadk@ssh-virusadk.alwaysdata.net `
+  "cd /home/virusadk/school-platform-v2 && mkdir -p frontend && tar -xzf frontend.tgz -C frontend"
+```
+
+FastAPI отдаёт SPA, если на сервере существует
+`frontend/dist/index.html`. API и Swagger не затрагиваются.
+
 После обновления кода перезапустить процесс сайта:
+
 1. Открыть **Advanced → Processes**.
 2. Найти процесс `uvicorn app.main:app`.
 3. Нажать **Terminate** (не Kill).

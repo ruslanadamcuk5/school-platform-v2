@@ -4,11 +4,13 @@ from __future__ import annotations
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api.v1.router import api_router
@@ -21,6 +23,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 log = logging.getLogger("school-platform")
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -99,6 +102,8 @@ async def robots() -> PlainTextResponse:
 
 @app.get("/", tags=["system"], summary="Информация о сервисе")
 async def root():
+    if FRONTEND_DIST.is_dir() and (FRONTEND_DIST / "index.html").is_file():
+        return FileResponse(FRONTEND_DIST / "index.html")
     return {
         "service": settings.app_name,
         "version": settings.api_version,
@@ -122,3 +127,24 @@ async def root_health():
 
 
 app.include_router(api_router, prefix="/api/v1")
+
+if FRONTEND_DIST.is_dir():
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+
+    frontend_root = FRONTEND_DIST.resolve()
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        """Serve the built React SPA, keeping API and system routes untouched."""
+        if full_path.startswith(
+            ("api/", "health", "docs", "redoc", "openapi", "robots.txt")
+        ):
+            raise HTTPException(status_code=404)
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        if candidate.is_file() and frontend_root in candidate.parents:
+            return FileResponse(candidate)
+        if Path(full_path).suffix:
+            raise HTTPException(status_code=404)
+        return FileResponse(FRONTEND_DIST / "index.html")

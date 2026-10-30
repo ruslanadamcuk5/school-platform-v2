@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 0.2 |
+| Версия | 0.3 |
 | Статус | Рабочий |
 | Дата | 27.10.2026 |
 
@@ -21,7 +21,8 @@
 - Python 3.12+.
 - PostgreSQL 16+ (локально или managed).
 - Redis 7+.
-- Node.js 20+ (для frontend и MCP).
+- Node.js 20+ (для frontend и MCP); при отсутствии используется переносимый
+  дистрибутив в `.tools/` (не коммитится).
 - Docker Desktop (рекомендуется).
 - Git.
 
@@ -49,6 +50,10 @@ Frontend:
 cd frontend
 npm install
 npm run dev
+
+Если системного Node.js нет, используйте `.tools/node-v22.14.0-win-x64`,
+добавив его в `PATH`. Обязательные проверки перед коммитом:
+`npm run typecheck` и `npm run build`.
 ```
 
 ### 2.3. Проверка
@@ -114,6 +119,17 @@ npm run dev
 8. Перезапустить процесс сайта: **Advanced → Processes → Terminate** для
    `uvicorn app.main:app`; новый процесс стартует при следующем запросе.
 9. Проверить `/health`, `/docs`, `/robots.txt`, старый сайт.
+
+### 3.4.1. Публикация веб-клиента
+1. Собрать клиент локально: `npm run build` в `frontend/`.
+2. Доставить `frontend/dist` на пилот в
+   `/home/virusadk/school-platform-v2/frontend/dist`.
+3. FastAPI автоматически раздаёт `index.html` на `/` и клиентские
+   маршруты, а `/assets/*` — из `frontend/dist/assets`.
+4. API, `/health`, `/docs`, `/openapi.json` и `/robots.txt` сохраняют
+   прежнее поведение.
+5. Если `frontend/dist` отсутствует, `/` возвращает JSON-описание
+   сервиса, поэтому backend-only развёртывание остаётся совместимым.
 
 Текущий архив backend собирается локально и копируется через `scp`; ключ
 Alwaysdata не добавлялся в GitHub-репозиторий. Для регулярного деплоя нужно
