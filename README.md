@@ -1,4 +1,4 @@
-﻿# ЕООП «Школьник» — school-platform-v2
+# ЕООП «Школьник» — school-platform-v2
 
 Новая версия единой общеобразовательной обучающей платформы для Республики
 Беларусь. Проект создаётся как преемник работающего Flask/SQLite-приложения:
@@ -8,19 +8,20 @@
 
 **Этап 0 — инициализация завершена.**
 **Этап 1 — анализ и пилотный backend завершён.**
+**Этап 2 — ядро, LMS, тесты, журнал и библиотека.**
+**Этап 2.5 — микросервисная модель и групповые права.**
 
-Созданы структура проекта, документация, GitHub-репозиторий, отдельная база
-PostgreSQL и отдельный пилотный сайт на Alwaysdata. Реализован FastAPI-backend
-с health-check, OpenAPI, SQLAlchemy 2.0 async, Alembic, JWT, RBAC и
-мультитенантностью по `school_id`. Пилотный сайт переключён с Static files на
-User program (Uvicorn). Старый сайт `virusadk.alwaysdata.net` продолжает
-работать без изменений.
+Реализован FastAPI-backend с health-check, OpenAPI, SQLAlchemy 2.0 async,
+Alembic, JWT, мультитенантностью по `school_id`, доменами LMS, assessment,
+journal и library. Добавлены реестр микросервисов, включение/отключение
+функционала по областям иерархии и групповая модель прав (GBAC): права
+назначаются группам, а не пользователям.
 
 ### Пилотные ресурсы
 
 | Ресурс | Адрес / значение |
 |---|---|
-| GitHub | `https://github.com/newvirusadk-cmd/school-platform-v2` (private) |
+| GitHub | `https://github.com/ruslanadamcuk5/school-platform-v2` (private) |
 | Пилотный API | `https://school-platform-v2.185.31.40.24.nip.io` |
 | Health | `https://school-platform-v2.185.31.40.24.nip.io/health` |
 | Swagger UI | `https://school-platform-v2.185.31.40.24.nip.io/docs` |
@@ -43,17 +44,30 @@ User program (Uvicorn). Старый сайт `virusadk.alwaysdata.net` прод
 
 ## Что уже работает
 
+### Ядро и доступ
 - `GET /health`, `GET /api/v1/health` — проверка API и БД.
 - `GET /api/v1/meta` — версия, языки, feature flags.
-- `POST /api/v1/auth/login` — JWT access + refresh.
-- `POST /api/v1/auth/refresh` — ротация refresh-токена.
-- `POST /api/v1/auth/logout` — отзыв refresh-токена.
-- `GET /api/v1/auth/me` — текущий пользователь.
+- `POST /api/v1/auth/login`, `/refresh`, `/logout`, `GET /auth/me`.
 - `GET /api/v1/org/schools`, `/org/classes` — школы и классы с tenant-проверкой.
-- `GET /api/v1/admin/stats`, `/admin/users`, `/admin/audit` — администрирование.
+- `GET /api/v1/admin/stats`, `/admin/users`, `/admin/audit`.
 - `POST /api/v1/admin/users` — создание пользователя школы.
-- Роли: `superadmin`, `admin`, `methodologist`, `teacher`, `student`, `parent`,
-  `psychologist`, `secretary`.
+
+### Группы и права
+- `GET/POST /api/v1/groups`, `GET/PATCH/DELETE /groups/{id}`.
+- `POST/DELETE /groups/{id}/members` — управление составом группы.
+- `PUT/DELETE /groups/{id}/permissions/{code}` — выдача и снятие прав.
+- `GET /api/v1/groups/permissions` — каталог прав.
+- `GET /api/v1/me/permissions` — действующие права пользователя.
+- 5 уровней групп: страна → область → город → школа → класс.
+- Наследование по явному родителю и организационным предкам категории.
+- При равной глубине `deny` побеждает `allow`.
+
+### Микросервисы и функционал
+- `GET /api/v1/services` — каталог 14 сервисов.
+- `PUT /api/v1/services/{code}/activation` — включение/отключение для области.
+- `GET /api/v1/me/services` — сервисы, доступные пользователю (для навигации).
+- `app/service_app.py` — запуск любого сервиса отдельным процессом.
+- Домены: `lms`, `assessment`, `journal`, `library`.
 - Пилотная школа и классы 1–11 в PostgreSQL.
 
 ## Структура
@@ -83,6 +97,13 @@ school-platform-v2/
 8. Запустить API: `uvicorn app.main:app --reload --port 8000`.
 9. Открыть `http://localhost:8000/docs`.
 
+Запуск отдельного сервиса:
+
+```powershell
+$env:SERVICE_CODE='library'
+uvicorn app.service_app:create_service_app --factory --port 8101
+```
+
 Подробнее — в [backend/README.md](backend/README.md) и
 [документе развёртывания](docs/07-operations/01-razvertyvanie-i-ekspluataciya.md).
 
@@ -94,8 +115,11 @@ school-platform-v2/
 - [Функции по ролям](docs/02-tz/02-funkcionalnye-trebovaniya-po-rolyam.md)
 - [Карта миграции](docs/02-tz/05-karta-migracii.md)
 - [Архитектура](docs/03-architecture/01-arhitektura.md)
+- [Микросервисы](docs/03-architecture/04-mikroservisy.md)
+- [Группы и права](docs/03-architecture/05-gruppy-i-prava.md)
 - [API пилотного контура](docs/03-architecture/03-api.md)
 - [Модель данных](docs/04-data/01-model-dannyh.md)
+- [Модель групп и сервисов](docs/04-data/02-model-grupp-prav-i-servisov.md)
 - [Безопасность](docs/05-security/01-koncepciya-ib.md)
 - [План разработки](docs/08-roadmap/01-plan-razrabotki.md)
 - [Нормативные документы](docs/09-normative/01-reestr-normativnyh-dokumentov.md)
