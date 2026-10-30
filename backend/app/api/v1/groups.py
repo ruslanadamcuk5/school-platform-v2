@@ -122,6 +122,8 @@ def _options():
             GroupPermission.permission
         ),
         selectinload(UserGroup.children),
+        selectinload(UserGroup.children).selectinload(UserGroup.memberships),
+        selectinload(UserGroup.children).selectinload(UserGroup.permission_links),
     )
 
 

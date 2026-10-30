@@ -81,6 +81,19 @@ def test_group_detail_sorts_members_and_permissions() -> None:
     assert detail.permissions[0].permission_code == "journal.grades.read"
 
 
+def test_group_detail_includes_child_counts() -> None:
+    child = _group(
+        code="school.teachers",
+        name="Учителя школы",
+        memberships=[SimpleNamespace()],
+        permission_links=[SimpleNamespace(), SimpleNamespace()],
+    )
+    group = _group(scope_type="country", children=[child])
+    detail = _group_detail(group)
+    assert detail.children[0].members_count == 1
+    assert detail.children[0].permissions_count == 2
+
+
 def test_country_scope_uses_fixed_identifier() -> None:
     payload = GroupCreate(
         code="administration",
