@@ -59,12 +59,12 @@
 - [~] Подключить `require_permission`/`require_service`: journal, assessment,
   library, lms готовы; analytics, communication, documents, safety — далее.
 - [x] Route-level тесты отключённого сервиса и отсутствующего права (96 тестов).
-- [~] Backend с проверками доступа загружен на пилот; нужен перезапуск
-  uWSGI в панели Alwaysdata.
+- [x] Backend с проверками доступа загружен и перезапущен на пилоте.
+- [x] Живая проверка: отключение `library` даёт `403`, после включения `200`.
 - [x] Динамическое меню и защита действий по `/me/services` и `/me/permissions`.
 - [ ] Выделить первый сервис в отдельный процесс и добавить gateway.
 - [ ] Redis-кеш прав и RLS по scope.
-- [x] Пересобрать DOCX-пакет 0.7.2.
+- [x] Пересобрать DOCX-пакет 0.7.3.
 
 ## Этап 2.6 — веб-клиент
 - [x] Каркас React 18 + TypeScript strict + Vite + TailwindCSS.

@@ -18,7 +18,7 @@ DOCS = ROOT / "docs"
 OUT = DOCS / "word"
 
 PROJECT = "ЕООП «Школьник»"
-VERSION = "0.7.2"
+VERSION = "0.7.3"
 DATE = "30.10.2026"
 
 
@@ -354,7 +354,7 @@ def main() -> int:
         generated.append(output)
         print(f"OK  {rel} -> {output.relative_to(ROOT)}")
 
-    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации_v0.7.2.docx"
+    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации_v0.7.3.docx"
     document = Document()
     style_document(document)
     add_title_page(document, "Полный пакет проектной документации", DOCS / "README.md")
