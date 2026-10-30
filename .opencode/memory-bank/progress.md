@@ -56,7 +56,9 @@
 - [x] Применить миграцию `0002` к пилотной PostgreSQL.
 - [x] Прогнать seed: 73 права, 14 сервисов, 30 групп, 215 выдач.
 - [ ] Перевести пользователей пилота в группы (кроме супер-администратора).
-- [ ] Подключить `require_permission`/`require_service` ко всем доменам.
+- [~] Подключить `require_permission`/`require_service`: journal, assessment,
+  library, lms готовы; analytics, communication, documents, safety — далее.
+- [x] Route-level тесты отключённого сервиса и отсутствующего права (96 тестов).
 - [x] Динамическое меню и защита действий по `/me/services` и `/me/permissions`.
 - [ ] Выделить первый сервис в отдельный процесс и добавить gateway.
 - [ ] Redis-кеш прав и RLS по scope.

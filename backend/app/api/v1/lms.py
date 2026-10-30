@@ -3,12 +3,18 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, SessionDep, ensure_school_access
+from app.api.deps import (
+    CurrentUser,
+    SessionDep,
+    ensure_school_access,
+    require_permission,
+    require_service,
+)
 from app.models.lms import (
     Course,
     CourseClass,
@@ -38,7 +44,14 @@ from app.schemas.lms import (
     TopicOut,
 )
 
-router = APIRouter(prefix="/lms", tags=["lms"])
+router = APIRouter(
+    prefix="/lms",
+    tags=["lms"],
+    dependencies=[
+        Depends(require_service("lms")),
+        Depends(require_permission("lms.content.read")),
+    ],
+)
 
 
 @router.get("/subjects", response_model=list[SubjectOut], summary="Предметы")

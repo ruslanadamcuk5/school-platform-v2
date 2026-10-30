@@ -21,6 +21,9 @@ class FakeResult:
     def scalars(self):
         return self
 
+    def unique(self):
+        return self
+
     def all(self):
         return self._items
 
@@ -31,15 +34,33 @@ class FakeResult:
         return self._scalar
 
 
+ACCESS_MARKERS = (
+    "iam.groups",
+    "iam.group_memberships",
+    "iam.group_permissions",
+    "system.services",
+    "system.service_activations",
+)
+
+
+def _is_access_query(stmt) -> bool:
+    text = str(stmt)
+    return any(marker in text for marker in ACCESS_MARKERS)
+
+
 class FakeSession:
     def __init__(self, results):
         self._results = list(results)
         self.added = []
 
     async def execute(self, _stmt):
+        if _is_access_query(_stmt):
+            return FakeResult()
         return self._results.pop(0)
 
     async def get(self, _model, _ident):
+        if getattr(_model, "__name__", "") in {"School", "City"}:
+            return None
         return self._results.pop(0)
 
     def add(self, obj):

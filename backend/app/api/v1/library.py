@@ -5,12 +5,18 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, SessionDep, ensure_school_access
+from app.api.deps import (
+    CurrentUser,
+    SessionDep,
+    ensure_school_access,
+    require_permission,
+    require_service,
+)
 from app.models.iam import User, UserRelation
 from app.models.journal import LessonSchedule
 from app.models.lms import (
@@ -45,7 +51,17 @@ from app.schemas.library import (
     LibraryTopicOut,
 )
 
-router = APIRouter(prefix="/library", tags=["library"])
+router = APIRouter(
+    prefix="/library",
+    tags=["library"],
+    dependencies=[Depends(require_service("library"))],
+)
+
+LIBRARY_READ = require_permission("library.catalog.read")
+LIBRARY_RECOMMENDATIONS_READ = require_permission(
+    "library.progress.read",
+    "library.recommendations.create",
+)
 
 TEACHER_ROLES = {"superadmin", "admin", "methodologist", "teacher"}
 STAFF_ROLES = TEACHER_ROLES | {"psychologist", "secretary"}
@@ -616,7 +632,12 @@ def _stats_for_books(
 
 
 # --------------------------------------------------------------------- browse
-@router.get("", response_model=LibraryOut, summary="Библиотека пользователя")
+@router.get(
+    "",
+    response_model=LibraryOut,
+    summary="Библиотека пользователя",
+    dependencies=[Depends(LIBRARY_READ)],
+)
 async def library_home(
     current_user: CurrentUser,
     session: SessionDep,
@@ -738,6 +759,7 @@ async def library_home(
     "/books/{book_id}",
     response_model=LibraryBookDetailOut,
     summary="Карточка книги",
+    dependencies=[Depends(LIBRARY_READ)],
 )
 async def library_book(
     book_id: uuid.UUID,
@@ -769,6 +791,7 @@ async def library_book(
     "/recommendations/{recommendation_id}/done",
     response_model=LibraryStatusOut,
     summary="Отметить рекомендацию выполненной",
+    dependencies=[Depends(LIBRARY_READ)],
 )
 async def mark_recommendation_done(
     recommendation_id: uuid.UUID,
@@ -812,6 +835,7 @@ async def mark_recommendation_done(
     "/manage",
     response_model=LibraryManageOut,
     summary="Библиотека учителя: книги, классы и ученики",
+    dependencies=[Depends(require_permission("library.books.manage"))],
 )
 async def manage_library(
     current_user: CurrentUser,
@@ -918,6 +942,7 @@ async def manage_library(
     response_model=LibraryBookDetailOut,
     status_code=status.HTTP_201_CREATED,
     summary="Добавить пособие в библиотеку",
+    dependencies=[Depends(require_permission("library.books.manage"))],
 )
 async def create_book(
     payload: LibraryBookCreate,
@@ -995,6 +1020,7 @@ async def create_book(
     "/books/{book_id}",
     response_model=LibraryBookDetailOut,
     summary="Изменить книгу и доступ классов",
+    dependencies=[Depends(require_permission("library.books.manage"))],
 )
 async def update_book(
     book_id: uuid.UUID,
@@ -1048,6 +1074,7 @@ async def update_book(
     "/books/{book_id}",
     response_model=LibraryStatusOut,
     summary="Удалить книгу из библиотеки",
+    dependencies=[Depends(require_permission("library.books.manage"))],
 )
 async def delete_book(
     book_id: uuid.UUID,
@@ -1069,6 +1096,7 @@ async def delete_book(
     "/books/{book_id}/recommend",
     response_model=LibraryRecommendResult,
     summary="Порекомендовать книгу классу или ученикам",
+    dependencies=[Depends(require_permission("library.recommendations.create"))],
 )
 async def recommend_book(
     book_id: uuid.UUID,
@@ -1179,6 +1207,7 @@ async def recommend_book(
     "/recommendations",
     response_model=LibraryRecommendationListOut,
     summary="Отправленные рекомендации",
+    dependencies=[Depends(LIBRARY_RECOMMENDATIONS_READ)],
 )
 async def list_recommendations(
     current_user: CurrentUser,
@@ -1199,6 +1228,7 @@ async def list_recommendations(
     "/recommendations/{recommendation_id}",
     response_model=LibraryStatusOut,
     summary="Отозвать рекомендацию",
+    dependencies=[Depends(require_permission("library.recommendations.revoke"))],
 )
 async def revoke_recommendation(
     recommendation_id: uuid.UUID,
@@ -1224,6 +1254,7 @@ async def revoke_recommendation(
     "/catalog",
     response_model=LibraryCatalogOut,
     summary="Пособия и темы для рекомендаций",
+    dependencies=[Depends(require_permission("library.books.manage"))],
 )
 async def library_catalog(
     current_user: CurrentUser,

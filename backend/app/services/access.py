@@ -127,6 +127,7 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "journal.schedule.read",
         "journal.grades.read",
         "journal.attendance.read",
+        "assessment.results.read",
         "library.catalog.read",
         "communication.chat.use",
     ),
@@ -455,11 +456,29 @@ async def can_manage_scope(
     return any(scope in target_scopes for scope in allowed)
 
 
+async def user_service_scope_keys(
+    session: AsyncSession, user: User
+) -> set[tuple[str, uuid.UUID]]:
+    """Scopes used for service activation.
+
+    Class scopes come from the user's groups rather than from
+    ``org.class_memberships``.  This keeps service checks independent from the
+    class roster query and still supports class-level activations when a class
+    group is assigned.
+    """
+    keys: set[tuple[str, uuid.UUID]] = {("country", COUNTRY_SCOPE_ID)}
+    if user.school_id is not None:
+        keys |= await _scope_ancestors(session, "school", user.school_id)
+    for group in await load_user_groups(session, user):
+        keys.add((group.scope_type, group.scope_id))
+    return keys
+
+
 async def user_service_states(
     session: AsyncSession, user: User
 ) -> dict[str, ServiceState]:
     """Resolve every catalogued service for the user's scope tree."""
-    scopes = await user_scope_keys(session, user)
+    scopes = await user_service_scope_keys(session, user)
     services = list(
         (await session.execute(select(Service))).scalars().all()
     )

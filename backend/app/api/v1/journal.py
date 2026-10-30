@@ -5,12 +5,18 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, SessionDep, ensure_school_access
+from app.api.deps import (
+    CurrentUser,
+    SessionDep,
+    ensure_school_access,
+    require_permission,
+    require_service,
+)
 from app.models.iam import User, UserRelation
 from app.models.journal import JournalEntry, LessonSchedule
 from app.models.lms import Subject, Topic
@@ -32,7 +38,27 @@ from app.schemas.journal import (
     StatusOut,
 )
 
-router = APIRouter(prefix="/journal", tags=["journal"])
+router = APIRouter(
+    prefix="/journal",
+    tags=["journal"],
+    dependencies=[Depends(require_service("journal"))],
+)
+
+JOURNAL_READ = require_permission(
+    "journal.schedule.read",
+    "journal.grades.read",
+    "journal.attendance.read",
+    "journal.summary.read",
+)
+JOURNAL_WRITE = require_permission(
+    "journal.grades.write",
+    "journal.attendance.write",
+)
+JOURNAL_ENTRIES_READ = require_permission(
+    "journal.grades.read",
+    "journal.attendance.read",
+    "journal.summary.read",
+)
 
 WEEKDAYS = [
     "Понедельник",
@@ -293,6 +319,7 @@ async def _apply_schedule_links(
     "/classes",
     response_model=list[JournalClassOut],
     summary="Классы, доступные в журнале",
+    dependencies=[Depends(JOURNAL_READ)],
 )
 async def list_journal_classes(
     current_user: CurrentUser,
@@ -343,6 +370,7 @@ async def list_journal_classes(
     "/classes/{class_id}/students",
     response_model=list[JournalStudentOut],
     summary="Ученики класса для журнала",
+    dependencies=[Depends(JOURNAL_READ)],
 )
 async def list_class_students(
     class_id: uuid.UUID,
@@ -375,6 +403,7 @@ async def list_class_students(
     "/schedule",
     response_model=ScheduleListOut,
     summary="Расписание",
+    dependencies=[Depends(require_permission("journal.schedule.read"))],
 )
 async def list_schedule(
     current_user: CurrentUser,
@@ -455,6 +484,7 @@ async def list_schedule(
     response_model=ScheduleItemOut,
     status_code=status.HTTP_201_CREATED,
     summary="Добавить или заменить урок в расписании",
+    dependencies=[Depends(require_permission("journal.schedule.write"))],
 )
 async def save_schedule_item(
     payload: ScheduleItemIn,
@@ -523,6 +553,7 @@ async def save_schedule_item(
     "/schedule/{item_id}",
     response_model=ScheduleItemOut,
     summary="Изменить урок расписания",
+    dependencies=[Depends(require_permission("journal.schedule.write"))],
 )
 async def update_schedule_item(
     item_id: uuid.UUID,
@@ -596,6 +627,7 @@ async def update_schedule_item(
     "/schedule/{item_id}",
     response_model=StatusOut,
     summary="Удалить урок расписания",
+    dependencies=[Depends(require_permission("journal.schedule.write"))],
 )
 async def delete_schedule_item(
     item_id: uuid.UUID,
@@ -621,6 +653,7 @@ async def delete_schedule_item(
     "/entries",
     response_model=list[JournalEntryOut],
     summary="Записи журнала",
+    dependencies=[Depends(JOURNAL_ENTRIES_READ)],
 )
 async def list_entries(
     current_user: CurrentUser,
@@ -701,6 +734,7 @@ async def list_entries(
     "/entries",
     response_model=JournalEntryOut,
     summary="Выставить оценку или отметить посещаемость",
+    dependencies=[Depends(JOURNAL_WRITE)],
 )
 async def save_entry(
     payload: JournalEntryIn,
@@ -767,6 +801,7 @@ async def save_entry(
     "/entries/bulk",
     response_model=JournalBulkOut,
     summary="Массово выставить оценки и посещаемость",
+    dependencies=[Depends(JOURNAL_WRITE)],
 )
 async def save_entries_bulk(
     payload: JournalBulkIn,
@@ -876,6 +911,7 @@ async def save_entries_bulk(
     "/entries/{entry_id}",
     response_model=JournalEntryOut,
     summary="Изменить запись журнала",
+    dependencies=[Depends(JOURNAL_WRITE)],
 )
 async def update_entry(
     entry_id: uuid.UUID,
@@ -911,6 +947,7 @@ async def update_entry(
     "/entries/{entry_id}",
     response_model=StatusOut,
     summary="Удалить запись журнала",
+    dependencies=[Depends(JOURNAL_WRITE)],
 )
 async def delete_entry(
     entry_id: uuid.UUID,
@@ -935,6 +972,7 @@ async def delete_entry(
     "/summary",
     response_model=JournalSummaryListOut,
     summary="Сводка оценок и посещаемости",
+    dependencies=[Depends(JOURNAL_ENTRIES_READ)],
 )
 async def journal_summary(
     current_user: CurrentUser,

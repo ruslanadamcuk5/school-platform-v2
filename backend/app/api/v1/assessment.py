@@ -4,12 +4,18 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, SessionDep, ensure_school_access
+from app.api.deps import (
+    CurrentUser,
+    SessionDep,
+    ensure_school_access,
+    require_permission,
+    require_service,
+)
 from app.models.assessment import (
     Answer,
     AnswerOption,
@@ -42,7 +48,25 @@ from app.schemas.assessment import (
 )
 from app.services.grading import answer_detail, summarize
 
-router = APIRouter(prefix="/assessment", tags=["assessment"])
+router = APIRouter(
+    prefix="/assessment",
+    tags=["assessment"],
+    dependencies=[Depends(require_service("assessment"))],
+)
+
+ASSESSMENT_READ = require_permission(
+    "assessment.quizzes.read",
+    "assessment.results.read",
+    "assessment.submissions.submit",
+)
+ASSESSMENT_RESULTS = require_permission(
+    "assessment.results.read",
+    "assessment.submissions.grade",
+)
+ASSESSMENT_MANAGE = require_permission(
+    "assessment.quizzes.write",
+    "assessment.assignments.create",
+)
 
 TEACHER_ROLES = {"superadmin", "admin", "methodologist", "teacher"}
 STAFF_ROLES = TEACHER_ROLES | {"psychologist", "secretary"}
@@ -228,6 +252,7 @@ def _target_matches(
     response_model=QuizDetailOut,
     status_code=status.HTTP_201_CREATED,
     summary="Создать тест",
+    dependencies=[Depends(require_permission("assessment.quizzes.write"))],
 )
 async def create_quiz(
     payload: QuizCreate,
@@ -302,7 +327,12 @@ async def create_quiz(
     return _quiz_detail(created)
 
 
-@router.get("/quizzes", response_model=list[QuizOut], summary="Список тестов")
+@router.get(
+    "/quizzes",
+    response_model=list[QuizOut],
+    summary="Список тестов",
+    dependencies=[Depends(require_permission("assessment.quizzes.read"))],
+)
 async def list_quizzes(
     current_user: CurrentUser,
     session: SessionDep,
@@ -347,6 +377,7 @@ async def list_quizzes(
     "/quizzes/{quiz_id}",
     response_model=QuizDetailOut,
     summary="Карточка теста",
+    dependencies=[Depends(require_permission("assessment.quizzes.read"))],
 )
 async def get_quiz(
     quiz_id: uuid.UUID,
@@ -367,6 +398,7 @@ async def get_quiz(
     "/quizzes/{quiz_id}",
     response_model=QuizDetailOut,
     summary="Изменить тест",
+    dependencies=[Depends(require_permission("assessment.quizzes.write"))],
 )
 async def update_quiz(
     quiz_id: uuid.UUID,
@@ -407,6 +439,7 @@ async def update_quiz(
     response_model=AssignmentOut,
     status_code=status.HTTP_201_CREATED,
     summary="Назначить работу",
+    dependencies=[Depends(require_permission("assessment.assignments.create"))],
 )
 async def create_assignment(
     payload: AssignmentCreate,
@@ -500,6 +533,7 @@ async def create_assignment(
     "/assignments",
     response_model=list[AssignmentListItem],
     summary="Список работ",
+    dependencies=[Depends(ASSESSMENT_READ)],
 )
 async def list_assignments(
     current_user: CurrentUser,
@@ -712,6 +746,7 @@ async def list_assignments(
     "/assignments/{assignment_id}",
     response_model=AssignmentDetailOut,
     summary="Карточка работы",
+    dependencies=[Depends(ASSESSMENT_READ)],
 )
 async def get_assignment(
     assignment_id: uuid.UUID,
@@ -813,6 +848,7 @@ async def get_assignment(
     "/assignments/{assignment_id}/publish",
     response_model=AssignmentOut,
     summary="Опубликовать работу",
+    dependencies=[Depends(ASSESSMENT_MANAGE)],
 )
 async def publish_assignment(
     assignment_id: uuid.UUID,
@@ -841,6 +877,7 @@ async def publish_assignment(
     "/assignments/{assignment_id}/close",
     response_model=AssignmentOut,
     summary="Закрыть работу",
+    dependencies=[Depends(ASSESSMENT_MANAGE)],
 )
 async def close_assignment(
     assignment_id: uuid.UUID,
@@ -867,6 +904,7 @@ async def close_assignment(
     "/assignments/{assignment_id}",
     response_model=AssignmentOut,
     summary="Архивировать работу",
+    dependencies=[Depends(ASSESSMENT_MANAGE)],
 )
 async def archive_assignment(
     assignment_id: uuid.UUID,
@@ -894,6 +932,7 @@ async def archive_assignment(
     "/assignments/{assignment_id}/submit",
     response_model=SubmissionResultOut,
     summary="Сдать работу",
+    dependencies=[Depends(require_permission("assessment.submissions.submit"))],
 )
 async def submit_assignment(
     assignment_id: uuid.UUID,
@@ -1016,6 +1055,7 @@ async def submit_assignment(
     "/assignments/{assignment_id}/result",
     response_model=SubmissionResultOut,
     summary="Результат ученика",
+    dependencies=[Depends(require_permission("assessment.results.read"))],
 )
 async def get_own_result(
     assignment_id: uuid.UUID,
@@ -1039,6 +1079,7 @@ async def get_own_result(
 @router.post(
     "/assignments/{assignment_id}/retry",
     summary="Начать новую попытку",
+    dependencies=[Depends(require_permission("assessment.submissions.submit"))],
 )
 async def retry_assignment(
     assignment_id: uuid.UUID,
@@ -1068,6 +1109,7 @@ async def retry_assignment(
     "/assignments/{assignment_id}/results",
     response_model=AssignmentResultsOut,
     summary="Результаты работы для учителя",
+    dependencies=[Depends(ASSESSMENT_RESULTS)],
 )
 async def assignment_results(
     assignment_id: uuid.UUID,
