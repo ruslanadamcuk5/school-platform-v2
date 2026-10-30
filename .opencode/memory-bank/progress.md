@@ -52,17 +52,19 @@
 - [x] API `/api/v1/groups/*`, `/api/v1/me/permissions`.
 - [x] Миграция `0002_groups_permissions_services`.
 - [x] Seed каталога прав/сервисов, активаций, школьных и классных групп.
-- [x] Unit/API-тесты: 88 тестов, ruff чистый.
+- [x] Unit/API-тесты: 96 тестов, ruff чистый.
 - [x] Применить миграцию `0002` к пилотной PostgreSQL.
 - [x] Прогнать seed: 73 права, 14 сервисов, 30 групп, 215 выдач.
 - [ ] Перевести пользователей пилота в группы (кроме супер-администратора).
 - [~] Подключить `require_permission`/`require_service`: journal, assessment,
   library, lms готовы; analytics, communication, documents, safety — далее.
 - [x] Route-level тесты отключённого сервиса и отсутствующего права (96 тестов).
+- [~] Backend с проверками доступа загружен на пилот; нужен перезапуск
+  uWSGI в панели Alwaysdata.
 - [x] Динамическое меню и защита действий по `/me/services` и `/me/permissions`.
 - [ ] Выделить первый сервис в отдельный процесс и добавить gateway.
 - [ ] Redis-кеш прав и RLS по scope.
-- [x] Пересобрать DOCX-пакет 0.7.
+- [x] Пересобрать DOCX-пакет 0.7.2.
 
 ## Этап 2.6 — веб-клиент
 - [x] Каркас React 18 + TypeScript strict + Vite + TailwindCSS.
