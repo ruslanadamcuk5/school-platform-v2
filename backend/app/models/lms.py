@@ -431,6 +431,7 @@ class LibraryItem(Base, UUIDPrimaryKeyMixin):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
+    owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id])
     textbook: Mapped["Textbook | None"] = relationship()
     subject: Mapped["Subject | None"] = relationship()
     class_links: Mapped[list["LibraryItemClass"]] = relationship(
@@ -515,6 +516,7 @@ class LibraryRecommendation(Base, UUIDPrimaryKeyMixin):
     topic: Mapped["Topic | None"] = relationship()
     teacher: Mapped["User"] = relationship(foreign_keys=[teacher_id])
     student: Mapped["User | None"] = relationship(foreign_keys=[student_id])
+    school_class: Mapped["SchoolClass | None"] = relationship(foreign_keys=[class_id])
 
 
 class LibraryRecommendationStatus(Base, UUIDPrimaryKeyMixin):

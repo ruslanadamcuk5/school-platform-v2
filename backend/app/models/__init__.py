@@ -17,7 +17,15 @@ from app.models.assessment import (
 )
 from app.models.audit import AuditEvent
 from app.models.communication import Notification
-from app.models.iam import RefreshToken, User, UserRelation
+from app.models.iam import (
+    GroupMembership,
+    GroupPermission,
+    Permission,
+    RefreshToken,
+    User,
+    UserGroup,
+    UserRelation,
+)
 from app.models.journal import JournalEntry, LessonSchedule
 from app.models.lms import (
     Course,
@@ -38,7 +46,14 @@ from app.models.lms import (
     UserBadge,
 )
 from app.models.org import City, ClassMembership, Region, School, SchoolClass, TeacherSubject
-from app.models.system import FeatureFlag, ImportRun, Language, Setting
+from app.models.system import (
+    FeatureFlag,
+    ImportRun,
+    Language,
+    Service,
+    ServiceActivation,
+    Setting,
+)
 
 __all__ = [
     "AIExplanation",
@@ -57,6 +72,8 @@ __all__ = [
     "DailyAnswer",
     "FeatureFlag",
     "GradingScale",
+    "GroupMembership",
+    "GroupPermission",
     "ImportRun",
     "JournalEntry",
     "Language",
@@ -70,6 +87,7 @@ __all__ = [
     "Method",
     "MethodProgress",
     "Notification",
+    "Permission",
     "PlaySession",
     "Question",
     "Quiz",
@@ -77,6 +95,8 @@ __all__ = [
     "Region",
     "School",
     "SchoolClass",
+    "Service",
+    "ServiceActivation",
     "Setting",
     "StoredFile",
     "Subject",
@@ -88,5 +108,6 @@ __all__ = [
     "TopicProgress",
     "User",
     "UserBadge",
+    "UserGroup",
     "UserRelation",
 ]

@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-02-05 |
-| Версия | 0.5 |
+| Версия | 0.6 |
 | Статус | Рабочий |
 | Дата | 29.10.2026 |
 | Источник анализа | `C:\Users\adamrv\Documents\edu-math` (read-only) |
@@ -64,7 +64,7 @@
 | Учитель | `/teacher`, `/teacher/classes/<id>`, `/teacher/students`, `/teacher/courses`, `/teacher/works`, `/teacher/schedule`, `/teacher/textbooks` | `/teacher/dashboard`, `/teacher/classes`, `/teacher/students`, `/teacher/schedule`, `/teacher/assignments`, `/teacher/library`, `/journal/schedule`, `/journal/entries`, `/journal/summary` |
 | Ученик (кабинет) | `/student`, `/student/works`, `/student/works/<id>`, `/student/textbooks`, `/student/schedule`, `/student/badges` | `/assignments`, `/assignments/<id>/submit`, `/assignments/<id>/result`, `/journal/schedule`, `/journal/entries` |
 | Родитель | `/parent`, `/parent/dashboard`, `/parent/assignments`, `/parent/learner/<id>`, `/parent/learner/<id>/export.csv`, `/parent/settings` | `/parent/dashboard`, `/parent/children`, `/parent/children/<id>`, `/parent/link`, `/parent/children/<id>/export`, `/parent/assignments`, `/parent/library`, `/journal/schedule`, `/journal/entries` |
-| Библиотека | `/library`, `/library/upload`, `/library/<id>`, `/library/recommendations` | `/library`, `/library/books/<id>`, `/teacher/library`, `/teacher/library/<id>/recommend` |
+| Библиотека | `/library`, `/library/upload`, `/library/<id>`, `/library/recommendations` | `/library`, `/library/books`, `/library/books/<id>`, `/library/books/<id>/recommend`, `/library/recommendations`, `/library/manage`, `/library/catalog` |
 | Администратор | `/admin`, `/admin/cities`, `/admin/schools`, `/admin/classes`, `/admin/subjects`, `/admin/courses`, `/admin/users`, `/admin/textbooks`, `/admin/audit`, `/admin/ai` | `/admin/stats`, `/admin/users`, `/admin/orgs`, `/admin/topics`, `/admin/textbooks`, `/admin/ai`, `/admin/audit` |
 | ИИ | `/ai/explain/<slug>`, `/ai/assistant` | `/ai/status`, `/ai/explain/<slug>`, `/ai/assistant` |
 | Уведомления | `/notifications` | `/notifications`, `/notifications/<id>/read`, `/notifications/read-all` |
@@ -133,10 +133,10 @@
 | `assignment_results` | `assessment.submissions` + `assessment.answers` | `answers` JSONB разложить по вопросам, сохранить score/max | API: чтение/запись |
 | `schedules` | `journal.lesson_schedule` | `weekday` + `lesson_no` + время → интервал; добавить `valid_from/to` | API: чтение/запись |
 | Оценки и посещаемость (новое) | `journal.entries` | Новый функционал: оценка 1–10, посещаемость, комментарий | API: чтение/запись |
-| `library_books` | `lms.library_items` | `owner_id`, предмет, класс, описание | Запланировано |
-| `library_book_classes` | `lms.library_item_classes` | Прямой перенос | Запланировано |
-| `library_recommendations` | `lms.recommendations` | `target_kind` → `target_type`, `student_id/class_id` | Запланировано |
-| `library_recommendation_done` | `lms.recommendation_status` | `done_at` + `student_id` | Запланировано |
+| `library_books` | `lms.library_items` | `owner_id`, предмет, класс, описание | API: чтение/запись |
+| `library_book_classes` | `lms.library_item_classes` | Прямой перенос | API: чтение/запись |
+| `library_recommendations` | `lms.library_recommendations` | `target_kind` → `target_type`, `student_id/class_id`, `topic_slug` → `topic_id` | API: чтение/запись |
+| `library_recommendation_done` | `lms.library_recommendation_status` | `done_at` + `student_id` | API: чтение/запись |
 | `app_notifications` | `communication.notifications` | `kind` → `type`, добавить канал и `read_at` | Запланировано |
 | `audit_log` | `audit.events` | Прямой перенос, `details` в JSONB | Пилот: схема готова |
 | `ai_settings` | `ai.settings` | Ключ API шифровать, не хранить в открытом виде | Запланировано |

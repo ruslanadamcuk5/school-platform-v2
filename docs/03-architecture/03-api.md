@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.4 |
+| Версия | 0.6 |
 | Статус | Рабочий |
-| Дата | 29.10.2026 |
+| Дата | 30.10.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.185.31.40.24.nip.io` |
 | OpenAPI | `/openapi.json`, `/docs`, `/redoc` |
 
@@ -109,6 +109,68 @@
 Пароль хэшируется bcrypt (12 rounds). `must_change_password=true` для новых
 учётных записей. Логин и email уникальны без учёта регистра (`citext`).
 
+## 4.1. Группы, права и сервисы
+
+### 4.1.1. Группы
+
+| Метод | Путь | Право | Назначение |
+|---|---|---|---|
+| GET | `/api/v1/groups` | `iam.groups.read` | Группы в доступных областях |
+| POST | `/api/v1/groups` | `iam.groups.write` | Создать группу |
+| GET | `/api/v1/groups/{id}` | `iam.groups.read` | Группа с участниками и правами |
+| PATCH | `/api/v1/groups/{id}` | `iam.groups.write` | Изменить группу |
+| DELETE | `/api/v1/groups/{id}` | `iam.groups.write` | Отключить группу |
+| POST | `/api/v1/groups/{id}/members` | `iam.groups.write` | Добавить пользователей |
+| DELETE | `/api/v1/groups/{id}/members/{user_id}` | `iam.groups.write` | Исключить пользователя |
+| PUT | `/api/v1/groups/{id}/permissions/{code}` | `iam.groups.write` | Выдать право (`allow`/`deny`) |
+| DELETE | `/api/v1/groups/{id}/permissions/{code}` | `iam.groups.write` | Снять право |
+| GET | `/api/v1/groups/permissions` | `iam.permissions.read` | Каталог прав |
+| GET | `/api/v1/me/permissions` | аутентификация | Действующие права пользователя |
+| GET | `/api/v1/me/services` | аутентификация | Доступные сервисы для навигации |
+
+Создание группы:
+
+```json
+{
+  "code": "teachers",
+  "name": "Учителя школы",
+  "category": "teachers",
+  "scope_type": "school",
+  "scope_id": "uuid",
+  "parent_id": "uuid"
+}
+```
+
+Для `scope_type=country` поле `scope_id` можно не передавать: используется
+`00000000-0000-0000-0000-000000000000`.
+
+Выдача права:
+
+```http
+PUT /api/v1/groups/{group_id}/permissions/journal.grades.write
+{"effect": "allow", "expires_at": null}
+```
+
+### 4.1.2. Сервисы
+
+| Метод | Путь | Право | Назначение |
+|---|---|---|---|
+| GET | `/api/v1/services` | `system.services.read` | Каталог сервисов |
+| GET | `/api/v1/services/{code}` | `system.services.read` | Карточка сервиса |
+| GET | `/api/v1/services/effective?scope_type=&scope_id=` | `system.services.read` | Действующие сервисы области |
+| GET | `/api/v1/services/{code}/activation?scope_type=&scope_id=` | `system.services.read` | Активация в области |
+| PUT | `/api/v1/services/{code}/activation?scope_type=&scope_id=` | `system.services.write` | Включить/отключить |
+| DELETE | `/api/v1/services/{code}/activation?scope_type=&scope_id=` | `system.services.write` | Снять активацию, вернуть наследование |
+
+```http
+PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
+{"enabled": false, "config": {}}
+```
+
+Ядровые сервисы (`system`, `iam`, `org`, `audit`) отключить нельзя — `409`.
+Проверка области: администратор действует только внутри своей области и её
+потомков.
+
 ## 5. Учебный контент (LMS)
 
 Все маршруты требуют access-токен. Контент предметов, тем и учебников общий
@@ -199,7 +261,38 @@
   отметок каждого типа посещаемости.
 - Все запросы ограничены `school_id`; `superadmin` обязан передать `school_id`.
 
-## 8. Системные
+## 8. Библиотека
+
+| Метод | Путь | Роли | Назначение |
+|---|---|---|---|
+| GET | `/api/v1/library` | все роли | Книги, рекомендации и статистика пользователя |
+| GET | `/api/v1/library/books/{id}` | по доступу | Карточка книги, темы и рекомендации ученика |
+| POST | `/api/v1/library/recommendations/{id}/done` | student | Отметить рекомендацию выполненной |
+| GET | `/api/v1/library/manage` | teacher, methodologist, admin | Книги учителя, классы, ученики и предметы |
+| POST | `/api/v1/library/books` | teacher, methodologist, admin | Добавить пособие в библиотеку |
+| PATCH | `/api/v1/library/books/{id}` | владелец, admin | Изменить книгу и доступ классов |
+| DELETE | `/api/v1/library/books/{id}` | владелец, admin | Удалить книгу из библиотеки |
+| POST | `/api/v1/library/books/{id}/recommend` | владелец, admin | Рекомендовать книгу/тему классу или ученикам |
+| GET | `/api/v1/library/recommendations` | teacher, methodologist, admin | Отправленные рекомендации и прогресс |
+| DELETE | `/api/v1/library/recommendations/{id}` | владелец, admin | Отозвать рекомендацию |
+| GET | `/api/v1/library/catalog` | teacher, methodologist, admin | Пособия и темы для рекомендаций |
+
+Правила:
+- Книга создаётся из платформенного пособия (`lms.textbooks`), но хранится как
+  запись библиотеки с владельцем и доступом классам.
+- Учитель управляет своими книгами и классами, где он классный руководитель,
+  указан в `org.teacher_subjects` или ведёт урок в расписании.
+- Администратор и методист управляют книгами своей школы; `superadmin`
+  обязан передать `school_id`.
+- Ученик видит книги классов, в которых состоит, и книги, рекомендованные ему
+  лично или его классу. Родитель — книги выбранного ребёнка.
+- Рекомендация может быть на книгу целиком или на тему; повторная рекомендация
+  того же адресата пропускается (`skipped`).
+- Удаление книги не удаляет платформенное пособие и его темы.
+- Отметка «выполнено» хранится в `lms.library_recommendation_status` и
+  уникальна по паре «рекомендация + ученик».
+
+## 9. Системные
 
 | Метод | Путь | Назначение |
 |---|---|---|
@@ -211,7 +304,7 @@
 `/health` возвращает `200`, если БД доступна, и `503` со статусом `degraded`,
 если нет. В ответе нет секретов, только `jwt_ready` и версия.
 
-## 9. Роли
+## 10. Роли
 
 | Код | Назначение |
 |---|---|
@@ -227,13 +320,20 @@
 RBAC проверяется зависимостью `require_roles`. UI скрывает недоступные
 разделы, но API остаётся единственной точкой принудительной проверки.
 
-## 10. Совместимость со старым API
+С версии 0.6 права назначаются **группам** (`iam.groups`), а поле
+`users.role` используется только как переходный мост для пользователей, ещё
+не добавленных ни в одну группу. Действующие права клиент получает через
+`GET /api/v1/me/permissions`, доступные сервисы — через
+`GET /api/v1/me/services`. Проверка прав выполняется зависимостью
+`require_permission`, проверка включённости сервиса — `require_service`.
+
+## 11. Совместимость со старым API
 
 Старый контур `edu-math` имеет `/api/v1` для Android. На время параллельной
 эксплуатации сохраняются совместимые маршруты или адаптер. Полный перечень
 соответствия — в документе ШК-02-05 «Карта миграции».
 
-## 11. Ограничения пилота
+## 12. Ограничения пилота
 
 - Нет rate limiting на уровне приложения (включён флаг, middleware — следующий этап).
 - Нет Redis-кэша и фоновых задач в текущем контуре.

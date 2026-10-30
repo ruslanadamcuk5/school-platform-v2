@@ -12,6 +12,10 @@ def test_openapi_contains_pilot_endpoints() -> None:
     assert "/api/v1/auth/refresh" in paths
     assert "/api/v1/org/schools" in paths
     assert "/api/v1/admin/stats" in paths
+    assert "/api/v1/me/permissions" in paths
+    assert "/api/v1/me/services" in paths
+    assert "/api/v1/groups" in paths
+    assert "/api/v1/services" in paths
 
 
 def test_bearer_auth_is_declared() -> None:

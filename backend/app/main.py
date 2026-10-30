@@ -50,13 +50,15 @@ app = FastAPI(
     contact={"name": "Школьник", "url": settings.app_url},
     license_info={"name": "Proprietary"},
     openapi_tags=[
-        {"name": "system", "description": "Здоровье сервиса и метаданные"},
+        {"name": "system", "description": "Здоровье сервиса, метаданные и реестр сервисов"},
         {"name": "auth", "description": "Аутентификация и сессии"},
+        {"name": "iam", "description": "Группы, иерархические права и личный доступ"},
         {"name": "org", "description": "Школы, классы, мультитенантность"},
         {"name": "admin", "description": "Администрирование школы"},
         {"name": "lms", "description": "Предметы, темы, учебники и курсы"},
         {"name": "assessment", "description": "Тесты, работы, сдача и результаты"},
         {"name": "journal", "description": "Расписание, оценки и посещаемость"},
+        {"name": "library", "description": "Библиотека, доступ классов и рекомендации"},
     ],
 )
 

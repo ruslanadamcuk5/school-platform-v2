@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.1 |
-| Статус | Черновик |
-| Дата | 27.10.2026 |
+| Версия | 0.2 |
+| Статус | Рабочий |
+| Дата | 30.10.2026 |
 
 ## 1. Общие принципы
 - СУБД: PostgreSQL 16+.
@@ -57,10 +57,22 @@
 
 Индексы: `login`, `email`, `school_id`, `class_id`, `parent_code`.
 
-### 3.2. `iam.roles`, `iam.permissions`, `iam.role_permissions`
-- `roles`: id, code, name, scope (global/region/city/school), is_system.
-- `permissions`: id, code, description.
-- `role_permissions`: role_id, permission_id.
+### 3.2. `iam.groups`, `iam.group_memberships`, `iam.permissions`, `iam.group_permissions`
+- `groups`: id, code, name, description, category, scope_type, scope_id, depth,
+  parent_id, is_system, is_active, meta jsonb, created_at, updated_at.
+- `group_memberships`: id, group_id, user_id, assigned_by, assigned_at,
+  expires_at, is_primary.
+- `permissions`: id, code, name, description, service_code, category, is_system.
+- `group_permissions`: id, group_id, permission_id, effect (allow/deny),
+  granted_by, granted_at, expires_at.
+
+Права назначаются только группам. Подробная модель — в ШК-04-02.
+
+### 3.2.1. Переходное поле `iam.users.role`
+Поле `role` сохраняется для совместимости и постепенного перевода. Пока
+пользователь не входит ни в одну группу, действует мост
+`LEGACY_ROLE_PERMISSIONS`. После добавления в группу доступ определяется
+только группами.
 
 ### 3.3. `iam.user_relations`
 | Поле | Тип | Описание |
@@ -280,6 +292,20 @@
 ### 14.5. `system.integrations`
 - id, code, name, enabled, config jsonb, updated_by.
 
+### 14.6. `system.services`
+- code PK, name, description, version, category, api_prefix, icon,
+  default_enabled, is_core, status, manifest jsonb, created_at, updated_at.
+
+### 14.7. `system.service_activations`
+- id, service_code FK, scope_type, scope_id, depth, enabled, config jsonb,
+  updated_by, created_at, updated_at.
+- Unique: (service_code, scope_type, scope_id).
+
+### 14.8. `system.service_activations` — правила
+- Самая конкретная активация побеждает.
+- Ядровые сервисы отключить нельзя.
+- Отключение на уровне школы перекрывает включение на уровне страны.
+
 ## 15. Ключевые связи
 ```mermaid
 erDiagram
@@ -308,6 +334,12 @@ erDiagram
   USERS ||--o{ PSYCH_APPEALS : anonymous
   DOCUMENT_TEMPLATES ||--o{ DOCUMENT_REQUESTS : generates
   USERS ||--o{ DOCUMENT_SIGNATURES : signs
+  USERS ||--o{ GROUP_MEMBERSHIPS : belongs
+  GROUPS ||--o{ GROUP_MEMBERSHIPS : includes
+  GROUPS ||--o{ GROUP_PERMISSIONS : granted
+  PERMISSIONS ||--o{ GROUP_PERMISSIONS : published
+  GROUPS ||--o{ GROUPS : inherits
+  SERVICES ||--o{ SERVICE_ACTIVATIONS : activated
 ```
 
 ## 16. Офлайн-синхронизация

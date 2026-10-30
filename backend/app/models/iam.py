@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -20,6 +21,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.scopes import (
+    GROUP_CATEGORY_SQL,
+    PERMISSION_EFFECT_SQL,
+    SCOPE_TYPE_SQL,
+)
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -125,6 +131,11 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         foreign_keys="UserRelation.child_id",
         cascade="all, delete-orphan",
     )
+    group_memberships: Mapped[list["GroupMembership"]] = relationship(
+        back_populates="user",
+        foreign_keys="GroupMembership.user_id",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def full_name(self) -> str:
@@ -214,3 +225,182 @@ class RefreshToken(Base, UUIDPrimaryKeyMixin):
         return self.revoked_at is None and self.expires_at > datetime.now(
             self.expires_at.tzinfo
         )
+
+
+class UserGroup(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Hierarchical user group.
+
+    A group belongs to exactly one organisational scope (country, region,
+    city, school or class) and to one functional category.  Permissions are
+    assigned to groups, never to individual users.  Moving a user between
+    groups therefore moves the whole permission set at once.
+
+    ``parent_id`` forms the explicit inheritance chain.  When it is omitted,
+    the access resolver still walks the organisational hierarchy and joins
+    groups of the same category at every ancestor scope.
+    """
+
+    __tablename__ = "groups"
+    __table_args__ = (
+        UniqueConstraint(
+            "scope_type", "scope_id", "code", name="uq_groups_scope_code"
+        ),
+        CheckConstraint(SCOPE_TYPE_SQL, name="scope_type"),
+        CheckConstraint(GROUP_CATEGORY_SQL, name="category"),
+        CheckConstraint("depth BETWEEN 0 AND 4", name="depth_range"),
+        Index("ix_iam_groups_scope", "scope_type", "scope_id"),
+        Index("ix_iam_groups_category", "category"),
+        {"schema": "iam"},
+    )
+
+    code: Mapped[str] = mapped_column(CITEXT, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="other", server_default="other"
+    )
+    scope_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    scope_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False
+    )
+    depth: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    is_system: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    meta: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+    parent: Mapped["UserGroup | None"] = relationship(
+        remote_side="UserGroup.id", back_populates="children"
+    )
+    children: Mapped[list["UserGroup"]] = relationship(back_populates="parent")
+    memberships: Mapped[list["GroupMembership"]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
+    permission_links: Mapped[list["GroupPermission"]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
+
+
+class GroupMembership(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "group_memberships"
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_memberships_group_user"),
+        {"schema": "iam"},
+    )
+
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    assigned_by: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    group: Mapped["UserGroup"] = relationship(back_populates="memberships")
+    user: Mapped["User"] = relationship(
+        back_populates="group_memberships", foreign_keys=[user_id]
+    )
+
+
+class Permission(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """A single capability published by a platform service."""
+
+    __tablename__ = "permissions"
+    __table_args__ = (
+        CheckConstraint(
+            "category IN ('read','write','admin','use')", name="category"
+        ),
+        {"schema": "iam"},
+    )
+
+    code: Mapped[str] = mapped_column(
+        CITEXT, nullable=False, unique=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    service_code: Mapped[str] = mapped_column(
+        CITEXT, nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="use", server_default="use"
+    )
+    is_system: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
+    group_links: Mapped[list["GroupPermission"]] = relationship(
+        back_populates="permission", cascade="all, delete-orphan"
+    )
+
+
+class GroupPermission(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "group_permissions"
+    __table_args__ = (
+        UniqueConstraint(
+            "group_id", "permission_id", name="uq_group_permissions_group_permission"
+        ),
+        CheckConstraint(PERMISSION_EFFECT_SQL, name="effect"),
+        {"schema": "iam"},
+    )
+
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    permission_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.permissions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    effect: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="allow", server_default="allow"
+    )
+    granted_by: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    group: Mapped["UserGroup"] = relationship(back_populates="permission_links")
+    permission: Mapped["Permission"] = relationship(back_populates="group_links")

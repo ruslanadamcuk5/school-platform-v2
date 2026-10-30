@@ -1208,7 +1208,7 @@ class Importer:
                     id=legacy_uuid("ai_setting", row["id"]),
                     provider=row["provider"] or "openrouter",
                     base_url=clean_text(row["base_url"]),
-                    model=row["model"] or "deepseek/deepseek-chat",
+                    model=row["model"] or "local-model",
                     encrypted_api_key=None,
                     system_prompt=clean_text(row["system_note"]),
                     is_enabled=bool(row["enabled"]),
