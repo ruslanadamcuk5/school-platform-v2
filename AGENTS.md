@@ -1,4 +1,4 @@
-# PROJECT RULES: ЕООП «Школьник» / school-platform-v2
+# PROJECT RULES: ЕОРП «ВЕКТОР» / school-platform-v2
 
 ## 1. Цель проекта
 Поэтапно перенести существующий функционал Flask/SQLite в новую платформу

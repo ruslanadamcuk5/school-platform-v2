@@ -121,7 +121,7 @@ function pageTitle(pathname: string, services: EffectiveService[]): string {
   if (map[pathname]) return map[pathname];
   if (pathname.startsWith('/onboarding/')) return 'Обучение работе';
   const service = services.find((item) => serviceRoute(item.code) === pathname);
-  return service?.name ?? 'Школьник';
+  return service?.name ?? 'ВЕКТОР';
 }
 
 export function AppLayout() {
@@ -177,10 +177,10 @@ export function AppLayout() {
           </div>
           <div className="min-w-0">
             <p className="truncate text-base font-bold tracking-tight text-white">
-              Школьник
+              ВЕКТОР
             </p>
             <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
-              ЕООП · пилот 0.7
+              ЕОРП · пилот 0.8
             </p>
           </div>
           <button
@@ -324,7 +324,7 @@ export function AppLayout() {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              <span>Школьник</span>
+              <span>ВЕКТОР</span>
               <ChevronRight className="h-3 w-3" />
               <span className="truncate text-brand-600">
                 {pageTitle(location.pathname, services)}

@@ -24,6 +24,15 @@ def test_standalone_analytics_app_mounts_only_analytics_routes() -> None:
     assert not any(path.startswith("/api/v1/journal") for path in paths)
 
 
+def test_standalone_vocational_app_mounts_only_its_level() -> None:
+    app = create_service_app("vocational_education")
+    paths = app.openapi()["paths"]
+    assert "/api/v1/education/vocational/overview" in paths
+    assert "/api/v1/education/vocational/programs" in paths
+    assert not any(path.startswith("/api/v1/education/higher") for path in paths)
+    assert not any(path.startswith("/api/v1/education/primary") for path in paths)
+
+
 def test_standalone_system_app_mounts_service_catalog() -> None:
     app = create_service_app("system")
     paths = app.openapi()["paths"]

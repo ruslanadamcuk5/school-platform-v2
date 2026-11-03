@@ -148,6 +148,10 @@ export function serviceRoute(code: string): string {
     ai: '/ai',
     admin: '/admin',
     onboarding: '/onboarding',
+    primary_education: '/education/primary',
+    secondary_education: '/education/secondary',
+    vocational_education: '/education/vocational',
+    higher_education: '/education/higher',
   };
   return known[code] ?? `/service/${code}`;
 }

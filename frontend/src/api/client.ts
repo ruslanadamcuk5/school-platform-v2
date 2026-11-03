@@ -4,6 +4,10 @@ import type {
   AdminStats,
   AnalyticsOverview,
   City,
+  EducationGroup,
+  EducationLevel,
+  EducationOverview,
+  EducationProgram,
   EffectiveService,
   Group,
   GroupDetail,
@@ -20,6 +24,8 @@ import type {
   School,
   SchoolClass,
   Service,
+  StaffAcademicProfile,
+  StudentAcademicProfile,
   TokenPair,
   User,
   UserList,
@@ -316,6 +322,219 @@ export async function fetchClasses(schoolId: string): Promise<SchoolClass[]> {
   const { data } = await api.get<SchoolClass[]>('/org/classes', {
     params: { school_id: schoolId },
   });
+  return data;
+}
+
+export async function createSchool(payload: {
+  code: string;
+  name: string;
+  short_name?: string | null;
+  institution_type: 'school' | 'college' | 'university';
+  education_levels: EducationLevel[];
+  city?: string | null;
+  address?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}): Promise<School> {
+  const { data } = await api.post<School>('/org/schools', payload);
+  return data;
+}
+
+export async function fetchEducationOverview(
+  level: EducationLevel,
+  params?: { school_id?: string; academic_year?: string },
+): Promise<EducationOverview> {
+  const { data } = await api.get<EducationOverview>(
+    `/education/${level}/overview`,
+    {
+      params: {
+        school_id: params?.school_id || undefined,
+        academic_year: params?.academic_year || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function fetchEducationGroups(
+  level: EducationLevel,
+  params?: { school_id?: string; academic_year?: string },
+): Promise<EducationGroup[]> {
+  const { data } = await api.get<EducationGroup[]>(
+    `/education/${level}/groups`,
+    {
+      params: {
+        school_id: params?.school_id || undefined,
+        academic_year: params?.academic_year || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function fetchEducationPrograms(
+  level: EducationLevel,
+  schoolId?: string,
+): Promise<EducationProgram[]> {
+  const { data } = await api.get<EducationProgram[]>(
+    `/education/${level}/programs`,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function createEducationProgram(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    code: string;
+    name: string;
+    qualification?: string | null;
+    duration_years?: number | null;
+    profile?: Record<string, unknown>;
+    is_active?: boolean;
+  },
+): Promise<EducationProgram> {
+  const { data } = await api.post<EducationProgram>(
+    `/education/${level}/programs`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateEducationProgram(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  programId: string,
+  payload: Partial<{
+    code: string;
+    name: string;
+    qualification: string | null;
+    duration_years: number | null;
+    profile: Record<string, unknown>;
+    is_active: boolean;
+  }>,
+): Promise<EducationProgram> {
+  const { data } = await api.patch<EducationProgram>(
+    `/education/${level}/programs/${programId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchStudentProfiles(
+  level: EducationLevel,
+  schoolId?: string,
+  academicStatus?: string,
+): Promise<StudentAcademicProfile[]> {
+  const { data } = await api.get<StudentAcademicProfile[]>(
+    `/education/${level}/profiles`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        academic_status: academicStatus || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createStudentProfile(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    user_id: string;
+    program_id?: string | null;
+    group_id?: string | null;
+    course_year?: number | null;
+    record_book_number?: string | null;
+    funding_type?: 'budget' | 'paid' | 'target' | 'other';
+    enrollment_year?: number | null;
+    academic_status?: 'active' | 'academic_leave' | 'expelled' | 'graduated';
+    profile?: Record<string, unknown>;
+  },
+): Promise<StudentAcademicProfile> {
+  const { data } = await api.post<StudentAcademicProfile>(
+    `/education/${level}/profiles`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateStudentProfile(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  profileId: string,
+  payload: Partial<{
+    program_id: string | null;
+    group_id: string | null;
+    course_year: number | null;
+    record_book_number: string | null;
+    funding_type: 'budget' | 'paid' | 'target' | 'other';
+    enrollment_year: number | null;
+    academic_status: 'active' | 'academic_leave' | 'expelled' | 'graduated';
+    profile: Record<string, unknown>;
+  }>,
+): Promise<StudentAcademicProfile> {
+  const { data } = await api.patch<StudentAcademicProfile>(
+    `/education/${level}/profiles/${profileId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchStaffProfiles(
+  level: EducationLevel,
+  schoolId?: string,
+): Promise<StaffAcademicProfile[]> {
+  const { data } = await api.get<StaffAcademicProfile[]>(
+    `/education/${level}/staff-profiles`,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function createStaffProfile(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    user_id: string;
+    department?: string | null;
+    position?: string | null;
+    academic_degree?: string | null;
+    academic_title?: string | null;
+    profile?: Record<string, unknown>;
+  },
+): Promise<StaffAcademicProfile> {
+  const { data } = await api.post<StaffAcademicProfile>(
+    `/education/${level}/staff-profiles`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateStaffProfile(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  profileId: string,
+  payload: Partial<{
+    department: string | null;
+    position: string | null;
+    academic_degree: string | null;
+    academic_title: string | null;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<StaffAcademicProfile> {
+  const { data } = await api.patch<StaffAcademicProfile>(
+    `/education/${level}/staff-profiles/${profileId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
   return data;
 }
 

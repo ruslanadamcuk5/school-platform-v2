@@ -11,6 +11,7 @@ import { CoachProvider } from './onboarding/CoachContext';
 import { CoachOverlay } from './onboarding/CoachOverlay';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { EducationLevelPage } from './pages/EducationLevelPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -123,6 +124,38 @@ export function App() {
                     permission={['analytics.reports.read', 'analytics.bi.read']}
                   >
                     <AnalyticsPage />
+                  </PermissionGate>
+                }
+              />
+              <Route
+                path="education/primary"
+                element={
+                  <PermissionGate permission="primary_education.read">
+                    <EducationLevelPage level="primary" />
+                  </PermissionGate>
+                }
+              />
+              <Route
+                path="education/secondary"
+                element={
+                  <PermissionGate permission="secondary_education.read">
+                    <EducationLevelPage level="secondary" />
+                  </PermissionGate>
+                }
+              />
+              <Route
+                path="education/vocational"
+                element={
+                  <PermissionGate permission="vocational_education.read">
+                    <EducationLevelPage level="vocational" />
+                  </PermissionGate>
+                }
+              />
+              <Route
+                path="education/higher"
+                element={
+                  <PermissionGate permission="higher_education.read">
+                    <EducationLevelPage level="higher" />
                   </PermissionGate>
                 }
               />

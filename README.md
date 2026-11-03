@@ -1,7 +1,8 @@
-# ЕООП «Школьник» — school-platform-v2
+# ЕОРП «ВЕКТОР» — school-platform-v2
 
-Новая версия единой общеобразовательной обучающей платформы для Республики
-Беларусь. Проект создаётся как преемник работающего Flask/SQLite-приложения:
+Единая образовательная республиканская платформа «ВЕКТОР» для Республики
+Беларусь: начальное, среднее, среднее специальное и высшее образование.
+Проект создаётся как преемник работающего Flask/SQLite-приложения:
 существующий функционал переносится поэтапно, без остановки текущего сервиса.
 
 ## Текущий статус
@@ -14,6 +15,15 @@
 **Этап 2.6 — веб-клиент.** Реализован React-клиент: вход, дашборд,
 группы и права, каталог сервисов, профиль и динамическое меню из
 `/me/services`. Собранный клиент может раздаваться FastAPI на пилоте.
+
+**Этап 2.7 — обучение работе в платформе.** 19 модулей, прогресс,
+дообучение, отчёты и интерактивный coach-overlay.
+
+**Этап 2.8 — аналитика школы.** Оценки, посещаемость, предметы, классы и CSV.
+
+**Этап 2.9 — ступени образования и бренд.** Четыре включаемых сервиса,
+учреждения `school`/`college`/`university`, программы и академические
+профили. Платформа переименована в ЕОРП «ВЕКТОР».
 
 Реализован FastAPI-backend с health-check, OpenAPI, SQLAlchemy 2.0 async,
 Alembic, JWT, мультитенантностью по `school_id`, доменами LMS, assessment,
@@ -52,9 +62,11 @@ journal и library. Добавлены реестр микросервисов, 
 - `GET /health`, `GET /api/v1/health` — проверка API и БД.
 - `GET /api/v1/meta` — версия, языки, feature flags.
 - `POST /api/v1/auth/login`, `/refresh`, `/logout`, `GET /auth/me`.
-- `GET /api/v1/org/schools`, `/org/classes` — школы и классы с tenant-проверкой.
+- `GET /api/v1/org/schools`, `/org/classes` — учреждения и классы с tenant-проверкой.
+- `POST/PATCH /api/v1/org/schools` — создание и изменение учреждений
+  республиканским администратором.
 - `GET /api/v1/admin/stats`, `/admin/users`, `/admin/audit`.
-- `POST /api/v1/admin/users` — создание пользователя школы.
+- `POST /api/v1/admin/users` — создание пользователя учреждения.
 
 ### Группы и права
 - `GET/POST /api/v1/groups`, `GET/PATCH/DELETE /groups/{id}`.
@@ -67,12 +79,18 @@ journal и library. Добавлены реестр микросервисов, 
 - При равной глубине `deny` побеждает `allow`.
 
 ### Микросервисы и функционал
-- `GET /api/v1/services` — каталог 15 сервисов.
+- `GET /api/v1/services` — каталог 19 сервисов.
 - `PUT /api/v1/services/{code}/activation` — включение/отключение для области.
 - `GET /api/v1/me/services` — сервисы, доступные пользователю (для навигации).
 - `app/service_app.py` — запуск любого сервиса отдельным процессом.
-- Домены: `lms`, `assessment`, `journal`, `library`.
-- Пилотная школа и классы 1–11 в PostgreSQL.
+- Домены: `lms`, `assessment`, `journal`, `library`, `onboarding`, `analytics`.
+- Ступени: `primary_education`, `secondary_education`,
+  `vocational_education`, `higher_education`.
+- `/api/v1/education/{level}/*` — сводка, группы, программы и академические
+  профили; профессиональные ступени включаются республиканским администратором.
+- `/api/v1/onboarding/*` — программа обучения, прогресс, отчёты и CSV.
+- `/api/v1/analytics/*` — управленческая аналитика школы и CSV.
+- Пилотная школа, классы 1–11, 90 прав и 19 активаций в PostgreSQL.
 
 ## Структура
 
@@ -82,7 +100,7 @@ school-platform-v2/
 ├── AGENTS.md
 ├── .opencode/memory-bank/     # память агента между сессиями
 ├── backend/                   # FastAPI, Alembic, тесты
-├── frontend/                  # React (следующий этап)
+├── frontend/                  # React + TypeScript + Vite
 ├── docs/                      # проектная документация (MD + DOCX)
 ├── deploy/alwaysdata/         # инструкции и конфигурация хостинга
 └── scripts/                   # генерация документации и служебные скрипты
@@ -122,6 +140,9 @@ uvicorn app.service_app:create_service_app --factory --port 8101
 - [Микросервисы](docs/03-architecture/04-mikroservisy.md)
 - [Группы и права](docs/03-architecture/05-gruppy-i-prava.md)
 - [API пилотного контура](docs/03-architecture/03-api.md)
+- [Обучение работе в платформе](docs/03-architecture/07-obuchenie-rabote-v-platforme.md)
+- [Аналитика школы](docs/03-architecture/08-analitika-shkoly.md)
+- [Ступени образования](docs/03-architecture/09-stupeni-obrazovaniya.md)
 - [Модель данных](docs/04-data/01-model-dannyh.md)
 - [Модель групп и сервисов](docs/04-data/02-model-grupp-prav-i-servisov.md)
 - [Безопасность](docs/05-security/01-koncepciya-ib.md)

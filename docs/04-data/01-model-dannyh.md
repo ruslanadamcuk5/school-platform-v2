@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.2 |
+| Версия | 0.3 |
 | Статус | Рабочий |
-| Дата | 30.10.2026 |
+| Дата | 03.11.2026 |
 
 ## 1. Общие принципы
 - СУБД: PostgreSQL 16+.
@@ -23,7 +23,7 @@
 | Схема | Назначение |
 |---|---|
 | `iam` | Пользователи, роли, права, сессии, согласия |
-| `org` | Регионы, города, школы, классы |
+| `org` | Регионы, города, учреждения, классы, группы, программы и академические профили |
 | `lms` | Предметы, темы, уроки, пособия, медиа |
 | `assessment` | Тесты, вопросы, работы, ответы |
 | `journal` | Оценки, посещаемость, отчёты |
@@ -101,20 +101,45 @@
 - id, region_id FK, code, name (jsonb), type (city/district), created_at.
 
 ### 4.3. `org.schools`
-- id, city_id FK, code, name (jsonb), address, school_type, director_name,
-  phone, email, status, created_at.
+- id, city_id FK, code, name, short_name, institution_type, education_levels
+  (jsonb), profile (jsonb), address, director, phone, email, is_active,
+  deleted_at, created_at, updated_at.
+- `institution_type`: `school`, `college`, `university`.
+- `education_levels`: массив `primary`, `secondary`, `vocational`, `higher`.
+- `profile`: лицензии, аккредитации, реквизиты и дополнительные поля.
 
 ### 4.4. `org.classes`
-- id, school_id FK, number (1–11), letter, academic_year, curator_id FK null,
-  created_at.
-- Unique: (school_id, number, letter, academic_year).
+- id, school_id FK, grade (1–11), letter, education_level, program_id FK null,
+  course_year, profile (jsonb), academic_year, homeroom_teacher_id FK null,
+  is_active, deleted_at, created_at, updated_at.
+- Unique: (school_id, grade, letter, academic_year, deleted_at).
+- `education_level` определяет ступень; `program_id` и `course_year`
+  используются в колледжах и вузах.
 
-### 4.5. `org.class_students`
-- id, class_id FK, student_id FK, joined_at, left_at, status.
-- Unique active: (class_id, student_id) where left_at is null.
+### 4.5. `org.class_memberships`
+- id, class_id FK, user_id FK, role_in_class, joined_at, left_at.
+- Unique active: (class_id, user_id) where left_at is null.
 
 ### 4.6. `org.teacher_subjects`
 - id, teacher_id FK, subject_id FK, school_id FK, class_id FK null, workload_hours.
+
+### 4.7. `org.education_programs`
+- id, institution_id FK, code, name, education_level, qualification,
+  duration_years, profile (jsonb), is_active, deleted_at, created_at,
+  updated_at.
+- Unique: (institution_id, code).
+- Программа доступна только для `vocational` и `higher`.
+
+### 4.8. `org.student_academic_profiles`
+- id, user_id FK unique, institution_id FK, program_id FK null, group_id FK
+  null, course_year, record_book_number, funding_type, enrollment_year,
+  academic_status, profile (jsonb), created_at, updated_at.
+- `funding_type`: `budget`, `paid`, `target`, `other`.
+- `academic_status`: `active`, `academic_leave`, `expelled`, `graduated`.
+
+### 4.9. `org.staff_academic_profiles`
+- id, user_id FK unique, institution_id FK, department, position,
+  academic_degree, academic_title, profile (jsonb), created_at, updated_at.
 
 ## 5. LMS
 ### 5.1. `lms.subjects`
@@ -312,8 +337,15 @@ erDiagram
   REGIONS ||--o{ CITIES : contains
   CITIES ||--o{ SCHOOLS : contains
   SCHOOLS ||--o{ CLASSES : has
-  CLASSES ||--o{ CLASS_STUDENTS : includes
-  USERS ||--o{ CLASS_STUDENTS : student
+  SCHOOLS ||--o{ EDUCATION_PROGRAMS : offers
+  EDUCATION_PROGRAMS ||--o{ CLASSES : groups
+  EDUCATION_PROGRAMS ||--o{ STUDENT_ACADEMIC_PROFILES : program
+  CLASSES ||--o{ STUDENT_ACADEMIC_PROFILES : group
+  SCHOOLS ||--o{ STAFF_ACADEMIC_PROFILES : employs
+  CLASSES ||--o{ CLASS_MEMBERSHIPS : includes
+  USERS ||--o{ CLASS_MEMBERSHIPS : member
+  USERS ||--o{ STUDENT_ACADEMIC_PROFILES : student
+  USERS ||--o{ STAFF_ACADEMIC_PROFILES : staff
   USERS ||--o{ USER_RELATIONS : parent
   USERS ||--o{ USER_RELATIONS : child
   SUBJECTS ||--o{ TOPICS : has

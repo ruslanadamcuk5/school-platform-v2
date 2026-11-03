@@ -20,6 +20,10 @@ def test_openapi_contains_pilot_endpoints() -> None:
     assert "/api/v1/services" in paths
     assert "/api/v1/analytics/overview" in paths
     assert "/api/v1/analytics/export.csv" in paths
+    assert "/api/v1/education/primary/overview" in paths
+    assert "/api/v1/education/secondary/overview" in paths
+    assert "/api/v1/education/vocational/overview" in paths
+    assert "/api/v1/education/higher/overview" in paths
 
 
 def test_bearer_auth_is_declared() -> None:

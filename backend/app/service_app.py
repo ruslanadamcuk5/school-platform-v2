@@ -26,6 +26,7 @@ from app.api.v1 import (
     analytics,
     assessment,
     auth,
+    education,
     groups,
     journal,
     library,
@@ -47,6 +48,10 @@ ROUTER_MAP = {
     "system": (system.router, services.router),
     "iam": (auth.router, groups.router, me.router),
     "org": (org.router,),
+    "primary_education": (education.primary_router,),
+    "secondary_education": (education.secondary_router,),
+    "vocational_education": (education.vocational_router,),
+    "higher_education": (education.higher_router,),
     "audit": (admin.router,),
     "admin": (admin.router,),
     "lms": (lms.router,),
@@ -116,7 +121,7 @@ def create_service_app(service_code: str | None = None) -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json",
         lifespan=lifespan,
-        contact={"name": "Школьник", "url": settings.app_url},
+        contact={"name": "ВЕКТОР", "url": settings.app_url},
         license_info={"name": "Proprietary"},
     )
     _middleware(app)

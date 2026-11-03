@@ -24,12 +24,12 @@ class Settings(BaseSettings):
     )
 
     # General
-    app_name: str = "Школьник"
+    app_name: str = "ВЕКТОР"
     app_env: str = "development"
     app_debug: bool = False
     app_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
-    api_version: str = "0.2.0"
+    api_version: str = "0.8.0"
     secret_key: str = "change-me-in-production"
 
     # Database
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     admin_email: str = ""
     admin_password: str = ""
     seed_school_code: str = "pilot-school"
-    seed_school_name: str = "Пилотная школа «Школьник»"
+    seed_school_name: str = "Пилотная школа «ВЕКТОР»"
     seed_school_city: str = "Минск"
     seed_academic_year: str = "2026/2027"
 

@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 OUT = DOCS / "word"
 
-PROJECT = "ЕООП «Школьник»"
-VERSION = "0.7.4"
+PROJECT = "ЕОРП «ВЕКТОР»"
+VERSION = "0.8.0"
 DATE = "03.11.2026"
 
 
@@ -354,7 +354,7 @@ def main() -> int:
         generated.append(output)
         print(f"OK  {rel} -> {output.relative_to(ROOT)}")
 
-    combined = OUT / "ЕООП_Школьник_Полный_пакет_документации_v0.7.4.docx"
+    combined = OUT / "ЕОРП_ВЕКТОР_Полный_пакет_документации_v0.8.0.docx"
     document = Document()
     style_document(document)
     add_title_page(document, "Полный пакет проектной документации", DOCS / "README.md")

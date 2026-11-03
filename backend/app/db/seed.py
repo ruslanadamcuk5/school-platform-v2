@@ -22,6 +22,7 @@ import sys
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.education import level_for_grade
 from app.core.scopes import COUNTRY_SCOPE_ID, SCOPE_DEPTH
 from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal, engine
@@ -392,6 +393,8 @@ async def seed() -> None:
                 code=settings.seed_school_code,
                 name=settings.seed_school_name,
                 short_name="Пилотная школа",
+                institution_type="school",
+                education_levels=["primary", "secondary"],
                 city_id=pilot_city.id if pilot_city else None,
                 city=settings.seed_school_city,
                 address="",
@@ -403,6 +406,10 @@ async def seed() -> None:
         else:
             if school.city_id is None and pilot_city is not None:
                 school.city_id = pilot_city.id
+            if not school.education_levels:
+                school.education_levels = ["primary", "secondary"]
+            if not school.institution_type:
+                school.institution_type = "school"
             print(f"school exists: {school.name} ({school.id})")
 
         existing_classes = (
@@ -422,6 +429,7 @@ async def seed() -> None:
                         school_id=school.id,
                         grade=grade,
                         letter="А",
+                        education_level=level_for_grade(grade),
                         academic_year=settings.seed_academic_year,
                         is_active=True,
                     )

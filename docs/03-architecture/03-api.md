@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.7 |
+| Версия | 0.8 |
 | Статус | Рабочий |
-| Дата | 30.10.2026 |
+| Дата | 03.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
 | OpenAPI | `/openapi.json`, `/docs`, `/redoc` |
 
@@ -82,9 +82,16 @@
 | Метод | Путь | Правило |
 |---|---|---|
 | GET | `/api/v1/org/schools` | superadmin — все; остальные — своя школа |
+| POST | `/api/v1/org/schools` | только superadmin, право `org.schools.write` |
+| PATCH | `/api/v1/org/schools/{id}` | только superadmin, право `org.schools.write` |
 | GET | `/api/v1/org/schools/{id}` | только своя школа, superadmin — любая |
-| GET | `/api/v1/org/classes?school_id=` | своя школа; superadmin обязан передать `school_id` |
+| GET | `/api/v1/org/classes?school_id=&education_level=` | своя школа; superadmin обязан передать `school_id` |
 | GET | `/api/v1/org/classes/{id}` | класс должен принадлежать доступной школе |
+
+Учреждение содержит `institution_type` (`school`, `college`, `university`),
+`education_levels` (JSONB-массив) и `profile` (JSONB). Тип учреждения
+ограничивает допустимые ступени: школа — `primary`/`secondary`, колледж —
+`vocational`, университет — `higher`.
 
 Для школьного пользователя `school_id` в query игнорируется, если совпадает, и
 даёт `403`, если отличается. Для superadmin отсутствие `school_id` даёт `400`.
@@ -175,6 +182,45 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 Ядровые сервисы (`system`, `iam`, `org`, `audit`) отключить нельзя — `409`.
 Проверка области: администратор действует только внутри своей области и её
 потомков.
+
+## 4.2. Ступени образования
+
+Каждая ступень — отдельный сервис и отдельный префикс API. Контракт одинаков,
+различаются права и доступность профессиональных сущностей.
+
+| Сервис | Префикс | По умолчанию |
+|---|---|---|
+| `primary_education` | `/api/v1/education/primary` | включён |
+| `secondary_education` | `/api/v1/education/secondary` | включён |
+| `vocational_education` | `/api/v1/education/vocational` | выключен |
+| `higher_education` | `/api/v1/education/higher` | выключен |
+
+Для каждой ступени `{level}` доступны маршруты:
+
+| Метод | Путь | Право | Назначение |
+|---|---|---|---|
+| GET | `/api/v1/education/{level}/overview` | `{service}.read` | Сводка ступени |
+| GET | `/api/v1/education/{level}/groups` | `{service}.read` | Классы и учебные группы |
+| GET | `/api/v1/education/{level}/programs` | `{service}.read` | Образовательные программы |
+| POST | `/api/v1/education/{level}/programs` | `{service}.programs.manage` | Создать программу |
+| PATCH | `/api/v1/education/{level}/programs/{id}` | `{service}.programs.manage` | Изменить программу |
+| GET | `/api/v1/education/{level}/profiles` | `{service}.profiles.read` | Профили обучающихся |
+| POST | `/api/v1/education/{level}/profiles` | `{service}.profiles.manage` | Создать профиль |
+| PATCH | `/api/v1/education/{level}/profiles/{id}` | `{service}.profiles.manage` | Изменить профиль |
+| GET | `/api/v1/education/{level}/staff-profiles` | `{service}.profiles.read` | Профили преподавателей |
+| POST | `/api/v1/education/{level}/staff-profiles` | `{service}.profiles.manage` | Создать профиль |
+| PATCH | `/api/v1/education/{level}/staff-profiles/{id}` | `{service}.profiles.manage` | Изменить профиль |
+
+Правила:
+
+- `school_id` обязателен для superadmin, для пользователя учреждения берётся
+  из токена; чужое учреждение — `403`;
+- учреждение должно предоставлять запрошенную ступень, иначе `404`;
+- программы и профили доступны только для `vocational` и `higher`;
+  для школьных ступеней возвращается пустой список;
+- группа, программа и профиль проверяются на принадлежность учреждению и
+  ступени;
+- изменения программ, профилей и учреждений фиксируются в аудите.
 
 ## 5. Учебный контент (LMS)
 

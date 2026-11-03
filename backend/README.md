@@ -1,6 +1,6 @@
 # Backend (FastAPI)
 
-Пилотный backend платформы «Школьник». Реализованы:
+Пилотный backend платформы «ВЕКТОР». Реализованы:
 
 - FastAPI + OpenAPI (`/docs`, `/redoc`, `/openapi.json`);
 - health-check с проверкой PostgreSQL (`/health`, `/api/v1/health`);
@@ -12,6 +12,12 @@
 - мультитенантность по `school_id` с проверкой на уровне API;
 - журнал аудита входов, токенов и административных действий;
 - восстановление пароля через bcrypt (12 rounds);
+- групповые права (GBAC), каталог 19 сервисов и активации по 5 уровням;
+- обучение работе в платформе: 19 модулей, прогресс, дообучение и отчёты;
+- аналитика школы: оценки, посещаемость, предметы, классы и CSV;
+- ступени образования: начальная, средняя, средняя специальная и высшая;
+- учреждения `school`/`college`/`university`, образовательные программы,
+  академические профили студентов и преподавателей;
 - сид пилотной школы, классов 1–11 и супер-администратора.
 
 ## Структура
@@ -83,7 +89,7 @@ JWT_PUBLIC_KEY_PATH=./secrets/jwt_public.pem
 ADMIN_LOGIN=admin
 ADMIN_PASSWORD=...
 SEED_SCHOOL_CODE=pilot-school
-SEED_SCHOOL_NAME=Пилотная школа «Школьник»
+SEED_SCHOOL_NAME=Пилотная школа «ВЕКТОР»
 SEED_ACADEMIC_YEAR=2026/2027
 CORS_ORIGINS=https://school-platform-v2.alwaysdata.net
 ```
@@ -102,9 +108,21 @@ CORS_ORIGINS=https://school-platform-v2.alwaysdata.net
 | POST | `/api/v1/auth/logout` | access token |
 | GET | `/api/v1/auth/me` | access token |
 | GET | `/api/v1/org/schools` | авторизованный |
+| POST | `/api/v1/org/schools` | superadmin, `org.schools.write` |
+| PATCH | `/api/v1/org/schools/{id}` | superadmin, `org.schools.write` |
 | GET | `/api/v1/org/schools/{id}` | своя школа; superadmin — любая |
-| GET | `/api/v1/org/classes` | своя школа; superadmin — `school_id` |
+| GET | `/api/v1/org/classes?education_level=` | своя школа; superadmin — `school_id` |
 | GET | `/api/v1/org/classes/{id}` | своя школа |
+| GET | `/api/v1/education/{level}/overview` | `{service}.read` |
+| GET | `/api/v1/education/{level}/groups` | `{service}.read` |
+| GET | `/api/v1/education/{level}/programs` | `{service}.read` |
+| POST | `/api/v1/education/{level}/programs` | `{service}.programs.manage` |
+| GET | `/api/v1/education/{level}/profiles` | `{service}.profiles.read` |
+| POST | `/api/v1/education/{level}/profiles` | `{service}.profiles.manage` |
+| GET | `/api/v1/education/{level}/staff-profiles` | `{service}.profiles.read` |
+| GET | `/api/v1/onboarding/me` | `onboarding.courses.read` |
+| GET | `/api/v1/analytics/overview` | `analytics.reports.read` / `.bi.read` |
+| GET | `/api/v1/analytics/export.csv` | `analytics.reports.export` |
 | GET | `/api/v1/admin/stats` | admin/superadmin |
 | GET | `/api/v1/admin/users` | admin/superadmin |
 | POST | `/api/v1/admin/users` | admin/superadmin |

@@ -14,13 +14,15 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
+    from app.models.education import EducationProgram, StudentAcademicProfile
     from app.models.iam import User
     from app.models.lms import Subject
 
@@ -70,6 +72,21 @@ class School(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     code: Mapped[str] = mapped_column(CITEXT, nullable=False, unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     short_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    institution_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="school", server_default="school"
+    )
+    education_levels: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=lambda: ["primary", "secondary"],
+        server_default=text("jsonb_build_array('primary', 'secondary')"),
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
     city_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("org.cities.id", ondelete="SET NULL"),
@@ -95,6 +112,12 @@ class School(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     classes: Mapped[list["SchoolClass"]] = relationship(
         back_populates="school", cascade="all, delete-orphan"
     )
+    programs: Mapped[list["EducationProgram"]] = relationship(
+        back_populates="institution", cascade="all, delete-orphan"
+    )
+    student_profiles: Mapped[list["StudentAcademicProfile"]] = relationship(
+        back_populates="institution", cascade="all, delete-orphan"
+    )
 
 
 class SchoolClass(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -108,6 +131,10 @@ class SchoolClass(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             name="uq_classes_school_grade_letter_year",
         ),
         CheckConstraint("grade BETWEEN 1 AND 11", name="grade_range"),
+        CheckConstraint(
+            "education_level IN ('primary','secondary','vocational','higher')",
+            name="education_level",
+        ),
         {"schema": "org"},
     )
 
@@ -120,6 +147,26 @@ class SchoolClass(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     grade: Mapped[int] = mapped_column(Integer, nullable=False)
     letter: Mapped[str] = mapped_column(
         String(8), nullable=False, default="А", server_default="А"
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24),
+        nullable=False,
+        default="secondary",
+        server_default="secondary",
+        index=True,
+    )
+    program_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.education_programs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    course_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
     )
     title: Mapped[str | None] = mapped_column(String(64), nullable=True)
     academic_year: Mapped[str] = mapped_column(String(9), nullable=False)
@@ -137,6 +184,9 @@ class SchoolClass(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     school: Mapped["School"] = relationship(back_populates="classes")
+    program: Mapped["EducationProgram | None"] = relationship(
+        back_populates="groups"
+    )
     homeroom_teacher: Mapped["User | None"] = relationship(
         foreign_keys=[homeroom_teacher_id]
     )

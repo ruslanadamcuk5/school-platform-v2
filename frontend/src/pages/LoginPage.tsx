@@ -89,9 +89,9 @@ export function LoginPage() {
               <GraduationCap className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-lg font-bold tracking-tight">Школьник</p>
+              <p className="text-lg font-bold tracking-tight">ВЕКТОР</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Единая образовательная платформа
+                Единая образовательная республиканская платформа
               </p>
             </div>
           </div>
@@ -99,7 +99,7 @@ export function LoginPage() {
           <div className="mt-16 max-w-xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Пилотная версия 0.7
+              Пилотная версия 0.8
             </span>
             <h1 className="mt-6 text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">
               Управление образованием{' '}
@@ -152,9 +152,9 @@ export function LoginPage() {
               <GraduationCap className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-base font-bold text-slate-900">Школьник</p>
+              <p className="text-base font-bold text-slate-900">ВЕКТОР</p>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                ЕООП · пилот 0.7
+                ЕОРП · пилот 0.8
               </p>
             </div>
           </div>
@@ -240,7 +240,7 @@ export function LoginPage() {
           </div>
 
           <p className="mt-5 text-center text-[11px] text-slate-400">
-            ЕООП «Школьник» · Республика Беларусь · 2026
+            ЕОРП «ВЕКТОР» · Республика Беларусь · 2026
           </p>
         </div>
       </section>

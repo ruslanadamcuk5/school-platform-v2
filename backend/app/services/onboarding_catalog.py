@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-CATALOG_VERSION = "1.0.0"
+CATALOG_VERSION = "1.1.0"
 
 STAGES: tuple[dict[str, str], ...] = (
     {
@@ -27,7 +27,7 @@ STAGES: tuple[dict[str, str], ...] = (
     {
         "code": "core",
         "title": "Ядро платформы",
-        "description": "Пользователи, структура школы, группы и аудит.",
+        "description": "Пользователи, структура учреждения, ступени, группы и аудит.",
     },
     {
         "code": "daily",
@@ -139,7 +139,7 @@ MODULES: tuple[OnboardingModule, ...] = (
         stage="start",
         title="Первый вход и рабочее пространство",
         description=(
-            "Как устроен «Школьник»: дашборд, боковое меню, профиль и "
+            "Как устроена платформа «ВЕКТОР»: дашборд, боковое меню, профиль и "
             "принцип «только нужные сервисы»."
         ),
         icon="🚀",
@@ -315,6 +315,143 @@ MODULES: tuple[OnboardingModule, ...] = (
             safety_body=(
                 "Не переносите пользователя в чужую школу: это нарушает "
                 "мультитенантную изоляцию и доступ к персональным данным."
+            ),
+        ),
+    ),
+    OnboardingModule(
+        code="primary-education",
+        service_code="primary_education",
+        stage="daily",
+        title="Начальное образование",
+        description=(
+            "Ступень 1–4 классов: первые учителя, адаптация, безопасность "
+            "и ежедневная связь с родителями."
+        ),
+        icon="🎒",
+        estimated_minutes=5,
+        roles=None,
+        required_permissions=("primary_education.read",),
+        steps=_service_steps(
+            nav_code="primary_education",
+            route="/education/primary",
+            focus_title="Откройте начальное образование",
+            focus_body=(
+                "Раздел показывает классы 1–4, количество учеников и "
+                "учителей. Это отдельная ступень с собственными правами и "
+                "сценариями."
+            ),
+            practice_title="Проверьте классы и кураторов",
+            practice_body=(
+                "Выберите учебный год и посмотрите классы. Убедитесь, что "
+                "классный руководитель назначен и состав актуален."
+            ),
+            safety_body=(
+                "Данные младших школьников особенно чувствительны. "
+                "Не передавайте списки и контакты родителей третьим лицам."
+            ),
+        ),
+    ),
+    OnboardingModule(
+        code="secondary-education",
+        service_code="secondary_education",
+        stage="daily",
+        title="Среднее образование",
+        description=(
+            "Ступень 5–11 классов: предметное обучение, профили, "
+            "экзамены и профессиональная ориентация."
+        ),
+        icon="📘",
+        estimated_minutes=5,
+        roles=None,
+        required_permissions=("secondary_education.read",),
+        steps=_service_steps(
+            nav_code="secondary_education",
+            route="/education/secondary",
+            focus_title="Откройте среднее образование",
+            focus_body=(
+                "Раздел показывает классы 5–11 и их учебную нагрузку. "
+                "Ступень включается и отключается отдельно от начальной."
+            ),
+            practice_title="Сравните параллели",
+            practice_body=(
+                "Посмотрите количество учащихся по классам. Используйте "
+                "эти данные для планирования профилей и нагрузки учителей."
+            ),
+            safety_body=(
+                "Оценки и результаты экзаменов — персональные данные. "
+                "Доступ к ним зависит от роли и включённых сервисов."
+            ),
+        ),
+    ),
+    OnboardingModule(
+        code="vocational-education",
+        service_code="vocational_education",
+        stage="management",
+        title="Среднее специальное образование",
+        description=(
+            "Колледжи и техникумы: специальности, учебные группы, курсы, "
+            "практика и академические профили учащихся."
+        ),
+        icon="🛠️",
+        estimated_minutes=7,
+        roles=None,
+        required_permissions=(
+            "vocational_education.read",
+            "vocational_education.profiles.read",
+        ),
+        steps=_service_steps(
+            nav_code="vocational_education",
+            route="/education/vocational",
+            focus_title="Откройте среднее специальное образование",
+            focus_body=(
+                "Раздел показывает специальности, учебные группы и "
+                "академические профили. Он доступен только для колледжей "
+                "и техникумов."
+            ),
+            practice_title="Проверьте специальность и группу",
+            practice_body=(
+                "Откройте программу, затем группу. Убедитесь, что курс, "
+                "форма финансирования и зачётная книжка заполнены."
+            ),
+            safety_body=(
+                "Зачётные книжки и академические статусы — защищённые "
+                "данные. Изменения фиксируются в журнале аудита."
+            ),
+        ),
+    ),
+    OnboardingModule(
+        code="higher-education",
+        service_code="higher_education",
+        stage="management",
+        title="Высшее образование",
+        description=(
+            "Университеты и академии: факультеты, кафедры, программы, "
+            "кредиты, академические группы и научная работа."
+        ),
+        icon="🏛️",
+        estimated_minutes=7,
+        roles=None,
+        required_permissions=(
+            "higher_education.read",
+            "higher_education.profiles.read",
+        ),
+        steps=_service_steps(
+            nav_code="higher_education",
+            route="/education/higher",
+            focus_title="Откройте высшее образование",
+            focus_body=(
+                "Раздел показывает образовательные программы, группы и "
+                "профили обучающихся. Ступень включается отдельно на "
+                "республиканском, региональном или вузовском уровне."
+            ),
+            practice_title="Проверьте программу и профиль",
+            practice_body=(
+                "Откройте программу и профиль студента. Проверьте курс, "
+                "группу и академический статус — от них зависят отчёты."
+            ),
+            safety_body=(
+                "Академические и научные данные требуют особого режима "
+                "доступа. Не выгружайте профили без служебной необходимости."
             ),
         ),
     ),

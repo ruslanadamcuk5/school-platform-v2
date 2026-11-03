@@ -17,6 +17,11 @@ from app.models.assessment import (
 )
 from app.models.audit import AuditEvent
 from app.models.communication import Notification
+from app.models.education import (
+    EducationProgram,
+    StaffAcademicProfile,
+    StudentAcademicProfile,
+)
 from app.models.iam import (
     GroupMembership,
     GroupPermission,
@@ -71,6 +76,7 @@ __all__ = [
     "CourseClass",
     "CourseTopic",
     "DailyAnswer",
+    "EducationProgram",
     "FeatureFlag",
     "GradingScale",
     "GroupMembership",
@@ -101,7 +107,9 @@ __all__ = [
     "Service",
     "ServiceActivation",
     "Setting",
+    "StaffAcademicProfile",
     "StoredFile",
+    "StudentAcademicProfile",
     "Subject",
     "Submission",
     "TeacherSubject",

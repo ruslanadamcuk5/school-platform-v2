@@ -192,6 +192,9 @@ export interface School {
   code: string;
   name: string;
   short_name: string | null;
+  institution_type: 'school' | 'college' | 'university';
+  education_levels: EducationLevel[];
+  profile: Record<string, unknown>;
   city: string | null;
   address: string | null;
   phone: string | null;
@@ -205,12 +208,121 @@ export interface SchoolClass {
   school_id: string;
   grade: number;
   letter: string;
+  education_level: EducationLevel;
+  program_id: string | null;
+  course_year: number | null;
+  profile: Record<string, unknown>;
   title: string | null;
   academic_year: string;
   homeroom_teacher_id: string | null;
   is_active: boolean;
   created_at: string;
   display_name: string;
+}
+
+export type EducationLevel = 'primary' | 'secondary' | 'vocational' | 'higher';
+
+export interface EducationLevelInfo {
+  code: EducationLevel;
+  name: string;
+  short_name: string;
+  icon: string;
+  description: string;
+  service_code: string;
+  read_permission: string;
+  manage_permission: string;
+  program_permission: string | null;
+  profile_read_permission: string | null;
+  profile_manage_permission: string | null;
+  is_professional: boolean;
+}
+
+export interface EducationGroup {
+  id: string;
+  name: string;
+  grade: number;
+  letter: string;
+  education_level: EducationLevel;
+  course_year: number | null;
+  program_id: string | null;
+  program_name: string | null;
+  academic_year: string;
+  students: number;
+  curator_name: string | null;
+  is_active: boolean;
+}
+
+export interface EducationProgram {
+  id: string;
+  institution_id: string;
+  code: string;
+  name: string;
+  education_level: EducationLevel;
+  qualification: string | null;
+  duration_years: number | null;
+  profile: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentAcademicProfile {
+  id: string;
+  user_id: string;
+  login: string;
+  full_name: string;
+  institution_id: string;
+  program_id: string | null;
+  program_name: string | null;
+  group_id: string | null;
+  group_name: string | null;
+  course_year: number | null;
+  record_book_number: string | null;
+  funding_type: 'budget' | 'paid' | 'target' | 'other';
+  enrollment_year: number | null;
+  academic_status: 'active' | 'academic_leave' | 'expelled' | 'graduated';
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffAcademicProfile {
+  id: string;
+  user_id: string;
+  login: string;
+  full_name: string;
+  institution_id: string;
+  department: string | null;
+  position: string | null;
+  academic_degree: string | null;
+  academic_title: string | null;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EducationTotals {
+  students: number;
+  teachers: number;
+  groups: number;
+  programs: number;
+}
+
+export interface EducationOverview {
+  institution_id: string;
+  institution_name: string;
+  institution_type: 'school' | 'college' | 'university';
+  institution_type_label: string;
+  education_levels: EducationLevel[];
+  level: EducationLevelInfo;
+  academic_year: string;
+  available_years: string[];
+  generated_at: string;
+  totals: EducationTotals;
+  groups: EducationGroup[];
+  programs: EducationProgram[];
+  student_profiles_count: number;
+  staff_profiles_count: number;
 }
 
 export interface UserList {

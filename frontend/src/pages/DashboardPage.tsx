@@ -60,7 +60,7 @@ const recentFeatures = [
   },
   {
     version: '0.6',
-    title: 'Каталог из 15 сервисов',
+    title: 'Каталог из 19 сервисов',
     text: 'Каждый модуль можно включить или отключить на нужном уровне.',
   },
   {
@@ -193,7 +193,7 @@ export function DashboardPage() {
           <div className="flex items-center gap-2">
             <Badge className="bg-accent-50 text-accent-700 ring-accent-200">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
-              Пилот 0.7
+              Пилот 0.8
             </Badge>
             <Badge className="bg-white text-slate-600 ring-slate-200">
               <Sparkles className="h-3 w-3 text-brand-500" />

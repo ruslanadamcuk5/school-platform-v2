@@ -172,7 +172,7 @@ export function ServicePlaceholderPage({ code: codeProp }: { code?: string }) {
   const description =
     effectiveService?.description ??
     catalogService?.description ??
-    'Сервис платформы «Школьник».';
+    'Сервис платформы «ВЕКТОР».';
   const category = effectiveService?.category ?? catalogService?.category ?? 'core';
   const enabled = effectiveService?.enabled ?? false;
   const status = effectiveService?.status ?? catalogService?.status ?? 'active';

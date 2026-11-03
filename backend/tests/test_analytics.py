@@ -17,7 +17,7 @@ from app.schemas.analytics import (
 def _overview() -> AnalyticsOverviewOut:
     return AnalyticsOverviewOut(
         school_id=uuid.uuid4(),
-        school_name='Пилотная школа "Школьник"',
+        school_name='Пилотная школа "ВЕКТОР"',
         academic_year="2026/2027",
         available_years=["2026/2027"],
         generated_at=datetime.now(timezone.utc),

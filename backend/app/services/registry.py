@@ -154,6 +154,136 @@ SERVICES: tuple[ServiceManifest, ...] = (
         depends_on=("system", "iam"),
     ),
     ServiceManifest(
+        code="primary_education",
+        name="Начальное образование",
+        description=(
+            "Ступень начального образования: 1–4 классы, первые учителя, "
+            "адаптация, безопасность и связь с родителями."
+        ),
+        category="education",
+        api_prefix="/api/v1/education/primary",
+        icon="🎒",
+        default_enabled=True,
+        permissions=(
+            PermissionSpec(
+                "primary_education.read",
+                "Просмотр ступени начального образования",
+                "read",
+            ),
+            PermissionSpec(
+                "primary_education.manage",
+                "Управление ступенью начального образования",
+                "admin",
+            ),
+        ),
+        depends_on=("system", "iam", "org"),
+    ),
+    ServiceManifest(
+        code="secondary_education",
+        name="Среднее образование",
+        description=(
+            "Ступень среднего образования: 5–11 классы, предметные профили, "
+            "экзамены, профориентация и работа с классными руководителями."
+        ),
+        category="education",
+        api_prefix="/api/v1/education/secondary",
+        icon="📘",
+        default_enabled=True,
+        permissions=(
+            PermissionSpec(
+                "secondary_education.read",
+                "Просмотр ступени среднего образования",
+                "read",
+            ),
+            PermissionSpec(
+                "secondary_education.manage",
+                "Управление ступенью среднего образования",
+                "admin",
+            ),
+        ),
+        depends_on=("system", "iam", "org"),
+    ),
+    ServiceManifest(
+        code="vocational_education",
+        name="Среднее специальное образование",
+        description=(
+            "Колледжи и техникумы: специальности, учебные группы, курсы, "
+            "практика, зачётные книжки и профессиональные компетенции."
+        ),
+        category="education",
+        api_prefix="/api/v1/education/vocational",
+        icon="🛠️",
+        default_enabled=False,
+        permissions=(
+            PermissionSpec(
+                "vocational_education.read",
+                "Просмотр ступени среднего специального образования",
+                "read",
+            ),
+            PermissionSpec(
+                "vocational_education.manage",
+                "Управление ступенью среднего специального образования",
+                "admin",
+            ),
+            PermissionSpec(
+                "vocational_education.programs.manage",
+                "Управление специальностями и программами",
+                "write",
+            ),
+            PermissionSpec(
+                "vocational_education.profiles.read",
+                "Просмотр академических профилей учащихся",
+                "read",
+            ),
+            PermissionSpec(
+                "vocational_education.profiles.manage",
+                "Управление академическими профилями учащихся",
+                "write",
+            ),
+        ),
+        depends_on=("system", "iam", "org"),
+    ),
+    ServiceManifest(
+        code="higher_education",
+        name="Высшее образование",
+        description=(
+            "Университеты и академии: факультеты, кафедры, образовательные "
+            "программы, кредиты, академические группы и научная работа."
+        ),
+        category="education",
+        api_prefix="/api/v1/education/higher",
+        icon="🏛️",
+        default_enabled=False,
+        permissions=(
+            PermissionSpec(
+                "higher_education.read",
+                "Просмотр ступени высшего образования",
+                "read",
+            ),
+            PermissionSpec(
+                "higher_education.manage",
+                "Управление ступенью высшего образования",
+                "admin",
+            ),
+            PermissionSpec(
+                "higher_education.programs.manage",
+                "Управление образовательными программами",
+                "write",
+            ),
+            PermissionSpec(
+                "higher_education.profiles.read",
+                "Просмотр академических профилей обучающихся",
+                "read",
+            ),
+            PermissionSpec(
+                "higher_education.profiles.manage",
+                "Управление академическими профилями обучающихся",
+                "write",
+            ),
+        ),
+        depends_on=("system", "iam", "org"),
+    ),
+    ServiceManifest(
         code="onboarding",
         name="Обучение работе в платформе",
         description=(

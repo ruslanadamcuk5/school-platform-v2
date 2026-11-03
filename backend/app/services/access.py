@@ -95,6 +95,10 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "analytics.",
         "communication.",
         "onboarding.",
+        "primary_education.",
+        "secondary_education.",
+        "vocational_education.",
+        "higher_education.",
     ),
     "methodologist": (
         "lms.",
@@ -105,6 +109,12 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "analytics.bi.read",
         "onboarding.courses.read",
         "onboarding.progress.read",
+        "primary_education.read",
+        "secondary_education.read",
+        "vocational_education.read",
+        "vocational_education.profiles.read",
+        "higher_education.read",
+        "higher_education.profiles.read",
     ),
     "teacher": (
         "lms.content.read",
@@ -117,6 +127,12 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "library.",
         "onboarding.courses.read",
         "onboarding.progress.read",
+        "primary_education.read",
+        "secondary_education.read",
+        "vocational_education.read",
+        "vocational_education.profiles.read",
+        "higher_education.read",
+        "higher_education.profiles.read",
     ),
     "student": (
         "lms.content.read",
@@ -128,6 +144,10 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "library.catalog.read",
         "communication.chat.use",
         "onboarding.courses.read",
+        "primary_education.read",
+        "secondary_education.read",
+        "vocational_education.read",
+        "higher_education.read",
     ),
     "parent": (
         "journal.schedule.read",
@@ -138,6 +158,8 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "communication.chat.use",
         "onboarding.courses.read",
         "onboarding.progress.read",
+        "primary_education.read",
+        "secondary_education.read",
     ),
     "psychologist": (
         "safety.",
@@ -152,6 +174,10 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "iam.users.read",
         "iam.profile.read",
         "onboarding.courses.read",
+        "primary_education.read",
+        "secondary_education.read",
+        "vocational_education.read",
+        "higher_education.read",
     ),
 }
 

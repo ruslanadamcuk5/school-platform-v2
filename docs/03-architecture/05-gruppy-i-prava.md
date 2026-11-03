@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-05 |
-| Версия | 1.0 |
+| Версия | 1.1 |
 | Статус | Рабочий |
-| Дата | 30.10.2026 |
+| Дата | 03.11.2026 |
 | Связанные документы | ШК-03-04, ШК-04-02, ШК-05-01 |
 
 ## 1. Принцип
@@ -123,6 +123,9 @@
 | Психолог | `safety.support.use`, `safety.incidents.manage`, `journal.summary.read` |
 | Секретариат | `documents.requests.process`, `documents.templates.read`, `org.members.read` |
 | Родитель | `journal.grades.read`, `journal.attendance.read`, `library.catalog.read`, `documents.requests.create` |
+| Студент колледжа/вуза | `vocational_education.read` или `higher_education.read`, `lms.content.read`, `assessment.submissions.submit` |
+| Преподаватель колледжа/вуза | права студента + `{service}.profiles.read`, `{service}.manage`, `assessment.submissions.grade` |
+| Администрация колледжа/вуза | `{service}.programs.manage`, `{service}.profiles.manage`, `org.classes.write`, `analytics.reports.read` |
 | Администрация города | права школы + `org.schools.write`, `admin.region.manage`, `analytics.bi.read` |
 | Администрация области | права города + `admin.region.manage`, `analytics.reports.export` |
 | Республиканская администрация | все права, включая `admin.country.manage`, `system.services.write` |

@@ -1,4 +1,4 @@
-"""FastAPI application entry point for the «Школьник» platform."""
+"""FastAPI application entry point for the «ВЕКТОР» platform."""
 from __future__ import annotations
 
 import logging
@@ -42,7 +42,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title=f"{settings.app_name} API",
     description=(
-        "Единая образовательная онлайн-платформа «Школьник». "
+        "Единая образовательная республиканская платформа «ВЕКТОР». "
         "Пилотный backend: JWT, RBAC и мультитенантность по school_id."
     ),
     version=settings.api_version,
@@ -50,7 +50,7 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
-    contact={"name": "Школьник", "url": settings.app_url},
+    contact={"name": "ВЕКТОР", "url": settings.app_url},
     license_info={"name": "Proprietary"},
     openapi_tags=[
         {"name": "system", "description": "Здоровье сервиса, метаданные и реестр сервисов"},
