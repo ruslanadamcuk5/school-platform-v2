@@ -5,7 +5,9 @@ import uuid
 
 from app.services.access import (
     PermissionGrant,
+    inherits_across_scopes,
     legacy_allows,
+    parent_inherits,
     pick_service_state,
     resolve_permissions,
     scope_within,
@@ -133,6 +135,18 @@ def test_legacy_bridge_is_explicit() -> None:
     assert legacy_allows("student", "iam.groups.write") is False
     assert legacy_allows("teacher", "journal.grades.write") is True
     assert legacy_allows("parent", "journal.grades.write") is False
+
+
+def test_parent_chain_must_not_cross_categories() -> None:
+    assert parent_inherits("students", "students") is True
+    assert parent_inherits("students", "administration") is False
+    assert parent_inherits("teachers", "students") is False
+
+
+def test_administration_groups_do_not_inherit_across_scopes() -> None:
+    assert inherits_across_scopes("students") is True
+    assert inherits_across_scopes("teachers") is True
+    assert inherits_across_scopes("administration") is False
 
 
 def test_scope_within_rejects_unrelated_scope() -> None:

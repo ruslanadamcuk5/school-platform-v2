@@ -493,8 +493,17 @@ async def seed() -> None:
                 category=category,
                 scope_type="school",
                 scope_id=school.id,
-                parent_id=country_admin.id,
+                # Do not inherit country administration grants.  School
+                # groups get only the permissions granted below; the access
+                # resolver already inherits same-category groups by scope.
+                parent_id=None,
             )
+            # Existing pilot installations may still have school groups
+            # parented to the country administration group.  Same-category
+            # inheritance is resolved by scope, so this link is redundant and
+            # dangerous once the country group holds every permission.
+            if group.parent_id is not None:
+                group.parent_id = None
             school_groups[category] = group
             codes = {
                 code

@@ -250,6 +250,28 @@ def scope_within(
     return target in ancestors
 
 
+def parent_inherits(child_category: str, parent_category: str) -> bool:
+    """Only groups of the same functional category may inherit permissions.
+
+    The explicit ``parent_id`` chain is a convenience for same-category
+    inheritance (class -> school -> city ...).  Crossing categories would let
+    a school student group inherit country administration grants, so such a
+    link is ignored both here and by the seed.
+    """
+    return child_category == parent_category
+
+
+def inherits_across_scopes(category: str) -> bool:
+    """Administration groups are never inherited from an ancestor scope.
+
+    A country-level administration group holds every permission in the
+    catalog.  If a school administration group inherited it, every school
+    administrator would become a republican administrator.  School
+    administration must therefore receive its own explicit grants.
+    """
+    return category != "administration"
+
+
 # ------------------------------------------------------------------ loaders
 async def _scope_ancestors(
     session: AsyncSession, scope_type: str, scope_id: uuid.UUID
@@ -341,25 +363,35 @@ async def _parent_chain(
     session: AsyncSession, groups: Iterable[UserGroup]
 ) -> list[UserGroup]:
     seen = {group.id: group for group in groups}
-    frontier = {group.parent_id for group in groups if group.parent_id is not None}
+    # Keep the expected category for every pending parent.  The explicit chain
+    # must not cross functional categories: otherwise a student group linked to
+    # the country administration group would inherit every permission.
+    frontier = {
+        group.parent_id: group.category
+        for group in groups
+        if group.parent_id is not None
+    }
     for _ in range(20):
         if not frontier:
             break
+        parents = dict(frontier)
         rows = (
             await session.execute(
                 select(UserGroup).where(
-                    UserGroup.id.in_(frontier),
+                    UserGroup.id.in_(set(parents)),
                     UserGroup.is_active.is_(True),
                 )
             )
         ).scalars().all()
-        frontier = set()
+        frontier = {}
         for group in rows:
+            if not parent_inherits(parents[group.id], group.category):
+                continue
             if group.id in seen:
                 continue
             seen[group.id] = group
             if group.parent_id is not None and group.parent_id not in seen:
-                frontier.add(group.parent_id)
+                frontier[group.parent_id] = group.category
     return list(seen.values())
 
 
@@ -368,11 +400,14 @@ async def _organisational_groups(
     categories: set[str],
     scope_keys: set[tuple[str, uuid.UUID]],
 ) -> list[UserGroup]:
-    if not categories or not scope_keys:
+    inherited_categories = {
+        category for category in categories if inherits_across_scopes(category)
+    }
+    if not inherited_categories or not scope_keys:
         return []
     stmt = select(UserGroup).where(
         UserGroup.is_active.is_(True),
-        UserGroup.category.in_(categories),
+        UserGroup.category.in_(inherited_categories),
         tuple_(UserGroup.scope_type, UserGroup.scope_id).in_(scope_keys),
     )
     return list((await session.execute(stmt)).scalars().unique().all())
