@@ -22,6 +22,26 @@ class SchoolOut(BaseModel):
     created_at: datetime
 
 
+class RegionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    name: str
+    created_at: datetime
+
+
+class CityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    region_id: uuid.UUID
+    code: str
+    name: str
+    city_type: str
+    created_at: datetime
+
+
 class ClassOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

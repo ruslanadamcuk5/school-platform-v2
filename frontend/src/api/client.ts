@@ -2,6 +2,8 @@ import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 
 import type {
   AdminStats,
+  AnalyticsOverview,
+  City,
   EffectiveService,
   Group,
   GroupDetail,
@@ -9,7 +11,12 @@ import type {
   Health,
   MyPermissions,
   MyServices,
+  OnboardingModule,
+  OnboardingOverview,
+  OnboardingProgress,
+  OnboardingReportUsers,
   PermissionList,
+  Region,
   School,
   SchoolClass,
   Service,
@@ -288,6 +295,18 @@ export async function removeGroupPermission(
   await api.delete(`/groups/${groupId}/permissions/${encodeURIComponent(permissionCode)}`);
 }
 
+export async function fetchRegions(): Promise<Region[]> {
+  const { data } = await api.get<Region[]>('/org/regions');
+  return data;
+}
+
+export async function fetchCities(regionId?: string): Promise<City[]> {
+  const { data } = await api.get<City[]>('/org/cities', {
+    params: { region_id: regionId || undefined },
+  });
+  return data;
+}
+
 export async function fetchSchools(): Promise<School[]> {
   const { data } = await api.get<School[]>('/org/schools');
   return data;
@@ -314,9 +333,112 @@ export async function fetchStats(schoolId?: string): Promise<AdminStats> {
   return data;
 }
 
+export async function fetchAnalyticsOverview(params?: {
+  school_id?: string;
+  academic_year?: string;
+}): Promise<AnalyticsOverview> {
+  const { data } = await api.get<AnalyticsOverview>('/analytics/overview', {
+    params: {
+      school_id: params?.school_id || undefined,
+      academic_year: params?.academic_year || undefined,
+    },
+  });
+  return data;
+}
+
+export async function downloadAnalyticsReport(params?: {
+  school_id?: string;
+  academic_year?: string;
+}): Promise<Blob> {
+  const { data } = await api.get<Blob>('/analytics/export.csv', {
+    params: {
+      school_id: params?.school_id || undefined,
+      academic_year: params?.academic_year || undefined,
+    },
+    responseType: 'blob',
+  });
+  return data;
+}
+
 export async function fetchEffectiveService(
   code: string,
 ): Promise<EffectiveService | undefined> {
   const data = await fetchMyServices();
   return data.items.find((item) => item.code === code);
+}
+
+export async function fetchOnboardingOverview(): Promise<OnboardingOverview> {
+  const { data } = await api.get<OnboardingOverview>('/onboarding/me');
+  return data;
+}
+
+export async function fetchOnboardingModule(
+  moduleCode: string,
+): Promise<OnboardingModule> {
+  const { data } = await api.get<OnboardingModule>(
+    `/onboarding/me/modules/${encodeURIComponent(moduleCode)}`,
+  );
+  return data;
+}
+
+export async function startOnboardingModule(
+  moduleCode: string,
+): Promise<OnboardingProgress> {
+  const { data } = await api.post<OnboardingProgress>(
+    `/onboarding/me/modules/${encodeURIComponent(moduleCode)}/start`,
+  );
+  return data;
+}
+
+export async function completeOnboardingStep(
+  moduleCode: string,
+  stepCode: string,
+): Promise<OnboardingProgress> {
+  const { data } = await api.post<OnboardingProgress>(
+    `/onboarding/me/modules/${encodeURIComponent(moduleCode)}/steps/${encodeURIComponent(stepCode)}/complete`,
+  );
+  return data;
+}
+
+export async function fetchOnboardingReportUsers(params?: {
+  school_id?: string;
+  role?: string;
+  status?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<OnboardingReportUsers> {
+  const { data } = await api.get<OnboardingReportUsers>('/onboarding/reports/users', {
+    params: {
+      school_id: params?.school_id || undefined,
+      role: params?.role || undefined,
+      status: params?.status || undefined,
+      search: params?.search || undefined,
+      limit: params?.limit ?? 50,
+      offset: params?.offset ?? 0,
+    },
+  });
+  return data;
+}
+
+export async function resetOnboardingUser(userId: string): Promise<void> {
+  await api.post(`/onboarding/reports/users/${encodeURIComponent(userId)}/reset`);
+}
+
+export async function downloadOnboardingReport(params?: {
+  school_id?: string;
+  role?: string;
+  status?: string;
+  search?: string;
+}): Promise<Blob> {
+  const { data } = await api.get<Blob>('/onboarding/reports/export.csv', {
+    params: {
+      school_id: params?.school_id || undefined,
+      role: params?.role || undefined,
+      status: params?.status || undefined,
+      search: params?.search || undefined,
+    },
+    responseType: 'blob',
+  });
+  return data;
 }

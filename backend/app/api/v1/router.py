@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    analytics,
     assessment,
     auth,
     groups,
@@ -10,6 +11,7 @@ from app.api.v1 import (
     library,
     lms,
     me,
+    onboarding,
     org,
     services,
     system,
@@ -27,3 +29,5 @@ api_router.include_router(lms.router)
 api_router.include_router(assessment.router)
 api_router.include_router(journal.router)
 api_router.include_router(library.router)
+api_router.include_router(analytics.router)
+api_router.include_router(onboarding.router)

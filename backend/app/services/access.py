@@ -94,6 +94,7 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "library.",
         "analytics.",
         "communication.",
+        "onboarding.",
     ),
     "methodologist": (
         "lms.",
@@ -102,6 +103,8 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "journal.",
         "analytics.reports.read",
         "analytics.bi.read",
+        "onboarding.courses.read",
+        "onboarding.progress.read",
     ),
     "teacher": (
         "lms.content.read",
@@ -112,6 +115,8 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "assessment.results.read",
         "journal.",
         "library.",
+        "onboarding.courses.read",
+        "onboarding.progress.read",
     ),
     "student": (
         "lms.content.read",
@@ -122,6 +127,7 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "journal.attendance.read",
         "library.catalog.read",
         "communication.chat.use",
+        "onboarding.courses.read",
     ),
     "parent": (
         "journal.schedule.read",
@@ -130,18 +136,22 @@ LEGACY_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "assessment.results.read",
         "library.catalog.read",
         "communication.chat.use",
+        "onboarding.courses.read",
+        "onboarding.progress.read",
     ),
     "psychologist": (
         "safety.",
         "journal.",
         "iam.profile.read",
         "communication.chat.use",
+        "onboarding.courses.read",
     ),
     "secretary": (
         "documents.",
         "org.",
         "iam.users.read",
         "iam.profile.read",
+        "onboarding.courses.read",
     ),
 }
 

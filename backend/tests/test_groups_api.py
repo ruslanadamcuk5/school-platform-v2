@@ -118,6 +118,21 @@ def test_non_country_scope_requires_identifier() -> None:
     assert exc.value.status_code == 422
 
 
+@pytest.mark.parametrize("scope_type", ["region", "city", "school", "class"])
+def test_regional_and_local_groups_keep_scope_identifier(scope_type: str) -> None:
+    scope_id = uuid.uuid4()
+    payload = GroupCreate(
+        code=f"{scope_type}.group",
+        name="Группа уровня",
+        category="other",
+        scope_type=scope_type,
+        scope_id=scope_id,
+    )
+    resolved_type, resolved_id = _resolve_scope(payload)
+    assert resolved_type == scope_type
+    assert resolved_id == scope_id
+
+
 def test_groups_endpoints_are_published() -> None:
     from app.main import app
 

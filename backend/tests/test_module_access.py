@@ -48,6 +48,7 @@ async def _request(path: str):
         ("/api/v1/assessment/assignments", "assessment"),
         ("/api/v1/library", "library"),
         ("/api/v1/lms/subjects", "lms"),
+        ("/api/v1/onboarding/me", "onboarding"),
     ],
 )
 async def test_module_rejects_disabled_service(monkeypatch, path, service):
@@ -74,6 +75,7 @@ async def test_module_rejects_disabled_service(monkeypatch, path, service):
         ("/api/v1/assessment/assignments", "assessment"),
         ("/api/v1/library", "library"),
         ("/api/v1/lms/subjects", "lms"),
+        ("/api/v1/onboarding/me", "onboarding"),
     ],
 )
 async def test_module_rejects_missing_permission(monkeypatch, path, service):

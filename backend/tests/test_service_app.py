@@ -16,6 +16,14 @@ def test_standalone_library_app_mounts_only_library_routes() -> None:
     assert not any(path.startswith("/api/v1/journal") for path in paths)
 
 
+def test_standalone_analytics_app_mounts_only_analytics_routes() -> None:
+    app = create_service_app("analytics")
+    paths = app.openapi()["paths"]
+    assert "/api/v1/analytics/overview" in paths
+    assert "/api/v1/analytics/export.csv" in paths
+    assert not any(path.startswith("/api/v1/journal") for path in paths)
+
+
 def test_standalone_system_app_mounts_service_catalog() -> None:
     app = create_service_app("system")
     paths = app.openapi()["paths"]

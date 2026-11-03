@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  BarChart3,
   Bell,
   Boxes,
   ChevronRight,
@@ -24,7 +25,7 @@ import {
   serviceRoute,
 } from '../lib/labels';
 
-const hiddenServiceCodes = new Set(['iam', 'org', 'system', 'audit']);
+const hiddenServiceCodes = new Set(['iam', 'org', 'system', 'audit', 'onboarding']);
 
 function NavItem({
   to,
@@ -33,6 +34,7 @@ function NavItem({
   end,
   onNavigate,
   badge,
+  onboardingNav,
 }: {
   to: string;
   label: string;
@@ -40,12 +42,14 @@ function NavItem({
   end?: boolean;
   onNavigate?: () => void;
   badge?: string;
+  onboardingNav?: string;
 }) {
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onNavigate}
+      data-onboarding-nav={onboardingNav}
       className={({ isActive }) =>
         cn(
           'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
@@ -90,6 +94,7 @@ function ServiceNavItem({
       icon={<span>{service.icon}</span>}
       onNavigate={onNavigate}
       badge={service.status === 'beta' ? 'β' : undefined}
+      onboardingNav={service.code}
     />
   );
 }
@@ -100,6 +105,8 @@ function pageTitle(pathname: string, services: EffectiveService[]): string {
     '/groups': 'Группы и права',
     '/services': 'Сервисы платформы',
     '/profile': 'Профиль',
+    '/onboarding': 'Обучение работе',
+    '/onboarding/reports': 'Прогресс обучения',
     '/journal': 'Электронный журнал',
     '/library': 'Библиотека',
     '/lms': 'Обучение (LMS)',
@@ -112,6 +119,7 @@ function pageTitle(pathname: string, services: EffectiveService[]): string {
     '/admin': 'Администрирование',
   };
   if (map[pathname]) return map[pathname];
+  if (pathname.startsWith('/onboarding/')) return 'Обучение работе';
   const service = services.find((item) => serviceRoute(item.code) === pathname);
   return service?.name ?? 'Школьник';
 }
@@ -193,7 +201,30 @@ export function AppLayout() {
             icon={<LayoutDashboard className="h-4 w-4" />}
             end
             onNavigate={closeMobile}
+            onboardingNav="dashboard"
           />
+
+          {can('onboarding.courses.read') ? (
+            <>
+              <SectionLabel>Обучение работе</SectionLabel>
+              <NavItem
+                to="/onboarding"
+                label="Программа обучения"
+                icon={<GraduationCap className="h-4 w-4" />}
+                onNavigate={closeMobile}
+                onboardingNav="onboarding"
+              />
+              {can('onboarding.progress.read') ? (
+                <NavItem
+                  to="/onboarding/reports"
+                  label="Прогресс обучения"
+                  icon={<BarChart3 className="h-4 w-4" />}
+                  onNavigate={closeMobile}
+                  onboardingNav="onboarding-reports"
+                />
+              ) : null}
+            </>
+          ) : null}
 
           {educationServices.length > 0 ? (
             <>
@@ -230,6 +261,7 @@ export function AppLayout() {
                   label="Группы и права"
                   icon={<Users className="h-4 w-4" />}
                   onNavigate={closeMobile}
+                  onboardingNav="groups"
                 />
               ) : null}
               {can('system.services.read') ? (
@@ -238,6 +270,7 @@ export function AppLayout() {
                   label="Сервисы"
                   icon={<Boxes className="h-4 w-4" />}
                   onNavigate={closeMobile}
+                  onboardingNav="services"
                 />
               ) : null}
             </>
@@ -249,6 +282,7 @@ export function AppLayout() {
             label="Профиль и доступ"
             icon={<UserCircle className="h-4 w-4" />}
             onNavigate={closeMobile}
+            onboardingNav="profile"
           />
         </nav>
 
@@ -344,7 +378,10 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main
+          data-onboarding="page-content"
+          className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+        >
           <Outlet />
         </main>
       </div>

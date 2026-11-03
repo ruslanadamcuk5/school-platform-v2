@@ -7,10 +7,37 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, ensure_school_access
-from app.models.org import School, SchoolClass
-from app.schemas.org import ClassOut, SchoolOut
+from app.models.org import City, Region, School, SchoolClass
+from app.schemas.org import CityOut, ClassOut, RegionOut, SchoolOut
 
 router = APIRouter(prefix="/org", tags=["org"])
+
+
+@router.get(
+    "/regions",
+    response_model=list[RegionOut],
+    summary="Области и регионы",
+)
+async def list_regions(current_user: CurrentUser, session: SessionDep):
+    stmt = select(Region).order_by(Region.name)
+    return list((await session.execute(stmt)).scalars().all())
+
+
+@router.get(
+    "/cities",
+    response_model=list[CityOut],
+    summary="Города и районы",
+)
+async def list_cities(
+    current_user: CurrentUser,
+    session: SessionDep,
+    region_id: uuid.UUID | None = Query(default=None),
+):
+    stmt = select(City)
+    if region_id is not None:
+        stmt = stmt.where(City.region_id == region_id)
+    stmt = stmt.order_by(City.name)
+    return list((await session.execute(stmt)).scalars().all())
 
 
 @router.get(

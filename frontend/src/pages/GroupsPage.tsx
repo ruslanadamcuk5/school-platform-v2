@@ -21,8 +21,10 @@ import {
   addGroupMembers,
   apiErrorMessage,
   createGroup,
+  fetchCities,
   fetchClasses,
   fetchGroup,
+  fetchRegions,
   fetchGroups,
   fetchPermissions,
   fetchSchools,
@@ -32,9 +34,11 @@ import {
   setGroupPermission,
 } from '../api/client';
 import type {
+  City,
   Group,
   GroupDetail,
   Permission,
+  Region,
   School,
   SchoolClass,
   ScopeType,
@@ -74,7 +78,13 @@ const scopeDepth: Record<ScopeType, number> = {
   class: 4,
 };
 
-const creatableScopes: ScopeType[] = ['country', 'school', 'class'];
+const creatableScopes: ScopeType[] = [
+  'country',
+  'region',
+  'city',
+  'school',
+  'class',
+];
 
 const categories = Object.keys(categoryLabels) as Group['category'][];
 
@@ -84,6 +94,8 @@ interface CreateForm {
   description: string;
   category: Group['category'];
   scopeType: ScopeType;
+  regionId: string;
+  cityId: string;
   schoolId: string;
   classId: string;
   parentId: string;
@@ -95,6 +107,8 @@ const emptyForm: CreateForm = {
   description: '',
   category: 'other',
   scopeType: 'school',
+  regionId: '',
+  cityId: '',
   schoolId: '',
   classId: '',
   parentId: '',
@@ -115,6 +129,8 @@ export function GroupsPage() {
   const [showInactive, setShowInactive] = useState(false);
 
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
@@ -167,13 +183,22 @@ export function GroupsPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadCatalogs() {
-      const [permissionsResult, schoolsResult] = await Promise.allSettled([
-        fetchPermissions(),
-        fetchSchools(),
-      ]);
+      const [permissionsResult, regionsResult, citiesResult, schoolsResult] =
+        await Promise.allSettled([
+          fetchPermissions(),
+          fetchRegions(),
+          fetchCities(),
+          fetchSchools(),
+        ]);
       if (cancelled) return;
       if (permissionsResult.status === 'fulfilled') {
         setPermissions(permissionsResult.value.items);
+      }
+      if (regionsResult.status === 'fulfilled') {
+        setRegions(regionsResult.value);
+      }
+      if (citiesResult.status === 'fulfilled') {
+        setCities(citiesResult.value);
       }
       if (schoolsResult.status === 'fulfilled') {
         setSchools(schoolsResult.value);
@@ -282,6 +307,19 @@ export function GroupsPage() {
     [schools],
   );
 
+  const regionById = useMemo(
+    () => new Map(regions.map((region) => [region.id, region])),
+    [regions],
+  );
+
+  const availableCities = useMemo(
+    () =>
+      form.regionId
+        ? cities.filter((city) => city.region_id === form.regionId)
+        : cities,
+    [cities, form.regionId],
+  );
+
   const availableParents = useMemo(() => {
     if (form.scopeType === 'country') return [];
     return groups.filter(
@@ -321,14 +359,16 @@ export function GroupsPage() {
     setCreateError(null);
     setCreating(true);
     try {
-      const scopeId =
-        form.scopeType === 'country'
-          ? null
-          : form.scopeType === 'school'
-            ? form.schoolId
-            : form.classId;
+      const scopeIdByType: Record<ScopeType, string | null> = {
+        country: null,
+        region: form.regionId || null,
+        city: form.cityId || null,
+        school: form.schoolId || null,
+        class: form.classId || null,
+      };
+      const scopeId = scopeIdByType[form.scopeType];
       if (form.scopeType !== 'country' && !scopeId) {
-        throw new Error('Выберите школу или класс для этой группы.');
+        throw new Error('Выберите область, город, школу или класс для этой группы.');
       }
       const created = await createGroup({
         code: form.code.trim(),
@@ -722,6 +762,7 @@ export function GroupsPage() {
                   setForm((current) => ({
                     ...current,
                     scopeType: event.target.value as ScopeType,
+                    cityId: '',
                     classId: '',
                     parentId: '',
                   }))
@@ -758,7 +799,89 @@ export function GroupsPage() {
             </label>
           </div>
 
-          {form.scopeType !== 'country' ? (
+          {form.scopeType === 'region' ? (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Область *
+              </span>
+              <select
+                value={form.regionId}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, regionId: event.target.value }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="">Выберите область</option>
+                {regions.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+              {regions.length === 0 ? (
+                <span className="mt-1 block text-[10px] text-amber-600">
+                  Справочник областей пуст. Обратитесь к администратору контура.
+                </span>
+              ) : null}
+            </label>
+          ) : null}
+
+          {form.scopeType === 'city' ? (
+            <>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Область (фильтр)
+                </span>
+                <select
+                  value={form.regionId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      regionId: event.target.value,
+                      cityId: '',
+                    }))
+                  }
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                >
+                  <option value="">Все области</option>
+                  {regions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Город / район *
+                </span>
+                <select
+                  value={form.cityId}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, cityId: event.target.value }))
+                  }
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                >
+                  <option value="">Выберите город или район</option>
+                  {availableCities.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                      {regionById.get(city.region_id)
+                        ? ` · ${regionById.get(city.region_id)?.name}`
+                        : ''}
+                    </option>
+                  ))}
+                </select>
+                {availableCities.length === 0 ? (
+                  <span className="mt-1 block text-[10px] text-amber-600">
+                    Нет доступных городов для выбранной области.
+                  </span>
+                ) : null}
+              </label>
+            </>
+          ) : null}
+
+          {form.scopeType === 'school' || form.scopeType === 'class' ? (
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-700">
                 Школа *

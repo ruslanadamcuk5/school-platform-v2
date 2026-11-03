@@ -154,6 +154,37 @@ SERVICES: tuple[ServiceManifest, ...] = (
         depends_on=("system", "iam"),
     ),
     ServiceManifest(
+        code="onboarding",
+        name="Обучение работе в платформе",
+        description=(
+            "Персональные интерактивные туры по включённым сервисам: этапы, "
+            "подсказки, анимированные указатели, сохранение прогресса и "
+            "отчёты для администраторов, руководителей и учителей."
+        ),
+        category="education",
+        api_prefix="/api/v1/onboarding",
+        icon="🎓",
+        default_enabled=True,
+        permissions=(
+            PermissionSpec(
+                "onboarding.courses.read",
+                "Прохождение обучения",
+                "read",
+            ),
+            PermissionSpec(
+                "onboarding.progress.read",
+                "Просмотр прогресса обучения",
+                "read",
+            ),
+            PermissionSpec(
+                "onboarding.progress.manage",
+                "Управление прогрессом обучения",
+                "admin",
+            ),
+        ),
+        depends_on=("system", "iam", "org"),
+    ),
+    ServiceManifest(
         code="lms",
         name="Учебный контент",
         description=(

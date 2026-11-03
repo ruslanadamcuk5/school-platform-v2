@@ -32,7 +32,7 @@ from app.models.iam import (
     User,
     UserGroup,
 )
-from app.models.org import School, SchoolClass
+from app.models.org import City, Region, School, SchoolClass
 from app.models.system import Service, ServiceActivation
 from app.services.access import legacy_allows
 from app.services.registry import PERMISSION_BY_CODE, SERVICES
@@ -69,6 +69,106 @@ ROLE_FOR_CATEGORY = {
     "secretaries": "secretary",
     "parents": "parent",
 }
+
+
+# Reference geography for groups and school cards.  Codes are stable and the
+# data is idempotently upserted; no personal data is stored here.
+GEOGRAPHY: tuple[tuple[str, str, tuple[tuple[str, str], ...]], ...] = (
+    (
+        "by.brest",
+        "Брестская область",
+        (
+            ("by.brest.brest", "Брест"),
+            ("by.brest.baranovichi", "Барановичи"),
+            ("by.brest.pinsk", "Пинск"),
+        ),
+    ),
+    (
+        "by.vitebsk",
+        "Витебская область",
+        (
+            ("by.vitebsk.vitebsk", "Витебск"),
+            ("by.vitebsk.orsha", "Орша"),
+            ("by.vitebsk.novopolotsk", "Новополоцк"),
+        ),
+    ),
+    (
+        "by.gomel",
+        "Гомельская область",
+        (
+            ("by.gomel.gomel", "Гомель"),
+            ("by.gomel.mozyr", "Мозырь"),
+            ("by.gomel.zhlobin", "Жлобин"),
+        ),
+    ),
+    (
+        "by.grodno",
+        "Гродненская область",
+        (
+            ("by.grodno.grodno", "Гродно"),
+            ("by.grodno.lida", "Лида"),
+            ("by.grodno.slonim", "Слоним"),
+        ),
+    ),
+    (
+        "by.mogilev",
+        "Могилёвская область",
+        (
+            ("by.mogilev.mogilev", "Могилёв"),
+            ("by.mogilev.bobruisk", "Бобруйск"),
+            ("by.mogilev.osipovichi", "Осиповичи"),
+        ),
+    ),
+    (
+        "by.minsk-region",
+        "Минская область",
+        (
+            ("by.minsk-region.borisov", "Борисов"),
+            ("by.minsk-region.soligorsk", "Солигорск"),
+            ("by.minsk-region.molodechno", "Молодечно"),
+        ),
+    ),
+    (
+        "by.minsk-city",
+        "г. Минск",
+        (("by.minsk-city.minsk", "Минск"),),
+    ),
+)
+
+
+async def _upsert_geography(session) -> tuple[int, int]:
+    regions = {
+        region.code: region
+        for region in (await session.execute(select(Region))).scalars().all()
+    }
+    cities = {
+        city.code: city
+        for city in (await session.execute(select(City))).scalars().all()
+    }
+    created_regions = 0
+    created_cities = 0
+    for region_code, region_name, region_cities in GEOGRAPHY:
+        region = regions.get(region_code)
+        if region is None:
+            region = Region(code=region_code, name=region_name)
+            session.add(region)
+            await session.flush()
+            regions[region_code] = region
+            created_regions += 1
+        for city_code, city_name in region_cities:
+            if city_code in cities:
+                continue
+            city = City(
+                region_id=region.id,
+                code=city_code,
+                name=city_name,
+                city_type="city",
+            )
+            session.add(city)
+            cities[city_code] = city
+            created_cities += 1
+    await session.flush()
+    return created_regions, created_cities
 
 
 async def _upsert_permissions(session) -> int:
@@ -271,6 +371,17 @@ async def seed() -> None:
         )
 
     async with AsyncSessionLocal() as session:
+        regions_created, cities_created = await _upsert_geography(session)
+        print(
+            f"geography: regions +{regions_created}, cities +{cities_created}"
+        )
+
+        pilot_city = (
+            await session.execute(
+                select(City).where(City.code == "by.minsk-city.minsk")
+            )
+        ).scalar_one_or_none()
+
         school = (
             await session.execute(
                 select(School).where(School.code == settings.seed_school_code)
@@ -281,6 +392,7 @@ async def seed() -> None:
                 code=settings.seed_school_code,
                 name=settings.seed_school_name,
                 short_name="Пилотная школа",
+                city_id=pilot_city.id if pilot_city else None,
                 city=settings.seed_school_city,
                 address="",
                 is_active=True,
@@ -289,6 +401,8 @@ async def seed() -> None:
             await session.flush()
             print(f"created school: {school.name} ({school.id})")
         else:
+            if school.city_id is None and pilot_city is not None:
+                school.city_id = pilot_city.id
             print(f"school exists: {school.name} ({school.id})")
 
         existing_classes = (

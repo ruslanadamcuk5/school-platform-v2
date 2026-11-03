@@ -45,6 +45,7 @@ from app.models.lms import (
     Topic,
     UserBadge,
 )
+from app.models.onboarding import OnboardingModuleProgress, OnboardingProfile
 from app.models.org import City, ClassMembership, Region, School, SchoolClass, TeacherSubject
 from app.models.system import (
     FeatureFlag,
@@ -87,6 +88,8 @@ __all__ = [
     "Method",
     "MethodProgress",
     "Notification",
+    "OnboardingModuleProgress",
+    "OnboardingProfile",
     "Permission",
     "PlaySession",
     "Question",

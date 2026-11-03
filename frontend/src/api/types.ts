@@ -171,6 +171,22 @@ export interface MyPermissions {
   groups: Group[];
 }
 
+export interface Region {
+  id: string;
+  code: string;
+  name: string;
+  created_at: string;
+}
+
+export interface City {
+  id: string;
+  region_id: string;
+  code: string;
+  name: string;
+  city_type: string;
+  created_at: string;
+}
+
 export interface School {
   id: string;
   code: string;
@@ -213,6 +229,66 @@ export interface AdminStats {
   classes_active: number;
 }
 
+export interface AnalyticsTotals {
+  students: number;
+  teachers: number;
+  classes: number;
+  grades_count: number;
+}
+
+export interface AnalyticsGrades {
+  average: number | null;
+  distribution: Record<string, number>;
+  excellent: number;
+  good: number;
+  satisfactory: number;
+  low: number;
+}
+
+export interface AnalyticsAttendance {
+  total: number;
+  present: number;
+  absent: number;
+  sick: number;
+  late: number;
+  excused: number;
+  rate: number | null;
+}
+
+export interface AnalyticsSubject {
+  subject_id: string;
+  subject_name: string;
+  grades_count: number;
+  average: number | null;
+  attendance_total: number;
+  attendance_rate: number | null;
+}
+
+export interface AnalyticsClass {
+  class_id: string;
+  class_name: string;
+  grade: number;
+  letter: string;
+  students: number;
+  grades_count: number;
+  average: number | null;
+  attendance_total: number;
+  attendance_rate: number | null;
+}
+
+export interface AnalyticsOverview {
+  school_id: string;
+  school_name: string;
+  academic_year: string;
+  available_years: string[];
+  generated_at: string;
+  totals: AnalyticsTotals;
+  grades: AnalyticsGrades;
+  attendance: AnalyticsAttendance;
+  subjects: AnalyticsSubject[];
+  classes: AnalyticsClass[];
+}
+
 export interface Health {
   status: 'ok' | 'degraded';
   service: string;
@@ -239,4 +315,120 @@ export interface AuditList {
   items: AuditEvent[];
   limit: number;
   offset: number;
+}
+
+export type OnboardingStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'completed'
+  | 'skipped';
+
+export interface OnboardingStep {
+  code: string;
+  title: string;
+  body: string;
+  target: string | null;
+  route: string | null;
+  tip: string | null;
+  action: 'next' | 'click';
+  duration_seconds: number;
+  completed: boolean;
+}
+
+export interface OnboardingModule {
+  code: string;
+  service_code: string;
+  service_name: string;
+  service_icon: string;
+  stage: string;
+  title: string;
+  description: string;
+  icon: string;
+  estimated_minutes: number;
+  roles: string[] | null;
+  is_addon: boolean;
+  status: OnboardingStatus;
+  current_step_code: string | null;
+  completed_steps: number;
+  total_steps: number;
+  progress_percent: number;
+  started_at: string | null;
+  completed_at: string | null;
+  last_activity_at: string | null;
+  steps: OnboardingStep[];
+}
+
+export interface OnboardingStage {
+  code: string;
+  title: string;
+  description: string;
+  modules: OnboardingModule[];
+  total: number;
+  completed: number;
+  progress_percent: number;
+}
+
+export interface OnboardingOverview {
+  user_id: string;
+  role: Role;
+  catalog_version: string;
+  generated_at: string;
+  known_service_codes: string[];
+  stages: OnboardingStage[];
+  modules: OnboardingModule[];
+  total: number;
+  completed: number;
+  in_progress: number;
+  not_started: number;
+  addon_total: number;
+  progress_percent: number;
+}
+
+export interface OnboardingProgress {
+  module_code: string;
+  status: OnboardingStatus;
+  current_step_code: string | null;
+  completed_steps: number;
+  total_steps: number;
+  progress_percent: number;
+  started_at: string | null;
+  completed_at: string | null;
+  last_activity_at: string | null;
+}
+
+export interface OnboardingReportSummary {
+  total_users: number;
+  users_not_started: number;
+  users_in_progress: number;
+  users_completed: number;
+  modules_total: number;
+  modules_completed: number;
+  modules_in_progress: number;
+  addon_modules: number;
+  progress_percent: number;
+  by_role: Record<string, number>;
+}
+
+export interface OnboardingReportUser {
+  user_id: string;
+  login: string;
+  full_name: string;
+  role: Role;
+  school_id: string | null;
+  school_name: string | null;
+  modules_total: number;
+  modules_completed: number;
+  modules_in_progress: number;
+  addon_modules: number;
+  status: OnboardingStatus;
+  progress_percent: number;
+  last_activity_at: string | null;
+}
+
+export interface OnboardingReportUsers {
+  items: OnboardingReportUser[];
+  total: number;
+  limit: number;
+  offset: number;
+  summary: OnboardingReportSummary;
 }

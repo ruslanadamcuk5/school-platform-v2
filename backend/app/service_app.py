@@ -23,6 +23,7 @@ from sqlalchemy import text
 
 from app.api.v1 import (
     admin,
+    analytics,
     assessment,
     auth,
     groups,
@@ -30,6 +31,7 @@ from app.api.v1 import (
     library,
     lms,
     me,
+    onboarding,
     org,
     services,
     system,
@@ -51,6 +53,8 @@ ROUTER_MAP = {
     "assessment": (assessment.router,),
     "journal": (journal.router,),
     "library": (library.router,),
+    "analytics": (analytics.router,),
+    "onboarding": (onboarding.router,),
 }
 
 

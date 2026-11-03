@@ -147,6 +147,7 @@ export function serviceRoute(code: string): string {
     safety: '/safety',
     ai: '/ai',
     admin: '/admin',
+    onboarding: '/onboarding',
   };
   return known[code] ?? `/service/${code}`;
 }
