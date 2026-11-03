@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -31,6 +31,8 @@ from app.core.education import (
     EducationLevelInfo,
 )
 from app.models.education import (
+    CurriculumComponent,
+    EducationCurriculum,
     EducationProgram,
     StaffAcademicProfile,
     StudentAcademicProfile,
@@ -38,6 +40,12 @@ from app.models.education import (
 from app.models.iam import User
 from app.models.org import ClassMembership, School, SchoolClass
 from app.schemas.education import (
+    CurriculumComponentCreate,
+    CurriculumComponentOut,
+    CurriculumComponentUpdate,
+    EducationCurriculumCreate,
+    EducationCurriculumOut,
+    EducationCurriculumUpdate,
     EducationGroupOut,
     EducationLevelOut,
     EducationOverviewOut,
@@ -385,6 +393,80 @@ def _staff_profile_out(profile: StaffAcademicProfile) -> StaffAcademicProfileOut
     )
 
 
+def _curriculum_out(curriculum: EducationCurriculum) -> EducationCurriculumOut:
+    components = [
+        CurriculumComponentOut.model_validate(item)
+        for item in sorted(
+            curriculum.components,
+            key=lambda item: (item.order_index, item.semester, item.code),
+        )
+    ]
+    return EducationCurriculumOut(
+        id=curriculum.id,
+        institution_id=curriculum.institution_id,
+        program_id=curriculum.program_id,
+        program_name=curriculum.program.name if curriculum.program else "",
+        education_level=curriculum.education_level,  # type: ignore[arg-type]
+        academic_year=curriculum.academic_year,
+        name=curriculum.name,
+        description=curriculum.description,
+        status=curriculum.status,  # type: ignore[arg-type]
+        approved_at=curriculum.approved_at,
+        approved_by_id=curriculum.approved_by_id,
+        profile=curriculum.profile or {},
+        total_credits=round(sum(item.credits for item in components), 2),
+        components=components,
+        created_at=curriculum.created_at,
+        updated_at=curriculum.updated_at,
+    )
+
+
+async def _curriculum_for_institution(
+    session: AsyncSession,
+    curriculum_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> EducationCurriculum:
+    curriculum = (
+        await session.execute(
+            select(EducationCurriculum)
+            .where(EducationCurriculum.id == curriculum_id)
+            .options(
+                selectinload(EducationCurriculum.program),
+                selectinload(EducationCurriculum.components),
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        curriculum is None
+        or curriculum.institution_id != school_id
+        or curriculum.education_level != level
+    ):
+        raise HTTPException(status_code=404, detail="Curriculum not found")
+    return curriculum
+
+
+async def _component_for_curriculum(
+    session: AsyncSession,
+    component_id: uuid.UUID,
+    curriculum_id: uuid.UUID,
+) -> CurriculumComponent:
+    component = await session.get(CurriculumComponent, component_id)
+    if component is None or component.curriculum_id != curriculum_id:
+        raise HTTPException(status_code=404, detail="Curriculum component not found")
+    return component
+
+
+def _ensure_component_hours(
+    academic_hours: int, contact_hours: int
+) -> None:
+    if contact_hours > academic_hours:
+        raise HTTPException(
+            status_code=422,
+            detail="contact_hours cannot exceed academic_hours",
+        )
+
+
 def _build_level_router(level: str) -> APIRouter:
     info = _level_or_404(level)
     professional = level in PROFESSIONAL_LEVELS
@@ -576,6 +658,385 @@ def _build_level_router(level: str) -> APIRouter:
             await session.commit()
             await session.refresh(program)
             return EducationProgramOut.model_validate(program)
+
+    @level_router.get(
+        "/curricula",
+        response_model=list[EducationCurriculumOut],
+        summary="Учебные планы профессиональной ступени",
+    )
+    async def list_curricula(
+        current_user: CurrentUser,
+        session: SessionDep,
+        school_id: uuid.UUID | None = Query(default=None),
+        program_id: uuid.UUID | None = Query(default=None),
+        academic_year: str | None = Query(
+            default=None, pattern=r"^\d{4}/\d{4}$"
+        ),
+        status: str | None = Query(default=None),
+        _: User = Depends(read_dep),
+    ):
+        school = await _school_for_level(session, current_user, school_id, level)
+        if not professional:
+            return []
+        if status is not None and status not in (
+            "draft",
+            "approved",
+            "archived",
+        ):
+            raise HTTPException(status_code=422, detail="Unknown curriculum status")
+        stmt = (
+            select(EducationCurriculum)
+            .where(
+                EducationCurriculum.institution_id == school.id,
+                EducationCurriculum.education_level == level,
+            )
+            .options(
+                selectinload(EducationCurriculum.program),
+                selectinload(EducationCurriculum.components),
+            )
+            .order_by(
+                EducationCurriculum.academic_year.desc(),
+                EducationCurriculum.name,
+            )
+        )
+        if program_id is not None:
+            stmt = stmt.where(EducationCurriculum.program_id == program_id)
+        if academic_year is not None:
+            stmt = stmt.where(
+                EducationCurriculum.academic_year == academic_year
+            )
+        if status is not None:
+            stmt = stmt.where(EducationCurriculum.status == status)
+        rows = (await session.execute(stmt)).scalars().all()
+        return [_curriculum_out(item) for item in rows]
+
+    @level_router.get(
+        "/curricula/{curriculum_id}",
+        response_model=EducationCurriculumOut,
+        summary="Учебный план с компонентами",
+    )
+    async def get_curriculum(
+        curriculum_id: uuid.UUID,
+        current_user: CurrentUser,
+        session: SessionDep,
+        school_id: uuid.UUID | None = Query(default=None),
+        _: User = Depends(read_dep),
+    ):
+        school = await _school_for_level(session, current_user, school_id, level)
+        if not professional:
+            raise HTTPException(status_code=404, detail="Curriculum not found")
+        curriculum = await _curriculum_for_institution(
+            session, curriculum_id, school.id, level
+        )
+        return _curriculum_out(curriculum)
+
+    if program_dep is not None:
+
+        @level_router.post(
+            "/curricula",
+            response_model=EducationCurriculumOut,
+            status_code=201,
+            summary="Создать учебный план",
+        )
+        async def create_curriculum(
+            payload: EducationCurriculumCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            await _program_for_institution(
+                session, payload.program_id, school.id, level
+            )
+            exists = (
+                await session.execute(
+                    select(EducationCurriculum.id).where(
+                        EducationCurriculum.program_id == payload.program_id,
+                        EducationCurriculum.academic_year
+                        == payload.academic_year,
+                        EducationCurriculum.name == payload.name,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Curriculum with this name and year already exists",
+                )
+            approved = payload.status == "approved"
+            curriculum = EducationCurriculum(
+                institution_id=school.id,
+                program_id=payload.program_id,
+                education_level=level,
+                academic_year=payload.academic_year,
+                name=payload.name,
+                description=payload.description,
+                status=payload.status,
+                approved_at=datetime.now(timezone.utc) if approved else None,
+                approved_by_id=current_user.id if approved else None,
+                profile=payload.profile,
+            )
+            session.add(curriculum)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="education_curriculum_created",
+                entity_type="education_curriculum",
+                entity_id=curriculum.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "program_id": str(payload.program_id),
+                    "academic_year": payload.academic_year,
+                },
+            )
+            await session.commit()
+            saved = await _curriculum_for_institution(
+                session, curriculum.id, school.id, level
+            )
+            return _curriculum_out(saved)
+
+        @level_router.patch(
+            "/curricula/{curriculum_id}",
+            response_model=EducationCurriculumOut,
+            summary="Изменить учебный план",
+        )
+        async def update_curriculum(
+            curriculum_id: uuid.UUID,
+            payload: EducationCurriculumUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            curriculum = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            new_name = updates.get("name")
+            if new_name is not None and new_name != curriculum.name:
+                exists = (
+                    await session.execute(
+                        select(EducationCurriculum.id).where(
+                            EducationCurriculum.program_id
+                            == curriculum.program_id,
+                            EducationCurriculum.academic_year
+                            == curriculum.academic_year,
+                            EducationCurriculum.name == new_name,
+                            EducationCurriculum.id != curriculum.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "Curriculum with this name and year already exists"
+                        ),
+                    )
+            if "status" in updates:
+                if updates["status"] == "approved":
+                    curriculum.approved_at = datetime.now(timezone.utc)
+                    curriculum.approved_by_id = current_user.id
+                else:
+                    curriculum.approved_at = None
+                    curriculum.approved_by_id = None
+            for field, value in updates.items():
+                setattr(curriculum, field, value)
+            add_audit_event(
+                session,
+                action="education_curriculum_updated",
+                entity_type="education_curriculum",
+                entity_id=curriculum.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            saved = await _curriculum_for_institution(
+                session, curriculum.id, school.id, level
+            )
+            return _curriculum_out(saved)
+
+        @level_router.post(
+            "/curricula/{curriculum_id}/components",
+            response_model=CurriculumComponentOut,
+            status_code=201,
+            summary="Добавить дисциплину, модуль или практику",
+        )
+        async def create_curriculum_component(
+            curriculum_id: uuid.UUID,
+            payload: CurriculumComponentCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            curriculum = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            if curriculum.status == "archived":
+                raise HTTPException(
+                    status_code=409, detail="Curriculum is archived"
+                )
+            _ensure_component_hours(
+                payload.academic_hours, payload.contact_hours
+            )
+            exists = (
+                await session.execute(
+                    select(CurriculumComponent.id).where(
+                        CurriculumComponent.curriculum_id == curriculum.id,
+                        CurriculumComponent.code == payload.code,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Component with this code already exists",
+                )
+            component = CurriculumComponent(
+                curriculum_id=curriculum.id,
+                code=payload.code,
+                name=payload.name,
+                component_type=payload.component_type,
+                semester=payload.semester,
+                credits=payload.credits,
+                academic_hours=payload.academic_hours,
+                contact_hours=payload.contact_hours,
+                assessment_type=payload.assessment_type,
+                is_optional=payload.is_optional,
+                order_index=payload.order_index,
+                description=payload.description,
+                details=payload.details,
+            )
+            session.add(component)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="curriculum_component_created",
+                entity_type="curriculum_component",
+                entity_id=component.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "curriculum_id": str(curriculum.id),
+                    "component_type": payload.component_type,
+                },
+            )
+            await session.commit()
+            await session.refresh(component)
+            return CurriculumComponentOut.model_validate(component)
+
+        @level_router.patch(
+            "/curricula/{curriculum_id}/components/{component_id}",
+            response_model=CurriculumComponentOut,
+            summary="Изменить компонент учебного плана",
+        )
+        async def update_curriculum_component(
+            curriculum_id: uuid.UUID,
+            component_id: uuid.UUID,
+            payload: CurriculumComponentUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            curriculum = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            component = await _component_for_curriculum(
+                session, component_id, curriculum.id
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            new_code = updates.get("code")
+            if new_code is not None and new_code != component.code:
+                exists = (
+                    await session.execute(
+                        select(CurriculumComponent.id).where(
+                            CurriculumComponent.curriculum_id
+                            == curriculum.id,
+                            CurriculumComponent.code == new_code,
+                            CurriculumComponent.id != component.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Component with this code already exists",
+                    )
+            _ensure_component_hours(
+                updates.get("academic_hours", component.academic_hours),
+                updates.get("contact_hours", component.contact_hours),
+            )
+            for field, value in updates.items():
+                setattr(component, field, value)
+            add_audit_event(
+                session,
+                action="curriculum_component_updated",
+                entity_type="curriculum_component",
+                entity_id=component.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            await session.refresh(component)
+            return CurriculumComponentOut.model_validate(component)
+
+        @level_router.delete(
+            "/curricula/{curriculum_id}/components/{component_id}",
+            status_code=204,
+            summary="Удалить компонент учебного плана",
+        )
+        async def delete_curriculum_component(
+            curriculum_id: uuid.UUID,
+            component_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            curriculum = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            component = await _component_for_curriculum(
+                session, component_id, curriculum.id
+            )
+            add_audit_event(
+                session,
+                action="curriculum_component_deleted",
+                entity_type="curriculum_component",
+                entity_id=component.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "curriculum_id": str(curriculum.id),
+                    "code": component.code,
+                },
+            )
+            await session.delete(component)
+            await session.commit()
+            return Response(status_code=204)
 
     @level_router.get(
         "/profiles",

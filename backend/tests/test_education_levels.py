@@ -1,6 +1,11 @@
 """Contract tests for education levels and their service manifests."""
 from __future__ import annotations
 
+import uuid
+
+import pytest
+from pydantic import ValidationError
+
 from app.core.education import (
     DEFAULT_LEVELS_BY_INSTITUTION_TYPE,
     EDUCATION_LEVELS,
@@ -8,6 +13,10 @@ from app.core.education import (
     LEVEL_SERVICE_CODES,
     level_for_grade,
     normalize_level,
+)
+from app.schemas.education import (
+    CurriculumComponentCreate,
+    EducationCurriculumCreate,
 )
 from app.services.access import legacy_allows
 from app.services.registry import PERMISSION_BY_CODE, SERVICE_BY_CODE
@@ -70,3 +79,44 @@ def test_legacy_roles_receive_education_read_permissions() -> None:
     assert legacy_allows("student", "primary_education.read") is True
     assert legacy_allows("parent", "higher_education.read") is False
     assert legacy_allows("teacher", "higher_education.manage") is False
+
+
+def test_curriculum_requires_academic_year_format() -> None:
+    with pytest.raises(ValidationError):
+        EducationCurriculumCreate(
+            program_id=uuid.uuid4(),
+            academic_year="2026-2027",
+            name="Основная программа",
+        )
+
+    curriculum = EducationCurriculumCreate(
+        program_id=uuid.uuid4(),
+        academic_year="2026/2027",
+        name="Основная программа",
+    )
+    assert curriculum.status == "draft"
+    assert curriculum.academic_year == "2026/2027"
+
+
+def test_curriculum_component_validates_hours_and_defaults() -> None:
+    with pytest.raises(ValidationError):
+        CurriculumComponentCreate(
+            code="MATH-101",
+            name="Математика",
+            academic_hours=100,
+            contact_hours=120,
+        )
+
+    component = CurriculumComponentCreate(
+        code="PRACTICE-01",
+        name="Производственная практика",
+        component_type="practice",
+        semester=4,
+        credits=6,
+        academic_hours=216,
+        contact_hours=0,
+        assessment_type="practice_report",
+    )
+    assert component.component_type == "practice"
+    assert component.credits == 6
+    assert component.is_optional is False

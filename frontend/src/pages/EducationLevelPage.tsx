@@ -3,32 +3,46 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   GraduationCap,
   Layers3,
   Pencil,
   Plus,
   RefreshCw,
   ShieldCheck,
+  Trash2,
   Users,
 } from 'lucide-react';
 
 import { useAccess } from '../access/AccessContext';
 import {
   apiErrorMessage,
+  createCurriculum,
+  createCurriculumComponent,
   createEducationProgram,
   createSchool,
   createStaffProfile,
   createStudentProfile,
+  deleteCurriculumComponent,
+  fetchCurricula,
   fetchEducationOverview,
   fetchSchools,
   fetchStaffProfiles,
   fetchStudentProfiles,
   fetchUsers,
+  updateCurriculum,
+  updateCurriculumComponent,
   updateEducationProgram,
   updateStaffProfile,
   updateStudentProfile,
 } from '../api/client';
 import type {
+  AssessmentType,
+  CurriculumComponent,
+  CurriculumComponentType,
+  CurriculumStatus,
+  EducationCurriculum,
   EducationLevel,
   EducationOverview,
   EducationProgram,
@@ -138,6 +152,74 @@ const EMPTY_STAFF_PROFILE_FORM: StaffProfileForm = {
   academic_title: '',
 };
 
+const CURRICULUM_STATUS_LABELS: Record<CurriculumStatus, string> = {
+  draft: 'Черновик',
+  approved: 'Утверждён',
+  archived: 'Архив',
+};
+
+const COMPONENT_TYPE_LABELS: Record<CurriculumComponentType, string> = {
+  discipline: 'Дисциплина',
+  module: 'Модуль',
+  practice: 'Практика',
+  coursework: 'Курсовая работа',
+  internship: 'Стажировка',
+  other: 'Другое',
+};
+
+const ASSESSMENT_LABELS: Record<AssessmentType, string> = {
+  exam: 'Экзамен',
+  credit: 'Зачёт',
+  differentiated_credit: 'Дифференцированный зачёт',
+  coursework: 'Курсовая работа',
+  practice_report: 'Отчёт по практике',
+  other: 'Другое',
+};
+
+type CurriculumForm = {
+  program_id: string;
+  academic_year: string;
+  name: string;
+  description: string;
+  status: CurriculumStatus;
+};
+
+const EMPTY_CURRICULUM_FORM: CurriculumForm = {
+  program_id: '',
+  academic_year: '',
+  name: '',
+  description: '',
+  status: 'draft',
+};
+
+type ComponentForm = {
+  code: string;
+  name: string;
+  component_type: CurriculumComponentType;
+  semester: string;
+  credits: string;
+  academic_hours: string;
+  contact_hours: string;
+  assessment_type: AssessmentType;
+  is_optional: boolean;
+  order_index: string;
+  description: string;
+};
+
+const EMPTY_COMPONENT_FORM: ComponentForm = {
+  code: '',
+  name: '',
+  component_type: 'discipline',
+  semester: '1',
+  credits: '3',
+  academic_hours: '0',
+  contact_hours: '0',
+  assessment_type: 'exam',
+  is_optional: false,
+  order_index: '0',
+  description: '',
+};
+
 function number(value: number): string {
   return new Intl.NumberFormat('ru-RU').format(value);
 }
@@ -211,6 +293,33 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
   const [staffError, setStaffError] = useState<string | null>(null);
   const [staffForm, setStaffForm] = useState<StaffProfileForm>({
     ...EMPTY_STAFF_PROFILE_FORM,
+  });
+
+  const [curricula, setCurricula] = useState<EducationCurriculum[]>([]);
+  const [curriculaLoading, setCurriculaLoading] = useState(false);
+  const [curriculaError, setCurriculaError] = useState<string | null>(null);
+  const [expandedCurriculumId, setExpandedCurriculumId] = useState<
+    string | null
+  >(null);
+
+  const [curriculumModalOpen, setCurriculumModalOpen] = useState(false);
+  const [editingCurriculum, setEditingCurriculum] =
+    useState<EducationCurriculum | null>(null);
+  const [curriculumSaving, setCurriculumSaving] = useState(false);
+  const [curriculumError, setCurriculumError] = useState<string | null>(null);
+  const [curriculumForm, setCurriculumForm] = useState<CurriculumForm>({
+    ...EMPTY_CURRICULUM_FORM,
+  });
+
+  const [componentModalOpen, setComponentModalOpen] = useState(false);
+  const [componentCurriculum, setComponentCurriculum] =
+    useState<EducationCurriculum | null>(null);
+  const [editingComponent, setEditingComponent] =
+    useState<CurriculumComponent | null>(null);
+  const [componentSaving, setComponentSaving] = useState(false);
+  const [componentError, setComponentError] = useState<string | null>(null);
+  const [componentForm, setComponentForm] = useState<ComponentForm>({
+    ...EMPTY_COMPONENT_FORM,
   });
 
   const managePermission =
@@ -318,6 +427,29 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
       })
       .finally(() => {
         if (!cancelled) setStaffProfilesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [level, professional, schoolId, reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!professional || !schoolId) {
+      setCurricula([]);
+      return;
+    }
+    setCurriculaLoading(true);
+    setCurriculaError(null);
+    fetchCurricula(level, schoolId)
+      .then((items) => {
+        if (!cancelled) setCurricula(items);
+      })
+      .catch((reason) => {
+        if (!cancelled) setCurriculaError(apiErrorMessage(reason));
+      })
+      .finally(() => {
+        if (!cancelled) setCurriculaLoading(false);
       });
     return () => {
       cancelled = true;
@@ -552,6 +684,196 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
     } finally {
       setStaffSaving(false);
     }
+  }
+
+  function openCreateCurriculum() {
+    setEditingCurriculum(null);
+    setCurriculumError(null);
+    setCurriculumForm({
+      ...EMPTY_CURRICULUM_FORM,
+      program_id: data?.programs[0]?.id ?? '',
+      academic_year: data?.academic_year ?? '',
+    });
+    setCurriculumModalOpen(true);
+  }
+
+  function openEditCurriculum(curriculum: EducationCurriculum) {
+    setEditingCurriculum(curriculum);
+    setCurriculumError(null);
+    setCurriculumForm({
+      program_id: curriculum.program_id,
+      academic_year: curriculum.academic_year,
+      name: curriculum.name,
+      description: curriculum.description ?? '',
+      status: curriculum.status,
+    });
+    setCurriculumModalOpen(true);
+  }
+
+  async function saveCurriculum() {
+    setCurriculumError(null);
+    if (!schoolId) {
+      setCurriculumError('Не выбрано учреждение образования.');
+      return;
+    }
+    if (
+      !editingCurriculum &&
+      (!curriculumForm.program_id ||
+        !/^\d{4}\/\d{4}$/.test(curriculumForm.academic_year.trim()))
+    ) {
+      setCurriculumError(
+        'Выберите программу и укажите учебный год в формате 2026/2027.',
+      );
+      return;
+    }
+    if (!curriculumForm.name.trim()) {
+      setCurriculumError('Укажите название учебного плана.');
+      return;
+    }
+    setCurriculumSaving(true);
+    try {
+      const payload = {
+        name: curriculumForm.name.trim(),
+        description: curriculumForm.description.trim() || null,
+        status: curriculumForm.status,
+      };
+      const saved = editingCurriculum
+        ? await updateCurriculum(
+            level,
+            schoolId,
+            editingCurriculum.id,
+            payload,
+          )
+        : await createCurriculum(level, schoolId, {
+            program_id: curriculumForm.program_id,
+            academic_year: curriculumForm.academic_year.trim(),
+            ...payload,
+          });
+      setCurriculumModalOpen(false);
+      setExpandedCurriculumId(saved.id);
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      setCurriculumError(apiErrorMessage(reason));
+    } finally {
+      setCurriculumSaving(false);
+    }
+  }
+
+  function openCreateComponent(curriculum: EducationCurriculum) {
+    setComponentCurriculum(curriculum);
+    setEditingComponent(null);
+    setComponentError(null);
+    setComponentForm({ ...EMPTY_COMPONENT_FORM });
+    setExpandedCurriculumId(curriculum.id);
+    setComponentModalOpen(true);
+  }
+
+  function openEditComponent(
+    curriculum: EducationCurriculum,
+    component: CurriculumComponent,
+  ) {
+    setComponentCurriculum(curriculum);
+    setEditingComponent(component);
+    setComponentError(null);
+    setComponentForm({
+      code: component.code,
+      name: component.name,
+      component_type: component.component_type,
+      semester: String(component.semester),
+      credits: String(component.credits),
+      academic_hours: String(component.academic_hours),
+      contact_hours: String(component.contact_hours),
+      assessment_type: component.assessment_type,
+      is_optional: component.is_optional,
+      order_index: String(component.order_index),
+      description: component.description ?? '',
+    });
+    setComponentModalOpen(true);
+  }
+
+  async function saveComponent() {
+    setComponentError(null);
+    if (!schoolId || !componentCurriculum) {
+      setComponentError('Не выбран учебный план.');
+      return;
+    }
+    if (!componentForm.code.trim() || !componentForm.name.trim()) {
+      setComponentError('Укажите код и название компонента.');
+      return;
+    }
+    const academicHours = Number(componentForm.academic_hours || 0);
+    const contactHours = Number(componentForm.contact_hours || 0);
+    if (contactHours > academicHours) {
+      setComponentError(
+        'Контактные часы не могут превышать общую академическую нагрузку.',
+      );
+      return;
+    }
+    setComponentSaving(true);
+    try {
+      const payload = {
+        code: componentForm.code.trim(),
+        name: componentForm.name.trim(),
+        component_type: componentForm.component_type,
+        semester: Number(componentForm.semester || 1),
+        credits: Number(componentForm.credits || 0),
+        academic_hours: academicHours,
+        contact_hours: contactHours,
+        assessment_type: componentForm.assessment_type,
+        is_optional: componentForm.is_optional,
+        order_index: Number(componentForm.order_index || 0),
+        description: componentForm.description.trim() || null,
+      };
+      if (editingComponent) {
+        await updateCurriculumComponent(
+          level,
+          schoolId,
+          componentCurriculum.id,
+          editingComponent.id,
+          payload,
+        );
+      } else {
+        await createCurriculumComponent(
+          level,
+          schoolId,
+          componentCurriculum.id,
+          payload,
+        );
+      }
+      setComponentModalOpen(false);
+      setExpandedCurriculumId(componentCurriculum.id);
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      setComponentError(apiErrorMessage(reason));
+    } finally {
+      setComponentSaving(false);
+    }
+  }
+
+  async function removeComponent(
+    curriculum: EducationCurriculum,
+    component: CurriculumComponent,
+  ) {
+    if (!schoolId) return;
+    if (!window.confirm(`Удалить компонент «${component.name}»?`)) return;
+    setCurriculaError(null);
+    try {
+      await deleteCurriculumComponent(
+        level,
+        schoolId,
+        curriculum.id,
+        component.id,
+      );
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      setCurriculaError(apiErrorMessage(reason));
+    }
+  }
+
+  function toggleCurriculum(curriculumId: string) {
+    setExpandedCurriculumId((current) =>
+      current === curriculumId ? null : curriculumId,
+    );
   }
 
   async function saveInstitution() {
@@ -1150,6 +1472,301 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </Card>
+          ) : null}
+
+          {professional ? (
+            <Card className="p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">
+                    Учебные планы и кредиты
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Дисциплины, модули, практика, кредиты и формы аттестации.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-slate-100 text-slate-600 ring-slate-200">
+                    {pluralize(
+                      curricula.length,
+                      'план',
+                      'плана',
+                      'планов',
+                    )}
+                  </Badge>
+                  {canManagePrograms ? (
+                    <Button
+                      size="sm"
+                      onClick={openCreateCurriculum}
+                      disabled={!data.programs.length}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Добавить учебный план
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {curriculaError ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {curriculaError}
+                </div>
+              ) : curriculaLoading ? (
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-12" />
+                  <Skeleton className="h-12" />
+                </div>
+              ) : curricula.length === 0 ? (
+                <EmptyState
+                  title="Учебных планов пока нет"
+                  description={
+                    data.programs.length
+                      ? 'Создайте учебный план, добавьте дисциплины, модули и практику с кредитами и часами.'
+                      : 'Сначала создайте образовательную программу, затем добавьте к ней учебный план.'
+                  }
+                  icon={<BookOpen className="h-6 w-6" />}
+                  action={
+                    canManagePrograms && data.programs.length ? (
+                      <Button size="sm" onClick={openCreateCurriculum}>
+                        <Plus className="h-4 w-4" />
+                        Создать учебный план
+                      </Button>
+                    ) : canManagePrograms ? (
+                      <Button size="sm" onClick={openCreateProgram}>
+                        <Plus className="h-4 w-4" />
+                        Создать программу
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {curricula.map((curriculum) => {
+                    const expanded =
+                      expandedCurriculumId === curriculum.id;
+                    return (
+                      <div
+                        key={curriculum.id}
+                        className="rounded-xl border border-slate-100"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleCurriculum(curriculum.id)}
+                            className="min-w-0 flex-1 text-left"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-slate-800">
+                                {curriculum.name}
+                              </p>
+                              <Badge
+                                className={
+                                  curriculum.status === 'approved'
+                                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                    : curriculum.status === 'archived'
+                                      ? 'bg-slate-100 text-slate-500 ring-slate-200'
+                                      : 'bg-amber-50 text-amber-700 ring-amber-200'
+                                }
+                              >
+                                {CURRICULUM_STATUS_LABELS[curriculum.status]}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {curriculum.program_name} ·{' '}
+                              {curriculum.academic_year} ·{' '}
+                              {number(curriculum.total_credits)} з.е. ·{' '}
+                              {pluralize(
+                                curriculum.components.length,
+                                'компонент',
+                                'компонента',
+                                'компонентов',
+                              )}
+                            </p>
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {canManagePrograms ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditCurriculum(curriculum)}
+                                aria-label="Изменить учебный план"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            ) : null}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleCurriculum(curriculum.id)}
+                              aria-label={
+                                expanded
+                                  ? 'Свернуть учебный план'
+                                  : 'Развернуть учебный план'
+                              }
+                            >
+                              {expanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {expanded ? (
+                          <div className="border-t border-slate-100 px-3 py-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Компоненты плана
+                                </p>
+                                {curriculum.description ? (
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {curriculum.description}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {canManagePrograms ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    openCreateComponent(curriculum)
+                                  }
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Компонент
+                                </Button>
+                              ) : null}
+                            </div>
+
+                            {curriculum.components.length === 0 ? (
+                              <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                                В плане пока нет дисциплин и практик. Добавьте
+                                первый компонент, чтобы рассчитать кредиты и
+                                нагрузку.
+                              </p>
+                            ) : (
+                              <div className="mt-3 overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                  <thead>
+                                    <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-500">
+                                      <th className="px-2 py-2 font-semibold">
+                                        Компонент
+                                      </th>
+                                      <th className="px-2 py-2 font-semibold">
+                                        Тип
+                                      </th>
+                                      <th className="px-2 py-2 text-right font-semibold">
+                                        Сем.
+                                      </th>
+                                      <th className="px-2 py-2 text-right font-semibold">
+                                        Кредиты
+                                      </th>
+                                      <th className="px-2 py-2 text-right font-semibold">
+                                        Часы
+                                      </th>
+                                      <th className="px-2 py-2 font-semibold">
+                                        Аттестация
+                                      </th>
+                                      {canManagePrograms ? (
+                                        <th className="px-2 py-2 text-right font-semibold">
+                                          {' '}
+                                        </th>
+                                      ) : null}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {curriculum.components.map((component) => (
+                                      <tr
+                                        key={component.id}
+                                        className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60"
+                                      >
+                                        <td className="px-2 py-2.5">
+                                          <p className="font-semibold text-slate-800">
+                                            {component.name}
+                                          </p>
+                                          <p className="text-xs text-slate-500">
+                                            {component.code}
+                                            {component.is_optional
+                                              ? ' · по выбору'
+                                              : ''}
+                                          </p>
+                                        </td>
+                                        <td className="px-2 py-2.5 text-slate-600">
+                                          {
+                                            COMPONENT_TYPE_LABELS[
+                                              component.component_type
+                                            ]
+                                          }
+                                        </td>
+                                        <td className="px-2 py-2.5 text-right text-slate-600">
+                                          {component.semester}
+                                        </td>
+                                        <td className="px-2 py-2.5 text-right text-slate-600">
+                                          {number(component.credits)}
+                                        </td>
+                                        <td className="px-2 py-2.5 text-right text-slate-600">
+                                          {number(component.academic_hours)}
+                                          {component.contact_hours
+                                            ? ` / ${number(
+                                                component.contact_hours,
+                                              )}`
+                                            : ''}
+                                        </td>
+                                        <td className="px-2 py-2.5 text-slate-600">
+                                          {
+                                            ASSESSMENT_LABELS[
+                                              component.assessment_type
+                                            ]
+                                          }
+                                        </td>
+                                        {canManagePrograms ? (
+                                          <td className="px-2 py-2.5 text-right">
+                                            <div className="flex justify-end gap-1">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  openEditComponent(
+                                                    curriculum,
+                                                    component,
+                                                  )
+                                                }
+                                                aria-label="Изменить компонент"
+                                              >
+                                                <Pencil className="h-4 w-4" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  void removeComponent(
+                                                    curriculum,
+                                                    component,
+                                                  )
+                                                }
+                                                aria-label="Удалить компонент"
+                                              >
+                                                <Trash2 className="h-4 w-4 text-rose-500" />
+                                              </Button>
+                                            </div>
+                                          </td>
+                                        ) : null}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </Card>
@@ -1786,6 +2403,415 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
               />
             </label>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={curriculumModalOpen}
+        onClose={() => setCurriculumModalOpen(false)}
+        title={
+          editingCurriculum ? 'Изменить учебный план' : 'Новый учебный план'
+        }
+        description="Учебный план задаёт состав дисциплин, практик, кредитов и форм аттестации на учебный год."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setCurriculumModalOpen(false)}
+              disabled={curriculumSaving}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => void saveCurriculum()}
+              loading={curriculumSaving}
+              disabled={
+                curriculumSaving ||
+                !curriculumForm.name.trim() ||
+                !schoolId ||
+                (!editingCurriculum && !curriculumForm.program_id)
+              }
+            >
+              Сохранить
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {curriculumError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {curriculumError}
+            </div>
+          ) : null}
+
+          {editingCurriculum ? (
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Программа и учебный год
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                {editingCurriculum.program_name}
+              </p>
+              <p className="text-xs text-slate-500">
+                {editingCurriculum.academic_year}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Образовательная программа
+                </span>
+                <select
+                  value={curriculumForm.program_id}
+                  onChange={(event) =>
+                    setCurriculumForm((current) => ({
+                      ...current,
+                      program_id: event.target.value,
+                    }))
+                  }
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                >
+                  <option value="">Выберите программу</option>
+                  {(data?.programs ?? []).map((program) => (
+                    <option key={program.id} value={program.id}>
+                      {program.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Учебный год
+                </span>
+                <input
+                  value={curriculumForm.academic_year}
+                  onChange={(event) =>
+                    setCurriculumForm((current) => ({
+                      ...current,
+                      academic_year: event.target.value,
+                    }))
+                  }
+                  placeholder="2026/2027"
+                  className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                />
+              </label>
+            </div>
+          )}
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Название плана
+            </span>
+            <input
+              value={curriculumForm.name}
+              onChange={(event) =>
+                setCurriculumForm((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
+              placeholder="Основной учебный план"
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Описание
+            </span>
+            <textarea
+              value={curriculumForm.description}
+              onChange={(event) =>
+                setCurriculumForm((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+              rows={3}
+              placeholder="Профиль, форма обучения, особенности набора"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Статус
+            </span>
+            <select
+              value={curriculumForm.status}
+              onChange={(event) =>
+                setCurriculumForm((current) => ({
+                  ...current,
+                  status: event.target.value as CurriculumStatus,
+                }))
+              }
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+            >
+              <option value="draft">Черновик</option>
+              <option value="approved">Утверждён</option>
+              <option value="archived">Архив</option>
+            </select>
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={componentModalOpen}
+        onClose={() => setComponentModalOpen(false)}
+        title={
+          editingComponent
+            ? 'Изменить компонент плана'
+            : 'Новый компонент плана'
+        }
+        description={
+          componentCurriculum
+            ? `${componentCurriculum.name} · ${componentCurriculum.academic_year}`
+            : 'Дисциплина, модуль, практика или курсовая работа.'
+        }
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setComponentModalOpen(false)}
+              disabled={componentSaving}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => void saveComponent()}
+              loading={componentSaving}
+              disabled={
+                componentSaving ||
+                !schoolId ||
+                !componentForm.code.trim() ||
+                !componentForm.name.trim()
+              }
+            >
+              Сохранить
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {componentError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {componentError}
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Код
+              </span>
+              <input
+                value={componentForm.code}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    code: event.target.value,
+                  }))
+                }
+                placeholder="MATH-101"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Название
+              </span>
+              <input
+                value={componentForm.name}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="Математический анализ"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Тип компонента
+              </span>
+              <select
+                value={componentForm.component_type}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    component_type: event.target
+                      .value as CurriculumComponentType,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="discipline">Дисциплина</option>
+                <option value="module">Модуль</option>
+                <option value="practice">Практика</option>
+                <option value="coursework">Курсовая работа</option>
+                <option value="internship">Стажировка</option>
+                <option value="other">Другое</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Семестр
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={componentForm.semester}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    semester: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Кредиты
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={componentForm.credits}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    credits: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Академические часы
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={20000}
+                value={componentForm.academic_hours}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    academic_hours: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Контактные часы
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={20000}
+                value={componentForm.contact_hours}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    contact_hours: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Форма аттестации
+              </span>
+              <select
+                value={componentForm.assessment_type}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    assessment_type: event.target.value as AssessmentType,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="exam">Экзамен</option>
+                <option value="credit">Зачёт</option>
+                <option value="differentiated_credit">
+                  Дифференцированный зачёт
+                </option>
+                <option value="coursework">Курсовая работа</option>
+                <option value="practice_report">Отчёт по практике</option>
+                <option value="other">Другое</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Порядок
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={componentForm.order_index}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    order_index: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="flex items-center gap-2 pt-6 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={componentForm.is_optional}
+                onChange={(event) =>
+                  setComponentForm((current) => ({
+                    ...current,
+                    is_optional: event.target.checked,
+                  }))
+                }
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200"
+              />
+              Компонент по выбору
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Описание
+            </span>
+            <textarea
+              value={componentForm.description}
+              onChange={(event) =>
+                setComponentForm((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+              rows={3}
+              placeholder="Содержание, база практики или особые условия"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
         </div>
       </Modal>
     </div>

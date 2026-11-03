@@ -3,7 +3,12 @@ import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import type {
   AdminStats,
   AnalyticsOverview,
+  AssessmentType,
   City,
+  CurriculumComponent,
+  CurriculumComponentType,
+  CurriculumStatus,
+  EducationCurriculum,
   EducationGroup,
   EducationLevel,
   EducationOverview,
@@ -422,6 +427,131 @@ export async function updateEducationProgram(
     { params: { school_id: schoolId || undefined } },
   );
   return data;
+}
+
+export async function fetchCurricula(
+  level: EducationLevel,
+  schoolId?: string,
+  programId?: string,
+  academicYear?: string,
+): Promise<EducationCurriculum[]> {
+  const { data } = await api.get<EducationCurriculum[]>(
+    `/education/${level}/curricula`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        program_id: programId || undefined,
+        academic_year: academicYear || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createCurriculum(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    program_id: string;
+    academic_year: string;
+    name: string;
+    description?: string | null;
+    status?: CurriculumStatus;
+    profile?: Record<string, unknown>;
+  },
+): Promise<EducationCurriculum> {
+  const { data } = await api.post<EducationCurriculum>(
+    `/education/${level}/curricula`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateCurriculum(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  curriculumId: string,
+  payload: Partial<{
+    name: string;
+    description: string | null;
+    status: CurriculumStatus;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<EducationCurriculum> {
+  const { data } = await api.patch<EducationCurriculum>(
+    `/education/${level}/curricula/${curriculumId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function createCurriculumComponent(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  curriculumId: string,
+  payload: {
+    code: string;
+    name: string;
+    component_type?: CurriculumComponentType;
+    semester?: number;
+    credits?: number;
+    academic_hours?: number;
+    contact_hours?: number;
+    assessment_type?: AssessmentType;
+    is_optional?: boolean;
+    order_index?: number;
+    description?: string | null;
+    details?: Record<string, unknown>;
+  },
+): Promise<CurriculumComponent> {
+  const { data } = await api.post<CurriculumComponent>(
+    `/education/${level}/curricula/${curriculumId}/components`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateCurriculumComponent(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  curriculumId: string,
+  componentId: string,
+  payload: Partial<{
+    code: string;
+    name: string;
+    component_type: CurriculumComponentType;
+    semester: number;
+    credits: number;
+    academic_hours: number;
+    contact_hours: number;
+    assessment_type: AssessmentType;
+    is_optional: boolean;
+    order_index: number;
+    description: string | null;
+    details: Record<string, unknown>;
+  }>,
+): Promise<CurriculumComponent> {
+  const { data } = await api.patch<CurriculumComponent>(
+    `/education/${level}/curricula/${curriculumId}/components/${componentId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function deleteCurriculumComponent(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  curriculumId: string,
+  componentId: string,
+): Promise<void> {
+  await api.delete(
+    `/education/${level}/curricula/${curriculumId}/components/${componentId}`,
+    { params: { school_id: schoolId || undefined } },
+  );
 }
 
 export async function fetchStudentProfiles(

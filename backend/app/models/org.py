@@ -22,7 +22,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
-    from app.models.education import EducationProgram, StudentAcademicProfile
+    from app.models.education import (
+        EducationCurriculum,
+        EducationProgram,
+        StudentAcademicProfile,
+    )
     from app.models.iam import User
     from app.models.lms import Subject
 
@@ -116,6 +120,9 @@ class School(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="institution", cascade="all, delete-orphan"
     )
     student_profiles: Mapped[list["StudentAcademicProfile"]] = relationship(
+        back_populates="institution", cascade="all, delete-orphan"
+    )
+    curricula: Mapped[list["EducationCurriculum"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan"
     )
 

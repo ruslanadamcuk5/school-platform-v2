@@ -5,9 +5,21 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EducationLevel = Literal["primary", "secondary", "vocational", "higher"]
+CurriculumStatus = Literal["draft", "approved", "archived"]
+CurriculumComponentType = Literal[
+    "discipline", "module", "practice", "coursework", "internship", "other"
+]
+AssessmentType = Literal[
+    "exam",
+    "credit",
+    "differentiated_credit",
+    "coursework",
+    "practice_report",
+    "other",
+]
 
 
 class EducationLevelOut(BaseModel):
@@ -79,6 +91,100 @@ class EducationProgramUpdate(BaseModel):
     duration_years: int | None = Field(default=None, ge=1, le=10)
     profile: dict | None = None
     is_active: bool | None = None
+
+
+class CurriculumComponentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    curriculum_id: uuid.UUID
+    code: str
+    name: str
+    component_type: CurriculumComponentType
+    semester: int
+    credits: float
+    academic_hours: int
+    contact_hours: int
+    assessment_type: AssessmentType
+    is_optional: bool
+    order_index: int
+    description: str | None = None
+    details: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CurriculumComponentCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+    component_type: CurriculumComponentType = "discipline"
+    semester: int = Field(default=1, ge=1, le=12)
+    credits: float = Field(default=0, ge=0, le=100)
+    academic_hours: int = Field(default=0, ge=0, le=20000)
+    contact_hours: int = Field(default=0, ge=0, le=20000)
+    assessment_type: AssessmentType = "exam"
+    is_optional: bool = False
+    order_index: int = Field(default=0, ge=0)
+    description: str | None = Field(default=None, max_length=1000)
+    details: dict = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_contact_hours(self) -> "CurriculumComponentCreate":
+        if self.contact_hours > self.academic_hours:
+            raise ValueError(
+                "contact_hours cannot exceed academic_hours"
+            )
+        return self
+
+
+class CurriculumComponentUpdate(BaseModel):
+    code: str | None = Field(default=None, min_length=1, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    component_type: CurriculumComponentType | None = None
+    semester: int | None = Field(default=None, ge=1, le=12)
+    credits: float | None = Field(default=None, ge=0, le=100)
+    academic_hours: int | None = Field(default=None, ge=0, le=20000)
+    contact_hours: int | None = Field(default=None, ge=0, le=20000)
+    assessment_type: AssessmentType | None = None
+    is_optional: bool | None = None
+    order_index: int | None = Field(default=None, ge=0)
+    description: str | None = Field(default=None, max_length=1000)
+    details: dict | None = None
+
+
+class EducationCurriculumOut(BaseModel):
+    id: uuid.UUID
+    institution_id: uuid.UUID
+    program_id: uuid.UUID
+    program_name: str
+    education_level: EducationLevel
+    academic_year: str
+    name: str
+    description: str | None = None
+    status: CurriculumStatus
+    approved_at: datetime | None = None
+    approved_by_id: uuid.UUID | None = None
+    profile: dict = Field(default_factory=dict)
+    total_credits: float = 0
+    components: list[CurriculumComponentOut] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class EducationCurriculumCreate(BaseModel):
+    program_id: uuid.UUID
+    academic_year: str = Field(pattern=r"^\d{4}/\d{4}$")
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+    status: CurriculumStatus = "draft"
+    profile: dict = Field(default_factory=dict)
+
+
+class EducationCurriculumUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+    status: CurriculumStatus | None = None
+    profile: dict | None = None
 
 
 class StudentAcademicProfileOut(BaseModel):

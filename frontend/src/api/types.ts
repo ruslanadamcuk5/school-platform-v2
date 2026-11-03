@@ -301,6 +301,60 @@ export interface StaffAcademicProfile {
   updated_at: string;
 }
 
+export type CurriculumStatus = 'draft' | 'approved' | 'archived';
+export type CurriculumComponentType =
+  | 'discipline'
+  | 'module'
+  | 'practice'
+  | 'coursework'
+  | 'internship'
+  | 'other';
+export type AssessmentType =
+  | 'exam'
+  | 'credit'
+  | 'differentiated_credit'
+  | 'coursework'
+  | 'practice_report'
+  | 'other';
+
+export interface CurriculumComponent {
+  id: string;
+  curriculum_id: string;
+  code: string;
+  name: string;
+  component_type: CurriculumComponentType;
+  semester: number;
+  credits: number;
+  academic_hours: number;
+  contact_hours: number;
+  assessment_type: AssessmentType;
+  is_optional: boolean;
+  order_index: number;
+  description: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EducationCurriculum {
+  id: string;
+  institution_id: string;
+  program_id: string;
+  program_name: string;
+  education_level: EducationLevel;
+  academic_year: string;
+  name: string;
+  description: string | null;
+  status: CurriculumStatus;
+  approved_at: string | null;
+  approved_by_id: string | null;
+  profile: Record<string, unknown>;
+  total_credits: number;
+  components: CurriculumComponent[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EducationTotals {
   students: number;
   teachers: number;

@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.8 |
+| Версия | 0.9 |
 | Статус | Рабочий |
 | Дата | 03.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
@@ -210,17 +210,28 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 | GET | `/api/v1/education/{level}/staff-profiles` | `{service}.profiles.read` | Профили преподавателей |
 | POST | `/api/v1/education/{level}/staff-profiles` | `{service}.profiles.manage` | Создать профиль |
 | PATCH | `/api/v1/education/{level}/staff-profiles/{id}` | `{service}.profiles.manage` | Изменить профиль |
+| GET | `/api/v1/education/{level}/curricula` | `{service}.read` | Учебные планы и их компоненты |
+| GET | `/api/v1/education/{level}/curricula/{id}` | `{service}.read` | Карточка учебного плана |
+| POST | `/api/v1/education/{level}/curricula` | `{service}.programs.manage` | Создать учебный план |
+| PATCH | `/api/v1/education/{level}/curricula/{id}` | `{service}.programs.manage` | Изменить план или статус |
+| POST | `/api/v1/education/{level}/curricula/{id}/components` | `{service}.programs.manage` | Добавить компонент |
+| PATCH | `/api/v1/education/{level}/curricula/{id}/components/{component_id}` | `{service}.programs.manage` | Изменить компонент |
+| DELETE | `/api/v1/education/{level}/curricula/{id}/components/{component_id}` | `{service}.programs.manage` | Удалить компонент |
 
 Правила:
 
 - `school_id` обязателен для superadmin, для пользователя учреждения берётся
   из токена; чужое учреждение — `403`;
 - учреждение должно предоставлять запрошенную ступень, иначе `404`;
-- программы и профили доступны только для `vocational` и `higher`;
-  для школьных ступеней возвращается пустой список;
-- группа, программа и профиль проверяются на принадлежность учреждению и
-  ступени;
-- изменения программ, профилей и учреждений фиксируются в аудите.
+- программы, профили и учебные планы доступны только для `vocational` и
+  `higher`; для школьных ступеней возвращается пустой список;
+- группа, программа, профиль и учебный план проверяются на принадлежность
+  учреждению и ступени;
+- учебный год плана имеет формат `2026/2027`; код компонента уникален внутри
+  плана; контактные часы не превышают академические;
+- в архивный учебный план нельзя добавлять компоненты;
+- изменения программ, профилей, планов, компонентов и учреждений фиксируются
+  в аудите.
 
 ## 5. Учебный контент (LMS)
 

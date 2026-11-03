@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.3 |
+| Версия | 0.4 |
 | Статус | Рабочий |
 | Дата | 03.11.2026 |
 
@@ -23,7 +23,7 @@
 | Схема | Назначение |
 |---|---|
 | `iam` | Пользователи, роли, права, сессии, согласия |
-| `org` | Регионы, города, учреждения, классы, группы, программы и академические профили |
+| `org` | Регионы, города, учреждения, классы, группы, программы, учебные планы и академические профили |
 | `lms` | Предметы, темы, уроки, пособия, медиа |
 | `assessment` | Тесты, вопросы, работы, ответы |
 | `journal` | Оценки, посещаемость, отчёты |
@@ -140,6 +140,28 @@
 ### 4.9. `org.staff_academic_profiles`
 - id, user_id FK unique, institution_id FK, department, position,
   academic_degree, academic_title, profile (jsonb), created_at, updated_at.
+
+### 4.10. `org.education_curricula`
+- id, institution_id FK, program_id FK, education_level, academic_year, name,
+  description, status, approved_at, approved_by_id FK null, profile (jsonb),
+  created_at, updated_at.
+- Unique: (program_id, academic_year, name).
+- `status`: `draft`, `approved`, `archived`.
+- `academic_year` хранится в формате `2026/2027`.
+- Учебный план доступен только для `vocational` и `higher`.
+
+### 4.11. `org.curriculum_components`
+- id, curriculum_id FK, code, name, component_type, semester, credits
+  (numeric 5,2), academic_hours, contact_hours, assessment_type, is_optional,
+  order_index, description, details (jsonb), created_at, updated_at.
+- Unique: (curriculum_id, code).
+- `component_type`: `discipline`, `module`, `practice`, `coursework`,
+  `internship`, `other`.
+- `assessment_type`: `exam`, `credit`, `differentiated_credit`, `coursework`,
+  `practice_report`, `other`.
+- Ограничения: семестр 1–12, кредиты 0–100, академические часы 0–20000,
+  контактные часы не больше академических.
+- Компоненты удаляются каскадно вместе с учебным планом.
 
 ## 5. LMS
 ### 5.1. `lms.subjects`

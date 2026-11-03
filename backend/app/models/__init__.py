@@ -18,6 +18,8 @@ from app.models.assessment import (
 from app.models.audit import AuditEvent
 from app.models.communication import Notification
 from app.models.education import (
+    CurriculumComponent,
+    EducationCurriculum,
     EducationProgram,
     StaffAcademicProfile,
     StudentAcademicProfile,
@@ -75,7 +77,9 @@ __all__ = [
     "Course",
     "CourseClass",
     "CourseTopic",
+    "CurriculumComponent",
     "DailyAnswer",
+    "EducationCurriculum",
     "EducationProgram",
     "FeatureFlag",
     "GradingScale",
