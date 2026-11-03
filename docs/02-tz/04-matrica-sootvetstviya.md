@@ -49,8 +49,8 @@
 | EDL-09 | Ступень должна быть у учреждения | `education_levels` | Education | API | Реализовано |
 | PRO-01 | Образовательные программы | `org.education_programs` | Education | API | Реализовано |
 | PRO-02 | Группы по программе и курсу | `org.classes` | Education | API | Реализовано |
-| PRO-03 | Профиль студента | `student_academic_profiles` | Education | API | Реализовано |
-| PRO-04 | Профиль преподавателя | `staff_academic_profiles` | Education | API | Реализовано |
+| PRO-03 | Профиль студента | `student_academic_profiles` | Education | API + UI | Реализовано |
+| PRO-04 | Профиль преподавателя | `staff_academic_profiles` | Education | API + UI | Реализовано |
 | PRO-05 | Учебные планы и кредиты | Требует проектирования | Education | — | Не начато |
 
 ## Правила ведения

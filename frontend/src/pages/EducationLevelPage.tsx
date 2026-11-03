@@ -17,17 +17,25 @@ import {
   apiErrorMessage,
   createEducationProgram,
   createSchool,
+  createStaffProfile,
+  createStudentProfile,
   fetchEducationOverview,
   fetchSchools,
+  fetchStaffProfiles,
   fetchStudentProfiles,
+  fetchUsers,
   updateEducationProgram,
+  updateStaffProfile,
+  updateStudentProfile,
 } from '../api/client';
 import type {
   EducationLevel,
   EducationOverview,
   EducationProgram,
   School,
+  StaffAcademicProfile,
   StudentAcademicProfile,
+  User,
 } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -92,6 +100,44 @@ const STATUS_LABELS: Record<string, string> = {
   graduated: 'Выпускник',
 };
 
+type StudentProfileForm = {
+  user_id: string;
+  program_id: string;
+  group_id: string;
+  course_year: string;
+  record_book_number: string;
+  funding_type: StudentAcademicProfile['funding_type'];
+  enrollment_year: string;
+  academic_status: StudentAcademicProfile['academic_status'];
+};
+
+const EMPTY_STUDENT_PROFILE_FORM: StudentProfileForm = {
+  user_id: '',
+  program_id: '',
+  group_id: '',
+  course_year: '',
+  record_book_number: '',
+  funding_type: 'budget',
+  enrollment_year: '',
+  academic_status: 'active',
+};
+
+type StaffProfileForm = {
+  user_id: string;
+  department: string;
+  position: string;
+  academic_degree: string;
+  academic_title: string;
+};
+
+const EMPTY_STAFF_PROFILE_FORM: StaffProfileForm = {
+  user_id: '',
+  department: '',
+  position: '',
+  academic_degree: '',
+  academic_title: '',
+};
+
 function number(value: number): string {
   return new Intl.NumberFormat('ru-RU').format(value);
 }
@@ -112,10 +158,18 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
   const [year, setYear] = useState('');
   const [data, setData] = useState<EducationOverview | null>(null);
   const [profiles, setProfiles] = useState<StudentAcademicProfile[]>([]);
+  const [staffProfiles, setStaffProfiles] = useState<StaffAcademicProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [profilesLoading, setProfilesLoading] = useState(false);
+  const [staffProfilesLoading, setStaffProfilesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [staffProfilesError, setStaffProfilesError] = useState<string | null>(
+    null,
+  );
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [programModalOpen, setProgramModalOpen] = useState(false);
@@ -141,6 +195,24 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
     city: '',
   });
 
+  const [studentModalOpen, setStudentModalOpen] = useState(false);
+  const [editingStudentProfile, setEditingStudentProfile] =
+    useState<StudentAcademicProfile | null>(null);
+  const [studentSaving, setStudentSaving] = useState(false);
+  const [studentError, setStudentError] = useState<string | null>(null);
+  const [studentForm, setStudentForm] = useState<StudentProfileForm>({
+    ...EMPTY_STUDENT_PROFILE_FORM,
+  });
+
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [editingStaffProfile, setEditingStaffProfile] =
+    useState<StaffAcademicProfile | null>(null);
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [staffForm, setStaffForm] = useState<StaffProfileForm>({
+    ...EMPTY_STAFF_PROFILE_FORM,
+  });
+
   const managePermission =
     level === 'primary'
       ? 'primary_education.manage'
@@ -150,6 +222,13 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
           ? 'vocational_education.programs.manage'
           : 'higher_education.programs.manage';
   const canManagePrograms = professional && can(managePermission);
+  const canManageProfiles =
+    professional &&
+    can(
+      level === 'vocational'
+        ? 'vocational_education.profiles.manage'
+        : 'higher_education.profiles.manage',
+    );
 
   useEffect(() => {
     if (user?.role !== 'superadmin') return;
@@ -222,6 +301,44 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
     };
   }, [level, professional, schoolId, reloadKey]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!professional || !schoolId) {
+      setStaffProfiles([]);
+      return;
+    }
+    setStaffProfilesLoading(true);
+    setStaffProfilesError(null);
+    fetchStaffProfiles(level, schoolId)
+      .then((items) => {
+        if (!cancelled) setStaffProfiles(items);
+      })
+      .catch((reason) => {
+        if (!cancelled) setStaffProfilesError(apiErrorMessage(reason));
+      })
+      .finally(() => {
+        if (!cancelled) setStaffProfilesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [level, professional, schoolId, reloadKey]);
+
+  const studentUsers = useMemo(
+    () => users.filter((item) => item.role === 'student' && item.is_active),
+    [users],
+  );
+  const staffUsers = useMemo(
+    () =>
+      users.filter(
+        (item) =>
+          item.is_active &&
+          item.role !== 'student' &&
+          item.role !== 'parent',
+      ),
+    [users],
+  );
+
   const compatibleSchools = useMemo(
     () => schools.filter((item) => item.education_levels.includes(level)),
     [schools, level],
@@ -281,6 +398,159 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
       setProgramError(apiErrorMessage(reason));
     } finally {
       setProgramSaving(false);
+    }
+  }
+
+  async function loadUsers() {
+    if (!schoolId) return;
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const result = await fetchUsers(schoolId);
+      setUsers(result.items);
+    } catch (reason) {
+      setUsers([]);
+      setUsersError(apiErrorMessage(reason));
+    } finally {
+      setUsersLoading(false);
+    }
+  }
+
+  function openCreateStudentProfile() {
+    setEditingStudentProfile(null);
+    setStudentError(null);
+    setStudentForm({
+      ...EMPTY_STUDENT_PROFILE_FORM,
+      course_year: '1',
+      enrollment_year: data?.academic_year.split('/')[0] ?? '',
+    });
+    setStudentModalOpen(true);
+    void loadUsers();
+  }
+
+  function openEditStudentProfile(profile: StudentAcademicProfile) {
+    setEditingStudentProfile(profile);
+    setStudentError(null);
+    setStudentForm({
+      user_id: profile.user_id,
+      program_id: profile.program_id ?? '',
+      group_id: profile.group_id ?? '',
+      course_year: profile.course_year ? String(profile.course_year) : '',
+      record_book_number: profile.record_book_number ?? '',
+      funding_type: profile.funding_type,
+      enrollment_year: profile.enrollment_year
+        ? String(profile.enrollment_year)
+        : '',
+      academic_status: profile.academic_status,
+    });
+    setStudentModalOpen(true);
+  }
+
+  async function saveStudentProfile() {
+    setStudentError(null);
+    if (!schoolId) {
+      setStudentError('Не выбрано учреждение образования.');
+      return;
+    }
+    if (!editingStudentProfile && !studentForm.user_id) {
+      setStudentError('Выберите обучающегося.');
+      return;
+    }
+    setStudentSaving(true);
+    try {
+      const payload = {
+        program_id: studentForm.program_id || null,
+        group_id: studentForm.group_id || null,
+        course_year: studentForm.course_year
+          ? Number(studentForm.course_year)
+          : null,
+        record_book_number: studentForm.record_book_number.trim() || null,
+        funding_type: studentForm.funding_type,
+        enrollment_year: studentForm.enrollment_year
+          ? Number(studentForm.enrollment_year)
+          : null,
+        academic_status: studentForm.academic_status,
+      };
+      if (editingStudentProfile) {
+        await updateStudentProfile(
+          level,
+          schoolId,
+          editingStudentProfile.id,
+          payload,
+        );
+      } else {
+        await createStudentProfile(level, schoolId, {
+          user_id: studentForm.user_id,
+          ...payload,
+        });
+      }
+      setStudentModalOpen(false);
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      setStudentError(apiErrorMessage(reason));
+    } finally {
+      setStudentSaving(false);
+    }
+  }
+
+  function openCreateStaffProfile() {
+    setEditingStaffProfile(null);
+    setStaffError(null);
+    setStaffForm({ ...EMPTY_STAFF_PROFILE_FORM });
+    setStaffModalOpen(true);
+    void loadUsers();
+  }
+
+  function openEditStaffProfile(profile: StaffAcademicProfile) {
+    setEditingStaffProfile(profile);
+    setStaffError(null);
+    setStaffForm({
+      user_id: profile.user_id,
+      department: profile.department ?? '',
+      position: profile.position ?? '',
+      academic_degree: profile.academic_degree ?? '',
+      academic_title: profile.academic_title ?? '',
+    });
+    setStaffModalOpen(true);
+  }
+
+  async function saveStaffProfile() {
+    setStaffError(null);
+    if (!schoolId) {
+      setStaffError('Не выбрано учреждение образования.');
+      return;
+    }
+    if (!editingStaffProfile && !staffForm.user_id) {
+      setStaffError('Выберите сотрудника.');
+      return;
+    }
+    setStaffSaving(true);
+    try {
+      const payload = {
+        department: staffForm.department.trim() || null,
+        position: staffForm.position.trim() || null,
+        academic_degree: staffForm.academic_degree.trim() || null,
+        academic_title: staffForm.academic_title.trim() || null,
+      };
+      if (editingStaffProfile) {
+        await updateStaffProfile(
+          level,
+          schoolId,
+          editingStaffProfile.id,
+          payload,
+        );
+      } else {
+        await createStaffProfile(level, schoolId, {
+          user_id: staffForm.user_id,
+          ...payload,
+        });
+      }
+      setStaffModalOpen(false);
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      setStaffError(apiErrorMessage(reason));
+    } finally {
+      setStaffSaving(false);
     }
   }
 
@@ -658,9 +928,22 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                     Зачётные книжки, курс, форма финансирования и академический статус.
                   </p>
                 </div>
-                <Badge className="bg-slate-100 text-slate-600 ring-slate-200">
-                  {pluralize(profiles.length, 'профиль', 'профиля', 'профилей')}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-slate-100 text-slate-600 ring-slate-200">
+                    {pluralize(
+                      profiles.length,
+                      'профиль',
+                      'профиля',
+                      'профилей',
+                    )}
+                  </Badge>
+                  {canManageProfiles ? (
+                    <Button size="sm" onClick={openCreateStudentProfile}>
+                      <Plus className="h-4 w-4" />
+                      Добавить профиль
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               {profilesError ? (
@@ -677,6 +960,14 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                   title="Профилей пока нет"
                   description="Профили создаются для обучающихся колледжа или вуза и связываются с программой и группой."
                   icon={<Users className="h-6 w-6" />}
+                  action={
+                    canManageProfiles ? (
+                      <Button size="sm" onClick={openCreateStudentProfile}>
+                        <Plus className="h-4 w-4" />
+                        Создать профиль
+                      </Button>
+                    ) : undefined
+                  }
                 />
               ) : (
                 <div className="mt-4 overflow-x-auto">
@@ -689,6 +980,11 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                         <th className="px-2 py-2 text-right font-semibold">Курс</th>
                         <th className="px-2 py-2 font-semibold">Финансирование</th>
                         <th className="px-2 py-2 font-semibold">Статус</th>
+                        {canManageProfiles ? (
+                          <th className="px-2 py-2 text-right font-semibold">
+                            {' '}
+                          </th>
+                        ) : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -722,6 +1018,134 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                             {STATUS_LABELS[profile.academic_status] ??
                               profile.academic_status}
                           </td>
+                          {canManageProfiles ? (
+                            <td className="px-2 py-2.5 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditStudentProfile(profile)}
+                                aria-label="Изменить профиль обучающегося"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          ) : null}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          ) : null}
+
+          {professional ? (
+            <Card className="p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">
+                    Профили преподавателей
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Кафедры, должности, учёные степени и звания сотрудников.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-slate-100 text-slate-600 ring-slate-200">
+                    {pluralize(
+                      staffProfiles.length,
+                      'профиль',
+                      'профиля',
+                      'профилей',
+                    )}
+                  </Badge>
+                  {canManageProfiles ? (
+                    <Button size="sm" onClick={openCreateStaffProfile}>
+                      <Plus className="h-4 w-4" />
+                      Добавить преподавателя
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {staffProfilesError ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {staffProfilesError}
+                </div>
+              ) : staffProfilesLoading ? (
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-10" />
+                  <Skeleton className="h-10" />
+                </div>
+              ) : staffProfiles.length === 0 ? (
+                <EmptyState
+                  title="Профилей преподавателей пока нет"
+                  description="Профиль связывает сотрудника с кафедрой, должностью и учёной степенью."
+                  icon={<GraduationCap className="h-6 w-6" />}
+                  action={
+                    canManageProfiles ? (
+                      <Button size="sm" onClick={openCreateStaffProfile}>
+                        <Plus className="h-4 w-4" />
+                        Создать профиль
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-500">
+                        <th className="px-2 py-2 font-semibold">Сотрудник</th>
+                        <th className="px-2 py-2 font-semibold">Подразделение</th>
+                        <th className="px-2 py-2 font-semibold">Должность</th>
+                        <th className="px-2 py-2 font-semibold">Учёная степень</th>
+                        <th className="px-2 py-2 font-semibold">Учёное звание</th>
+                        {canManageProfiles ? (
+                          <th className="px-2 py-2 text-right font-semibold">
+                            {' '}
+                          </th>
+                        ) : null}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staffProfiles.map((profile) => (
+                        <tr
+                          key={profile.id}
+                          className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60"
+                        >
+                          <td className="px-2 py-2.5">
+                            <p className="font-semibold text-slate-800">
+                              {profile.full_name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {profile.login}
+                            </p>
+                          </td>
+                          <td className="px-2 py-2.5 text-slate-600">
+                            {profile.department ?? '—'}
+                          </td>
+                          <td className="px-2 py-2.5 text-slate-600">
+                            {profile.position ?? '—'}
+                          </td>
+                          <td className="px-2 py-2.5 text-slate-600">
+                            {profile.academic_degree ?? '—'}
+                          </td>
+                          <td className="px-2 py-2.5 text-slate-600">
+                            {profile.academic_title ?? '—'}
+                          </td>
+                          {canManageProfiles ? (
+                            <td className="px-2 py-2.5 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditStaffProfile(profile)}
+                                aria-label="Изменить профиль преподавателя"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -975,6 +1399,392 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                 : 'школа'}
             » со ступенью «{meta.name}». Уровни можно изменить позже через API
             республиканского администратора.
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={studentModalOpen}
+        onClose={() => setStudentModalOpen(false)}
+        title={
+          editingStudentProfile
+            ? 'Изменить академический профиль'
+            : 'Новый академический профиль'
+        }
+        description="Профиль связывает обучающегося с программой, группой, курсом и формой финансирования."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setStudentModalOpen(false)}
+              disabled={studentSaving}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => void saveStudentProfile()}
+              loading={studentSaving}
+              disabled={
+                studentSaving ||
+                (!editingStudentProfile &&
+                  (usersLoading || !studentForm.user_id))
+              }
+            >
+              Сохранить
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {studentError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {studentError}
+            </div>
+          ) : null}
+
+          {editingStudentProfile ? (
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Обучающийся
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                {editingStudentProfile.full_name}
+              </p>
+              <p className="text-xs text-slate-500">
+                {editingStudentProfile.login}
+              </p>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Обучающийся
+              </span>
+              <select
+                value={studentForm.user_id}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    user_id: event.target.value,
+                  }))
+                }
+                disabled={usersLoading || !studentUsers.length}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="">
+                  {usersLoading
+                    ? 'Загрузка пользователей…'
+                    : studentUsers.length
+                      ? 'Выберите обучающегося'
+                      : 'Нет доступных обучающихся'}
+                </option>
+                {studentUsers.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.full_name} · {item.login}
+                  </option>
+                ))}
+              </select>
+              {usersError ? (
+                <p className="mt-1.5 text-xs text-rose-600">{usersError}</p>
+              ) : null}
+            </label>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Образовательная программа
+              </span>
+              <select
+                value={studentForm.program_id}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    program_id: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="">Не выбрана</option>
+                {(data?.programs ?? []).map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Группа
+              </span>
+              <select
+                value={studentForm.group_id}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    group_id: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="">Не выбрана</option>
+                {(data?.groups ?? []).map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {groupLabel(group)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Курс
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={studentForm.course_year}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    course_year: event.target.value,
+                  }))
+                }
+                placeholder="1"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Год поступления
+              </span>
+              <input
+                type="number"
+                min={2000}
+                max={2100}
+                value={studentForm.enrollment_year}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    enrollment_year: event.target.value,
+                  }))
+                }
+                placeholder="2025"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Номер зачётной книжки
+              </span>
+              <input
+                value={studentForm.record_book_number}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    record_book_number: event.target.value,
+                  }))
+                }
+                placeholder="например, 2025-001"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Форма финансирования
+              </span>
+              <select
+                value={studentForm.funding_type}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    funding_type: event.target
+                      .value as StudentAcademicProfile['funding_type'],
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="budget">Бюджет</option>
+                <option value="paid">Платно</option>
+                <option value="target">Целевое</option>
+                <option value="other">Другое</option>
+              </select>
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Академический статус
+              </span>
+              <select
+                value={studentForm.academic_status}
+                onChange={(event) =>
+                  setStudentForm((current) => ({
+                    ...current,
+                    academic_status: event.target
+                      .value as StudentAcademicProfile['academic_status'],
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="active">Обучается</option>
+                <option value="academic_leave">Академический отпуск</option>
+                <option value="expelled">Отчислен</option>
+                <option value="graduated">Выпускник</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={staffModalOpen}
+        onClose={() => setStaffModalOpen(false)}
+        title={
+          editingStaffProfile
+            ? 'Изменить профиль преподавателя'
+            : 'Новый профиль преподавателя'
+        }
+        description="Профиль хранит подразделение, должность и учёные степени сотрудника."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setStaffModalOpen(false)}
+              disabled={staffSaving}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => void saveStaffProfile()}
+              loading={staffSaving}
+              disabled={
+                staffSaving ||
+                (!editingStaffProfile &&
+                  (usersLoading || !staffForm.user_id))
+              }
+            >
+              Сохранить
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {staffError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {staffError}
+            </div>
+          ) : null}
+
+          {editingStaffProfile ? (
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Сотрудник
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                {editingStaffProfile.full_name}
+              </p>
+              <p className="text-xs text-slate-500">
+                {editingStaffProfile.login}
+              </p>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Сотрудник
+              </span>
+              <select
+                value={staffForm.user_id}
+                onChange={(event) =>
+                  setStaffForm((current) => ({
+                    ...current,
+                    user_id: event.target.value,
+                  }))
+                }
+                disabled={usersLoading || !staffUsers.length}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="">
+                  {usersLoading
+                    ? 'Загрузка пользователей…'
+                    : staffUsers.length
+                      ? 'Выберите сотрудника'
+                      : 'Нет доступных сотрудников'}
+                </option>
+                {staffUsers.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.full_name} · {item.login}
+                  </option>
+                ))}
+              </select>
+              {usersError ? (
+                <p className="mt-1.5 text-xs text-rose-600">{usersError}</p>
+              ) : null}
+            </label>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Подразделение
+              </span>
+              <input
+                value={staffForm.department}
+                onChange={(event) =>
+                  setStaffForm((current) => ({
+                    ...current,
+                    department: event.target.value,
+                  }))
+                }
+                placeholder="Кафедра информатики"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Должность
+              </span>
+              <input
+                value={staffForm.position}
+                onChange={(event) =>
+                  setStaffForm((current) => ({
+                    ...current,
+                    position: event.target.value,
+                  }))
+                }
+                placeholder="Доцент"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Учёная степень
+              </span>
+              <input
+                value={staffForm.academic_degree}
+                onChange={(event) =>
+                  setStaffForm((current) => ({
+                    ...current,
+                    academic_degree: event.target.value,
+                  }))
+                }
+                placeholder="Кандидат наук"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Учёное звание
+              </span>
+              <input
+                value={staffForm.academic_title}
+                onChange={(event) =>
+                  setStaffForm((current) => ({
+                    ...current,
+                    academic_title: event.target.value,
+                  }))
+                }
+                placeholder="Доцент"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
           </div>
         </div>
       </Modal>
