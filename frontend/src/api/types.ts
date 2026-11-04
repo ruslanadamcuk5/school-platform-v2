@@ -820,6 +820,44 @@ export interface NotificationFilters {
   offset?: number;
 }
 
+export type DocumentRequestStatus =
+  | 'submitted'
+  | 'in_progress'
+  | 'ready'
+  | 'rejected'
+  | 'cancelled';
+
+export interface DocumentRequest {
+  id: string;
+  school_id: string;
+  requester_id: string;
+  student_id: string | null;
+  document_type: string;
+  title: string;
+  reason: string | null;
+  status: DocumentRequestStatus;
+  document_number: string | null;
+  comment: string | null;
+  processed_by_id: string | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentRequestCreatePayload {
+  school_id?: string;
+  student_id?: string;
+  document_type: string;
+  title: string;
+  reason?: string | null;
+}
+
+export interface DocumentRequestProcessPayload {
+  status: 'in_progress' | 'ready' | 'rejected';
+  document_number?: string | null;
+  comment?: string | null;
+}
+
 export interface AuditEvent {
   id: string;
   school_id: string | null;

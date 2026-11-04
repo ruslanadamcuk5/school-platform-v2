@@ -15,6 +15,9 @@ import type {
   CurriculumComponent,
   CurriculumComponentType,
   CurriculumStatus,
+  DocumentRequest,
+  DocumentRequestCreatePayload,
+  DocumentRequestProcessPayload,
   EducationCurriculum,
   EducationGroup,
   EducationLevel,
@@ -1492,6 +1495,65 @@ export async function sendNotification(
   const { data } = await api.post<AppNotification>(
     '/communication/notifications',
     payload,
+  );
+  return data;
+}
+
+export async function fetchMyDocumentRequests(params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<DocumentRequest[]> {
+  const { data } = await api.get<DocumentRequest[]>('/documents/requests/mine', {
+    params: {
+      status: params?.status || undefined,
+      limit: params?.limit ?? 50,
+      offset: params?.offset ?? 0,
+    },
+  });
+  return data;
+}
+
+export async function fetchSchoolDocumentRequests(params?: {
+  school_id?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<DocumentRequest[]> {
+  const { data } = await api.get<DocumentRequest[]>('/documents/requests', {
+    params: {
+      school_id: params?.school_id || undefined,
+      status: params?.status || undefined,
+      limit: params?.limit ?? 50,
+      offset: params?.offset ?? 0,
+    },
+  });
+  return data;
+}
+
+export async function createDocumentRequest(
+  payload: DocumentRequestCreatePayload,
+): Promise<DocumentRequest> {
+  const { data } = await api.post<DocumentRequest>('/documents/requests', payload);
+  return data;
+}
+
+export async function processDocumentRequest(
+  requestId: string,
+  payload: DocumentRequestProcessPayload,
+): Promise<DocumentRequest> {
+  const { data } = await api.post<DocumentRequest>(
+    `/documents/requests/${encodeURIComponent(requestId)}/process`,
+    payload,
+  );
+  return data;
+}
+
+export async function cancelDocumentRequest(
+  requestId: string,
+): Promise<DocumentRequest> {
+  const { data } = await api.post<DocumentRequest>(
+    `/documents/requests/${encodeURIComponent(requestId)}/cancel`,
   );
   return data;
 }

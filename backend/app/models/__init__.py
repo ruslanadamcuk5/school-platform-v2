@@ -17,6 +17,7 @@ from app.models.assessment import (
 )
 from app.models.audit import AuditEvent
 from app.models.communication import Notification
+from app.models.documents import DocumentRequest
 from app.models.education import (
     AcademicSession,
     Competency,
@@ -94,6 +95,7 @@ __all__ = [
     "CreditTransfer",
     "CurriculumComponent",
     "DailyAnswer",
+    "DocumentRequest",
     "EducationCurriculum",
     "EducationProgram",
     "FeatureFlag",

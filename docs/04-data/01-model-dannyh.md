@@ -373,8 +373,12 @@
 - id, title, document_type, template_file_id, version, created_by, status.
 
 ### 10.2. `documents.requests`
-- id, parent_id, student_id, template_id, status, payload jsonb, requested_at,
-  processed_by, processed_at, result_file_id.
+- id, school_id, requester_id, student_id null, document_type, title, reason,
+  status (`submitted`/`in_progress`/`ready`/`rejected`/`cancelled`),
+  document_number, comment, processed_by_id, processed_at, created_at,
+  updated_at.
+- Шаблоны и электронная подпись пока не связаны с заявкой; это следующий этап
+  сервиса `documents`.
 
 ### 10.3. `documents.signatures`
 - id, document_request_id, signer_id, signature_hash, signed_at, ip, user_agent,
