@@ -64,7 +64,7 @@ import {
   formatDate,
   initials,
   pluralize,
-  roleLabels,
+  roleLabel,
   scopeColors,
   scopeLabels,
   scopeShortLabels,
@@ -115,7 +115,12 @@ const emptyForm: CreateForm = {
 };
 
 export function GroupsPage() {
-  const { can, groups: myGroups, reload: reloadAccess } = useAccess();
+  const {
+    can,
+    groups: myGroups,
+    institutionType,
+    reload: reloadAccess,
+  } = useAccess();
   const { user } = useAuth();
   const canWrite = can('iam.groups.write');
 
@@ -1178,7 +1183,8 @@ export function GroupsPage() {
                           {member.full_name}
                         </p>
                         <p className="truncate text-[10px] text-slate-400">
-                          {member.login} · {roleLabels[member.role as keyof typeof roleLabels] ?? member.role}
+                          {member.login} ·{' '}
+                          {roleLabel(member.role, institutionType)}
                         </p>
                       </div>
                       <span className="hidden text-[10px] text-slate-400 sm:inline">

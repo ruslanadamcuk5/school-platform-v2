@@ -21,7 +21,7 @@ import type { EffectiveService } from '../api/types';
 import { cn } from '../lib/cn';
 import {
   initials,
-  roleLabels,
+  roleLabel,
   serviceRoute,
 } from '../lib/labels';
 
@@ -126,7 +126,7 @@ function pageTitle(pathname: string, services: EffectiveService[]): string {
 
 export function AppLayout() {
   const { user, logout } = useAuth();
-  const { services, can } = useAccess();
+  const { services, can, institutionType } = useAccess();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -293,7 +293,9 @@ export function AppLayout() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-white">{user.full_name}</p>
-              <p className="truncate text-[11px] text-slate-400">{roleLabels[user.role]}</p>
+              <p className="truncate text-[11px] text-slate-400">
+                {roleLabel(user.role, institutionType)}
+              </p>
             </div>
             <button
               type="button"
@@ -371,7 +373,7 @@ export function AppLayout() {
                   {user.full_name}
                 </span>
                 <span className="block max-w-[140px] truncate text-[10px] text-slate-500">
-                  {roleLabels[user.role]}
+                  {roleLabel(user.role, institutionType)}
                 </span>
               </span>
             </button>

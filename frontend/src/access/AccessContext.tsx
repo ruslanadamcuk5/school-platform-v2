@@ -12,12 +12,14 @@ import {
   apiErrorMessage,
   fetchMyPermissions,
   fetchMyServices,
+  fetchSchools,
 } from '../api/client';
 import type {
   EffectivePermission,
   EffectiveService,
   Group,
   MyPermissions,
+  School,
 } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 
@@ -27,6 +29,7 @@ interface AccessContextValue {
   denied: string[];
   groups: Group[];
   services: EffectiveService[];
+  institutionType: School['institution_type'] | null;
   loading: boolean;
   error: string | null;
   can: (code: string) => boolean;
@@ -42,6 +45,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const [denied, setDenied] = useState<string[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [services, setServices] = useState<EffectiveService[]>([]);
+  const [institutionType, setInstitutionType] = useState<
+    School['institution_type'] | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,16 +58,19 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       setDenied([]);
       setGroups([]);
       setServices([]);
+      setInstitutionType(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-    const [permissionsResult, servicesResult] = await Promise.allSettled([
-      fetchMyPermissions(),
-      fetchMyServices(),
-    ]);
+    const [permissionsResult, servicesResult, schoolsResult] =
+      await Promise.allSettled([
+        fetchMyPermissions(),
+        fetchMyServices(),
+        fetchSchools(),
+      ]);
 
     if (permissionsResult.status === 'fulfilled') {
       const payload: MyPermissions = permissionsResult.value;
@@ -83,6 +92,15 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       setError((current) => current ?? apiErrorMessage(servicesResult.reason));
     }
 
+    if (schoolsResult.status === 'fulfilled') {
+      const currentSchool = schoolsResult.value.find(
+        (school) => school.id === user.school_id,
+      );
+      setInstitutionType(currentSchool?.institution_type ?? null);
+    } else {
+      setInstitutionType(null);
+    }
+
     setLoading(false);
   }, [user]);
 
@@ -99,12 +117,24 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       denied,
       groups,
       services,
+      institutionType,
       loading,
       error,
       can,
       reload: load,
     }),
-    [permissions, details, denied, groups, services, loading, error, can, load],
+    [
+      permissions,
+      details,
+      denied,
+      groups,
+      services,
+      institutionType,
+      loading,
+      error,
+      can,
+      load,
+    ],
   );
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;

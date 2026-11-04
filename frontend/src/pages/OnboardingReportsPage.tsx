@@ -20,6 +20,7 @@ import {
   apiErrorMessage,
   downloadOnboardingReport,
   fetchOnboardingReportUsers,
+  fetchSchools,
   resetOnboardingUser,
 } from '../api/client';
 import type {
@@ -27,6 +28,7 @@ import type {
   OnboardingReportUsers,
   OnboardingStatus,
   Role,
+  School,
 } from '../api/types';
 import {
   Badge,
@@ -39,7 +41,7 @@ import {
   StatCard,
 } from '../components/ui';
 import { cn } from '../lib/cn';
-import { formatDateTime, roleLabels } from '../lib/labels';
+import { formatDateTime, roleLabel } from '../lib/labels';
 
 const PAGE_SIZE = 25;
 
@@ -110,11 +112,13 @@ function UserRow({
   canReset,
   onReset,
   resetting,
+  institutionType,
 }: {
   item: OnboardingReportUser;
   canReset: boolean;
   onReset: (item: OnboardingReportUser) => void;
   resetting: boolean;
+  institutionType: School['institution_type'] | null;
 }) {
   return (
     <tr className="border-t border-slate-100 transition hover:bg-slate-50/70">
@@ -124,7 +128,7 @@ function UserRow({
       </td>
       <td className="px-4 py-3">
         <Badge className="bg-slate-100 text-slate-600 ring-slate-200">
-          {roleLabels[item.role] ?? item.role}
+          {roleLabel(item.role, institutionType)}
         </Badge>
       </td>
       <td className="hidden px-4 py-3 text-[11px] text-slate-600 lg:table-cell">
@@ -170,7 +174,7 @@ function UserRow({
 }
 
 export function OnboardingReportsPage() {
-  const { can } = useAccess();
+  const { can, institutionType } = useAccess();
   const [data, setData] = useState<OnboardingReportUsers | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -180,8 +184,35 @@ export function OnboardingReportsPage() {
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [resetting, setResetting] = useState<string | null>(null);
+  const [schools, setSchools] = useState<School[]>([]);
 
   const canReset = can('onboarding.progress.manage');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSchools() {
+      try {
+        const result = await fetchSchools();
+        if (!cancelled) setSchools(result);
+      } catch {
+        if (!cancelled) setSchools([]);
+      }
+    }
+    void loadSchools();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function institutionTypeFor(
+    schoolId: string | null,
+  ): School['institution_type'] | null {
+    if (!schoolId) return institutionType;
+    return (
+      schools.find((school) => school.id === schoolId)?.institution_type ??
+      institutionType
+    );
+  }
 
   async function load() {
     setLoading(true);
@@ -350,7 +381,7 @@ export function OnboardingReportsPage() {
               <option value="">Все роли</option>
               {filterRoles.map((item) => (
                 <option key={item} value={item}>
-                  {roleLabels[item]}
+                  {roleLabel(item, institutionType)}
                 </option>
               ))}
             </select>
@@ -404,7 +435,7 @@ export function OnboardingReportsPage() {
                 {Object.entries(summary.by_role)
                   .map(
                     ([code, count]) =>
-                      `${roleLabels[code as Role] ?? code}: ${count}`,
+                      `${roleLabel(code, institutionType)}: ${count}`,
                   )
                   .join(' · ')}
               </span>
@@ -453,6 +484,7 @@ export function OnboardingReportsPage() {
                     canReset={canReset}
                     onReset={(target) => void handleReset(target)}
                     resetting={resetting === item.user_id}
+                    institutionType={institutionTypeFor(item.school_id)}
                   />
                 ))}
               </tbody>

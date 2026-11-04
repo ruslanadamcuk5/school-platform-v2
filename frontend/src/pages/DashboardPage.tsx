@@ -42,7 +42,7 @@ import {
   categoryLabels,
   greeting,
   pluralize,
-  roleLabels,
+  roleLabel,
   scopeColors,
   scopeShortLabels,
   serviceCategoryColors,
@@ -224,7 +224,10 @@ export function DashboardPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="border border-white/10 bg-white/10 text-accent-200 ring-white/10">
                 <ShieldCheck className="h-3 w-3" />
-                {roleLabels[user?.role ?? 'student']}
+                {roleLabel(
+                  user?.role ?? 'student',
+                  selectedSchool?.institution_type,
+                )}
               </Badge>
               {myGroups.length > 0 ? (
                 <Badge className="border border-white/10 bg-white/5 text-slate-300 ring-white/10">
@@ -534,7 +537,7 @@ export function DashboardPage() {
                 className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5"
               >
                 <span className="text-xs font-medium text-slate-600">
-                  {roleLabels[role as keyof typeof roleLabels] ?? role}
+                  {roleLabel(role, selectedSchool?.institution_type)}
                 </span>
                 <span className="text-sm font-bold text-slate-900">{count}</span>
               </div>

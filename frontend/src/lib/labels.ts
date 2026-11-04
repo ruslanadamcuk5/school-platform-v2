@@ -1,4 +1,4 @@
-import type { Group, Role, ScopeType, Service } from '../api/types';
+import type { Group, Role, School, ScopeType, Service } from '../api/types';
 
 export const roleLabels: Record<Role, string> = {
   superadmin: 'Республиканский администратор',
@@ -10,6 +10,27 @@ export const roleLabels: Record<Role, string> = {
   psychologist: 'Психолог',
   secretary: 'Секретарь',
 };
+
+type InstitutionType = School['institution_type'];
+
+export function roleLabel(
+  role: Role | string,
+  institutionType?: InstitutionType | null,
+): string {
+  if (role === 'admin') {
+    if (institutionType === 'school') {
+      return 'Администратор школы';
+    }
+    if (institutionType === 'college') {
+      return 'Администратор средне-специального учебного заведения';
+    }
+    if (institutionType === 'university') {
+      return 'Администратор высшего учебного заведения';
+    }
+    return 'Администратор';
+  }
+  return roleLabels[role as Role] ?? role;
+}
 
 export const categoryLabels: Record<Group['category'], string> = {
   students: 'Ученики',

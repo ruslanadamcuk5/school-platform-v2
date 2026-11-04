@@ -36,7 +36,7 @@ import {
   formatDateTime,
   initials,
   pluralize,
-  roleLabels,
+  roleLabel,
   scopeColors,
   scopeLabels,
   serviceCategoryColors,
@@ -51,7 +51,16 @@ interface PermissionGroup {
 
 export function ProfilePage() {
   const { user, logout } = useAuth();
-  const { details, denied, groups, services, permissions, loading, reload } = useAccess();
+  const {
+    details,
+    denied,
+    groups,
+    services,
+    permissions,
+    institutionType,
+    loading,
+    reload,
+  } = useAccess();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -122,7 +131,7 @@ export function ProfilePage() {
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <Badge className="border border-white/10 bg-white/10 text-accent-200 ring-white/10">
                     <Shield className="h-3 w-3" />
-                    {roleLabels[user.role]}
+                    {roleLabel(user.role, institutionType)}
                   </Badge>
                   {user.is_verified ? (
                     <Badge className="border border-white/10 bg-white/5 text-slate-300 ring-white/10">
