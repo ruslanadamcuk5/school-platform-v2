@@ -6,6 +6,9 @@ import type {
   AnalyticsOverview,
   AssessmentType,
   City,
+  Competency,
+  CompetencyMatrix,
+  CompetencyType,
   CreditTransfer,
   CreditTransferStatus,
   CurriculumComponent,
@@ -28,6 +31,7 @@ import type {
   OnboardingProgress,
   OnboardingReportUsers,
   PermissionList,
+  ProgramCompetency,
   Region,
   School,
   SchoolClass,
@@ -788,6 +792,132 @@ export async function updateCreditTransfer(
   const { data } = await api.patch<CreditTransfer>(
     `/education/${level}/credit-transfers/${transferId}`,
     payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchCompetencies(
+  level: EducationLevel,
+  schoolId?: string,
+  options?: {
+    search?: string;
+    competencyType?: CompetencyType;
+    isActive?: boolean;
+  },
+): Promise<Competency[]> {
+  const { data } = await api.get<Competency[]>(
+    `/education/${level}/competencies`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        search: options?.search || undefined,
+        competency_type: options?.competencyType || undefined,
+        is_active:
+          options?.isActive === undefined ? undefined : options.isActive,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createCompetency(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    code: string;
+    name: string;
+    description?: string | null;
+    competency_type?: CompetencyType;
+    profile?: Record<string, unknown>;
+    is_active?: boolean;
+  },
+): Promise<Competency> {
+  const { data } = await api.post<Competency>(
+    `/education/${level}/competencies`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateCompetency(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  competencyId: string,
+  payload: Partial<{
+    code: string;
+    name: string;
+    description: string | null;
+    competency_type: CompetencyType;
+    profile: Record<string, unknown>;
+    is_active: boolean;
+  }>,
+): Promise<Competency> {
+  const { data } = await api.patch<Competency>(
+    `/education/${level}/competencies/${competencyId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchProgramCompetencies(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  programId: string,
+): Promise<ProgramCompetency[]> {
+  const { data } = await api.get<ProgramCompetency[]>(
+    `/education/${level}/programs/${programId}/competencies`,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function replaceProgramCompetencies(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  programId: string,
+  items: Array<{
+    competency_id: string;
+    target_level?: number | null;
+    weight?: number;
+    profile?: Record<string, unknown>;
+  }>,
+): Promise<ProgramCompetency[]> {
+  const { data } = await api.put<ProgramCompetency[]>(
+    `/education/${level}/programs/${programId}/competencies`,
+    { items },
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchCompetencyMatrix(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  curriculumId: string,
+): Promise<CompetencyMatrix> {
+  const { data } = await api.get<CompetencyMatrix>(
+    `/education/${level}/curricula/${curriculumId}/competency-matrix`,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function replaceCompetencyMatrix(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  curriculumId: string,
+  links: Array<{
+    component_id: string;
+    competency_id: string;
+    weight?: number;
+  }>,
+): Promise<CompetencyMatrix> {
+  const { data } = await api.put<CompetencyMatrix>(
+    `/education/${level}/curricula/${curriculumId}/competency-matrix`,
+    { links },
     { params: { school_id: schoolId || undefined } },
   );
   return data;

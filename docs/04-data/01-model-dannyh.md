@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.4 |
+| Версия | 0.5 |
 | Статус | Рабочий |
-| Дата | 03.11.2026 |
+| Дата | 04.11.2026 |
 
 ## 1. Общие принципы
 - СУБД: PostgreSQL 16+.
@@ -162,6 +162,56 @@
 - Ограничения: семестр 1–12, кредиты 0–100, академические часы 0–20000,
   контактные часы не больше академических.
 - Компоненты удаляются каскадно вместе с учебным планом.
+
+### 4.12. `org.academic_sessions`
+- id, institution_id FK, education_level, academic_year, semester, name,
+  session_type, starts_on, ends_on, status, description, profile (jsonb),
+  created_at, updated_at.
+- Unique: (institution_id, academic_year, semester, name).
+- `session_type`: `winter`, `summer`, `additional`, `other`; `status`:
+  `planned`, `active`, `completed`, `archived`.
+
+### 4.13. `org.session_statements`
+- id, session_id FK, institution_id FK, education_level, group_id FK,
+  curriculum_id FK, component_id FK, teacher_id FK null, statement_number,
+  issued_on, status, approved_at, approved_by_id FK null, notes, profile
+  (jsonb), created_at, updated_at.
+- Unique: (session_id, group_id, component_id) и
+  (institution_id, statement_number).
+- `status`: `draft`, `published`, `approved`, `archived`.
+
+### 4.14. `org.statement_records`
+- id, statement_id FK, student_id FK, grade, result, credits_awarded
+  (numeric 5,2), comment, profile (jsonb), created_at, updated_at.
+- Unique: (statement_id, student_id).
+- `result`: `planned`, `passed`, `failed`, `not_appeared`, `exempt`,
+  `transferred`; оценка 1–10; кредиты 0–100.
+
+### 4.15. `org.credit_transfers`
+- id, institution_id FK, education_level, student_id FK, target_program_id FK
+  null, target_component_id FK null, source_institution, source_program,
+  source_component_code, source_component_name, source_academic_year,
+  source_credits, awarded_credits, source_grade, document_number, reason,
+  status, decided_at, decided_by_id FK null, profile (jsonb), created_at,
+  updated_at.
+- Unique: (institution_id, student_id, source_institution,
+  source_component_code, source_academic_year).
+
+### 4.16. `org.competencies`
+- id, institution_id FK, education_level, code, name, description,
+  competency_type, profile (jsonb), is_active, created_at, updated_at.
+- Unique: (institution_id, code).
+- `competency_type`: `universal`, `general`, `professional`, `other`.
+
+### 4.17. `org.program_competencies`
+- id, program_id FK, competency_id FK, target_level, weight (numeric 5,2),
+  profile (jsonb), created_at, updated_at.
+- Unique: (program_id, competency_id); целевой уровень 1–5, вес 0–100.
+
+### 4.18. `org.component_competencies`
+- id, component_id FK, competency_id FK, weight (numeric 5,2), profile
+  (jsonb), created_at, updated_at.
+- Unique: (component_id, competency_id); вес 0–100.
 
 ## 5. LMS
 ### 5.1. `lms.subjects`

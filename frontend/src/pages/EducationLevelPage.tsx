@@ -65,6 +65,7 @@ import {
 } from '../components/ui';
 import { cn } from '../lib/cn';
 import { formatDate, pluralize } from '../lib/labels';
+import { EducationCompetenciesCard } from './EducationCompetenciesCard';
 import { EducationSessionsCard } from './EducationSessionsCard';
 
 const LEVEL_META: Record<
@@ -1774,17 +1775,26 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
           ) : null}
 
           {professional ? (
-            <EducationSessionsCard
-              level={level}
-              schoolId={schoolId}
-              academicYear={data.academic_year}
-              groups={data.groups}
-              curricula={curricula}
-              profiles={profiles}
-              staff={staffProfiles}
-              canManage={canManagePrograms}
-              onDataChanged={() => setReloadKey((value) => value + 1)}
-            />
+            <>
+              <EducationCompetenciesCard
+                level={level}
+                schoolId={schoolId}
+                programs={data.programs}
+                curricula={curricula}
+                canManage={canManagePrograms}
+              />
+              <EducationSessionsCard
+                level={level}
+                schoolId={schoolId}
+                academicYear={data.academic_year}
+                groups={data.groups}
+                curricula={curricula}
+                profiles={profiles}
+                staff={staffProfiles}
+                canManage={canManagePrograms}
+                onDataChanged={() => setReloadKey((value) => value + 1)}
+              />
+            </>
           ) : null}
 
           <p className="text-xs text-slate-400">

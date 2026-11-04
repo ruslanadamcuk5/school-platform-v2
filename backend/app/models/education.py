@@ -59,6 +59,9 @@ STATEMENT_RESULT_SQL = (
 TRANSFER_STATUS_SQL = (
     "status IN ('draft','pending','approved','rejected','archived')"
 )
+COMPETENCY_TYPE_SQL = (
+    "competency_type IN ('universal','general','professional','other')"
+)
 
 
 class EducationProgram(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -108,6 +111,11 @@ class EducationProgram(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     curricula: Mapped[list["EducationCurriculum"]] = relationship(
         back_populates="program"
+    )
+    competency_links: Mapped[list["ProgramCompetency"]] = relationship(
+        back_populates="program",
+        cascade="all, delete-orphan",
+        order_by="ProgramCompetency.competency_id",
     )
 
 
@@ -350,6 +358,11 @@ class CurriculumComponent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     curriculum: Mapped["EducationCurriculum"] = relationship(
         back_populates="components"
+    )
+    competency_links: Mapped[list["ComponentCompetency"]] = relationship(
+        back_populates="component",
+        cascade="all, delete-orphan",
+        order_by="ComponentCompetency.competency_id",
     )
 
 
@@ -663,4 +676,156 @@ class CreditTransfer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     target_component: Mapped["CurriculumComponent | None"] = relationship()
     decided_by: Mapped["User | None"] = relationship(
         foreign_keys=[decided_by_id]
+    )
+
+
+class Competency(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """A universal, general or professional competency."""
+
+    __tablename__ = "competencies"
+    __table_args__ = (
+        UniqueConstraint(
+            "institution_id",
+            "code",
+            name="uq_competencies_institution_code",
+        ),
+        CheckConstraint(LEVEL_SQL, name="education_level"),
+        CheckConstraint(COMPETENCY_TYPE_SQL, name="competency_type"),
+        {"schema": "org"},
+    )
+
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    code: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    competency_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="professional",
+        server_default="professional",
+        index=True,
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
+    institution: Mapped["School"] = relationship()
+    program_links: Mapped[list["ProgramCompetency"]] = relationship(
+        back_populates="competency",
+        cascade="all, delete-orphan",
+    )
+    component_links: Mapped[list["ComponentCompetency"]] = relationship(
+        back_populates="competency",
+        cascade="all, delete-orphan",
+    )
+
+
+class ProgramCompetency(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Target level of a competency in an education programme."""
+
+    __tablename__ = "program_competencies"
+    __table_args__ = (
+        UniqueConstraint(
+            "program_id",
+            "competency_id",
+            name="uq_program_competencies_program_competency",
+        ),
+        CheckConstraint(
+            "target_level IS NULL OR (target_level BETWEEN 1 AND 5)",
+            name="target_level_range",
+        ),
+        CheckConstraint(
+            "weight >= 0 AND weight <= 100", name="weight_range"
+        ),
+        {"schema": "org"},
+    )
+
+    program_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.education_programs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    competency_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.competencies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    weight: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    program: Mapped["EducationProgram"] = relationship(
+        back_populates="competency_links"
+    )
+    competency: Mapped["Competency"] = relationship(
+        back_populates="program_links"
+    )
+
+
+class ComponentCompetency(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Contribution of a curriculum component to a competency."""
+
+    __tablename__ = "component_competencies"
+    __table_args__ = (
+        UniqueConstraint(
+            "component_id",
+            "competency_id",
+            name="uq_component_competencies_component_competency",
+        ),
+        CheckConstraint(
+            "weight >= 0 AND weight <= 100", name="weight_range"
+        ),
+        {"schema": "org"},
+    )
+
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.curriculum_components.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    competency_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.competencies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    weight: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    component: Mapped["CurriculumComponent"] = relationship(
+        back_populates="competency_links"
+    )
+    competency: Mapped["Competency"] = relationship(
+        back_populates="component_links"
     )

@@ -49,10 +49,13 @@ from app.models.assessment import (
 )
 from app.models.education import (
     AcademicSession,
+    Competency,
+    ComponentCompetency,
     CreditTransfer,
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    ProgramCompetency,
     SessionStatement,
     StaffAcademicProfile,
     StatementRecord,
@@ -1443,6 +1446,101 @@ async def _ensure_credit_transfer(
     return 1
 
 
+async def _ensure_competency(
+    session: AsyncSession,
+    *,
+    school: School,
+    level: str,
+    code: str,
+    name: str,
+    description: str,
+    competency_type: str,
+) -> tuple[Competency, int]:
+    item = (
+        await session.execute(
+            select(Competency).where(
+                Competency.institution_id == school.id,
+                Competency.code == code,
+            )
+        )
+    ).scalar_one_or_none()
+    created = item is None
+    if item is None:
+        item = Competency(
+            institution_id=school.id,
+            education_level=level,
+            code=code,
+            name=name,
+            description=description,
+            competency_type=competency_type,
+            profile={"data_origin": DEMO_TAG},
+            is_active=True,
+        )
+        session.add(item)
+        await session.flush()
+    return item, created
+
+
+async def _ensure_program_competency(
+    session: AsyncSession,
+    *,
+    program: EducationProgram,
+    competency: Competency,
+    target_level: int,
+    weight: float,
+) -> int:
+    existing = (
+        await session.execute(
+            select(ProgramCompetency.id).where(
+                ProgramCompetency.program_id == program.id,
+                ProgramCompetency.competency_id == competency.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return 0
+    session.add(
+        ProgramCompetency(
+            program_id=program.id,
+            competency_id=competency.id,
+            target_level=target_level,
+            weight=weight,
+            profile={"data_origin": DEMO_TAG},
+        )
+    )
+    await session.flush()
+    return 1
+
+
+async def _ensure_component_competency(
+    session: AsyncSession,
+    *,
+    component: CurriculumComponent,
+    competency: Competency,
+    weight: float,
+) -> int:
+    existing = (
+        await session.execute(
+            select(ComponentCompetency.id).where(
+                ComponentCompetency.component_id == component.id,
+                ComponentCompetency.competency_id == competency.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return 0
+    session.add(
+        ComponentCompetency(
+            component_id=component.id,
+            competency_id=competency.id,
+            weight=weight,
+            profile={"data_origin": DEMO_TAG},
+        )
+    )
+    await session.flush()
+    return 1
+
+
 async def _ensure_student_profile(
     session: AsyncSession,
     *,
@@ -2671,6 +2769,138 @@ async def seed_pilot_data() -> None:
                         suffix=f"{'K' if level == 'vocational' else 'U'}-01",
                     )
 
+        competencies_created = 0
+        program_competencies_created = 0
+        matrix_links_created = 0
+        competency_templates = (
+            (
+                "УК-01",
+                "Системное и критическое мышление",
+                "Способность анализировать профессиональные задачи и предлагать обоснованные решения.",
+                "universal",
+            ),
+            (
+                "УК-02",
+                "Командная работа и лидерство",
+                "Способность работать в команде, распределять роли и нести ответственность за результат.",
+                "universal",
+            ),
+            (
+                "ОПК-01",
+                "Работа с профессиональной информацией",
+                "Поиск, проверка и оформление профессиональной информации из разных источников.",
+                "general",
+            ),
+            (
+                "ПК-01",
+                "Проектирование профессиональных решений",
+                "Разработка и обоснование решений в рамках выбранной профессиональной области.",
+                "professional",
+            ),
+            (
+                "ПК-02",
+                "Цифровые профессиональные инструменты",
+                "Применение цифровых инструментов для решения профессиональных задач.",
+                "professional",
+            ),
+            (
+                "ПК-03",
+                "Профессиональная коммуникация",
+                "Представление результатов работы и взаимодействие с заказчиками и коллегами.",
+                "professional",
+            ),
+        )
+        for institution, level in (
+            (college, "vocational"),
+            (university, "higher"),
+        ):
+            programs = (
+                (
+                    await session.execute(
+                        select(EducationProgram)
+                        .where(
+                            EducationProgram.institution_id == institution.id,
+                            EducationProgram.education_level == level,
+                        )
+                        .order_by(EducationProgram.code)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            if not programs:
+                continue
+            prefix = "К" if level == "vocational" else "У"
+            competencies: list[Competency] = []
+            for template_code, name, description, competency_type in (
+                competency_templates
+            ):
+                competency, created = await _ensure_competency(
+                    session,
+                    school=institution,
+                    level=level,
+                    code=f"{prefix}-{template_code}",
+                    name=name,
+                    description=description,
+                    competency_type=competency_type,
+                )
+                competencies.append(competency)
+                competencies_created += int(created)
+            for program in programs:
+                for index, competency in enumerate(competencies):
+                    program_competencies_created += (
+                        await _ensure_program_competency(
+                            session,
+                            program=program,
+                            competency=competency,
+                            target_level=3 + index % 3,
+                            weight=float(10 + index * 5),
+                        )
+                    )
+                curriculum = (
+                    await session.execute(
+                        select(EducationCurriculum)
+                        .where(
+                            EducationCurriculum.program_id == program.id,
+                            EducationCurriculum.academic_year == ACADEMIC_YEAR,
+                        )
+                        .order_by(EducationCurriculum.created_at)
+                    )
+                ).scalars().first()
+                if curriculum is None:
+                    continue
+                components = (
+                    (
+                        await session.execute(
+                            select(CurriculumComponent)
+                            .where(
+                                CurriculumComponent.curriculum_id
+                                == curriculum.id
+                            )
+                            .order_by(
+                                CurriculumComponent.semester,
+                                CurriculumComponent.order_index,
+                                CurriculumComponent.code,
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for component_index, component in enumerate(components[:4]):
+                    for offset, weight in ((0, 20.0), (1, 10.0)):
+                        competency = competencies[
+                            (component_index + offset) % len(competencies)
+                        ]
+                        matrix_links_created += (
+                            await _ensure_component_competency(
+                                session,
+                                component=component,
+                                competency=competency,
+                                weight=weight,
+                            )
+                        )
+
         curator_by_class: dict = {}
         for index, school_class in enumerate(school_classes):
             curator_by_class[school_class.id] = homeroom_teachers[index]
@@ -2874,6 +3104,9 @@ async def seed_pilot_data() -> None:
             f"journal entries +{journal_created}, "
             f"sessions +{sessions_created}, statements +{statements_created}, "
             f"statement records +{records_created}, credit transfers +{transfers_created}, "
+            f"competencies +{competencies_created}, "
+            f"program competencies +{program_competencies_created}, "
+            f"matrix links +{matrix_links_created}, "
             f"textbooks +{textbook_created}, library items +{library_created}, "
             f"recommendations +{recommendations_created}, "
             f"grading scales +{grading_scales_created}, quizzes +{quiz_created}"

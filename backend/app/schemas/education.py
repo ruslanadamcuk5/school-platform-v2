@@ -29,6 +29,7 @@ StatementResult = Literal[
 CreditTransferStatus = Literal[
     "draft", "pending", "approved", "rejected", "archived"
 ]
+CompetencyType = Literal["universal", "general", "professional", "other"]
 
 
 class EducationLevelOut(BaseModel):
@@ -519,3 +520,117 @@ class TranscriptOut(BaseModel):
     progress_percent: int = 0
     items: list[TranscriptItemOut] = Field(default_factory=list)
     generated_at: datetime
+
+
+class CompetencyOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    institution_id: uuid.UUID
+    education_level: EducationLevel
+    code: str
+    name: str
+    description: str | None = None
+    competency_type: CompetencyType
+    profile: dict = Field(default_factory=dict)
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class CompetencyCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=32)
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    competency_type: CompetencyType = "professional"
+    profile: dict = Field(default_factory=dict)
+    is_active: bool = True
+
+
+class CompetencyUpdate(BaseModel):
+    code: str | None = Field(default=None, min_length=1, max_length=32)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    competency_type: CompetencyType | None = None
+    profile: dict | None = None
+    is_active: bool | None = None
+
+
+class ProgramCompetencyOut(BaseModel):
+    id: uuid.UUID
+    program_id: uuid.UUID
+    competency_id: uuid.UUID
+    code: str
+    name: str
+    competency_type: CompetencyType
+    target_level: int | None = None
+    weight: float = 0
+    profile: dict = Field(default_factory=dict)
+
+
+class ProgramCompetencyItem(BaseModel):
+    competency_id: uuid.UUID
+    target_level: int | None = Field(default=None, ge=1, le=5)
+    weight: float = Field(default=0, ge=0, le=100)
+    profile: dict = Field(default_factory=dict)
+
+
+class ProgramCompetencyBulk(BaseModel):
+    items: list[ProgramCompetencyItem] = Field(
+        default_factory=list, max_length=500
+    )
+
+
+class ComponentCompetencyOut(BaseModel):
+    id: uuid.UUID
+    component_id: uuid.UUID
+    competency_id: uuid.UUID
+    code: str
+    name: str
+    competency_type: CompetencyType
+    weight: float = 0
+    profile: dict = Field(default_factory=dict)
+
+
+class CompetencyMatrixComponentOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    name: str
+    semester: int
+    component_type: CurriculumComponentType
+
+
+class CompetencyMatrixCompetencyOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    name: str
+    competency_type: CompetencyType
+
+
+class CompetencyMatrixLinkOut(BaseModel):
+    component_id: uuid.UUID
+    competency_id: uuid.UUID
+    weight: float = 0
+
+
+class CompetencyMatrixOut(BaseModel):
+    curriculum_id: uuid.UUID
+    curriculum_name: str
+    program_id: uuid.UUID
+    components: list[CompetencyMatrixComponentOut] = Field(default_factory=list)
+    competencies: list[CompetencyMatrixCompetencyOut] = Field(
+        default_factory=list
+    )
+    links: list[CompetencyMatrixLinkOut] = Field(default_factory=list)
+
+
+class CompetencyMatrixLinkIn(BaseModel):
+    component_id: uuid.UUID
+    competency_id: uuid.UUID
+    weight: float = Field(default=0, ge=0, le=100)
+
+
+class CompetencyMatrixBulk(BaseModel):
+    links: list[CompetencyMatrixLinkIn] = Field(
+        default_factory=list, max_length=2000
+    )

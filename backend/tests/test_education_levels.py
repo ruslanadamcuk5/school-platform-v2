@@ -18,9 +18,12 @@ from app.core.education import (
 from app.main import app
 from app.schemas.education import (
     AcademicSessionCreate,
+    CompetencyCreate,
+    CompetencyMatrixBulk,
     CreditTransferCreate,
     CurriculumComponentCreate,
     EducationCurriculumCreate,
+    ProgramCompetencyItem,
     StatementRecordBulk,
 )
 from app.services.access import legacy_allows
@@ -209,3 +212,44 @@ def test_session_and_credit_routes_are_in_openapi() -> None:
     assert "/api/v1/education/higher/credit-transfers/{transfer_id}" in paths
     assert "/api/v1/education/primary/sessions" not in paths
     assert "/api/v1/education/secondary/credit-transfers" not in paths
+
+
+def test_competency_schemas_validate_defaults_and_ranges() -> None:
+    competency = CompetencyCreate(
+        code="ПК-01",
+        name="Профессиональная коммуникация",
+    )
+    assert competency.competency_type == "professional"
+    assert competency.is_active is True
+
+    with pytest.raises(ValidationError):
+        ProgramCompetencyItem(competency_id=uuid.uuid4(), target_level=6)
+    with pytest.raises(ValidationError):
+        ProgramCompetencyItem(competency_id=uuid.uuid4(), weight=101)
+
+    matrix = CompetencyMatrixBulk(
+        links=[
+            {
+                "component_id": uuid.uuid4(),
+                "competency_id": uuid.uuid4(),
+                "weight": 25,
+            }
+        ]
+    )
+    assert matrix.links[0].weight == 25
+
+
+def test_competency_routes_are_professional_only_in_openapi() -> None:
+    paths = app.openapi()["paths"]
+    assert "/api/v1/education/vocational/competencies" in paths
+    assert "/api/v1/education/higher/competencies/{competency_id}" in paths
+    assert (
+        "/api/v1/education/vocational/programs/{program_id}/competencies"
+        in paths
+    )
+    assert (
+        "/api/v1/education/higher/curricula/{curriculum_id}/competency-matrix"
+        in paths
+    )
+    assert "/api/v1/education/primary/competencies" not in paths
+    assert "/api/v1/education/secondary/competencies" not in paths

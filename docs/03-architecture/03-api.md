@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.9 |
+| Версия | 0.10 |
 | Статус | Рабочий |
-| Дата | 03.11.2026 |
+| Дата | 04.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
 | OpenAPI | `/openapi.json`, `/docs`, `/redoc` |
 
@@ -229,6 +229,13 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 | GET | `/api/v1/education/{level}/credit-transfers` | `{service}.read` | Перезачёты кредитов |
 | POST | `/api/v1/education/{level}/credit-transfers` | `{service}.programs.manage` | Создать перезачёт |
 | PATCH | `/api/v1/education/{level}/credit-transfers/{id}` | `{service}.programs.manage` | Изменить решение о перезачёте |
+| GET | `/api/v1/education/{level}/competencies` | `{service}.read` | Каталог компетенций |
+| POST | `/api/v1/education/{level}/competencies` | `{service}.programs.manage` | Создать компетенцию |
+| PATCH | `/api/v1/education/{level}/competencies/{id}` | `{service}.programs.manage` | Изменить компетенцию |
+| GET | `/api/v1/education/{level}/programs/{id}/competencies` | `{service}.read` | Компетенции программы и целевые уровни |
+| PUT | `/api/v1/education/{level}/programs/{id}/competencies` | `{service}.programs.manage` | Заменить матрицу компетенций программы |
+| GET | `/api/v1/education/{level}/curricula/{id}/competency-matrix` | `{service}.read` | Матрица «компонент × компетенция» |
+| PUT | `/api/v1/education/{level}/curricula/{id}/competency-matrix` | `{service}.programs.manage` | Заменить матрицу учебного плана |
 
 Правила:
 
@@ -251,8 +258,13 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
   перезачёты; кредиты по целевому компоненту не учитываются дважды;
 - перезачёт уникален по источнику, дисциплине и учебному году для одного
   обучающегося;
+- компетенции и матрицы доступны только для `vocational` и `higher`; код
+  компетенции уникален внутри учреждения;
+- матрица программы хранит целевой уровень 1–5 и вес 0–100;
+- матрица учебного плана принимает только компоненты этого плана и
+  компетенции этого учреждения и ступени, без повторяющихся пар;
 - изменения программ, профилей, планов, компонентов, сессий, ведомостей,
-  перезачётов и учреждений фиксируются в аудите.
+  перезачётов, компетенций и учреждений фиксируются в аудите.
 
 ## 5. Учебный контент (LMS)
 

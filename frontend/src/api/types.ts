@@ -524,6 +524,75 @@ export interface Transcript {
   generated_at: string;
 }
 
+export type CompetencyType = 'universal' | 'general' | 'professional' | 'other';
+
+export interface Competency {
+  id: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  code: string;
+  name: string;
+  description: string | null;
+  competency_type: CompetencyType;
+  profile: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProgramCompetency {
+  id: string;
+  program_id: string;
+  competency_id: string;
+  code: string;
+  name: string;
+  competency_type: CompetencyType;
+  target_level: number | null;
+  weight: number;
+  profile: Record<string, unknown>;
+}
+
+export interface ComponentCompetency {
+  id: string;
+  component_id: string;
+  competency_id: string;
+  code: string;
+  name: string;
+  competency_type: CompetencyType;
+  weight: number;
+  profile: Record<string, unknown>;
+}
+
+export interface CompetencyMatrixComponent {
+  id: string;
+  code: string;
+  name: string;
+  semester: number;
+  component_type: CurriculumComponentType;
+}
+
+export interface CompetencyMatrixCompetency {
+  id: string;
+  code: string;
+  name: string;
+  competency_type: CompetencyType;
+}
+
+export interface CompetencyMatrixLink {
+  component_id: string;
+  competency_id: string;
+  weight: number;
+}
+
+export interface CompetencyMatrix {
+  curriculum_id: string;
+  curriculum_name: string;
+  program_id: string;
+  components: CompetencyMatrixComponent[];
+  competencies: CompetencyMatrixCompetency[];
+  links: CompetencyMatrixLink[];
+}
+
 export interface UserList {
   items: User[];
   total: number;

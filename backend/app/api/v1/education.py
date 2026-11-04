@@ -11,7 +11,7 @@ import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -32,10 +32,13 @@ from app.core.education import (
 )
 from app.models.education import (
     AcademicSession,
+    Competency,
+    ComponentCompetency,
     CreditTransfer,
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    ProgramCompetency,
     SessionStatement,
     StaffAcademicProfile,
     StatementRecord,
@@ -47,6 +50,15 @@ from app.schemas.education import (
     AcademicSessionCreate,
     AcademicSessionOut,
     AcademicSessionUpdate,
+    CompetencyCreate,
+    CompetencyMatrixBulk,
+    CompetencyMatrixComponentOut,
+    CompetencyMatrixCompetencyOut,
+    CompetencyMatrixLinkOut,
+    CompetencyMatrixOut,
+    CompetencyOut,
+    CompetencyUpdate,
+    ComponentCompetencyOut,
     CreditTransferCreate,
     CreditTransferOut,
     CreditTransferUpdate,
@@ -63,6 +75,8 @@ from app.schemas.education import (
     EducationProgramOut,
     EducationProgramUpdate,
     EducationTotalsOut,
+    ProgramCompetencyBulk,
+    ProgramCompetencyOut,
     SessionStatementCreate,
     SessionStatementOut,
     SessionStatementUpdate,
@@ -549,6 +563,49 @@ def _statement_out(statement: SessionStatement) -> SessionStatementOut:
     )
 
 
+def _competency_out(item: Competency) -> CompetencyOut:
+    return CompetencyOut.model_validate(item)
+
+
+def _program_competency_out(link: ProgramCompetency) -> ProgramCompetencyOut:
+    competency = link.competency
+    return ProgramCompetencyOut(
+        id=link.id,
+        program_id=link.program_id,
+        competency_id=link.competency_id,
+        code=competency.code if competency else "",
+        name=competency.name if competency else "",
+        competency_type=(
+            competency.competency_type  # type: ignore[arg-type]
+            if competency
+            else "other"
+        ),
+        target_level=link.target_level,
+        weight=float(link.weight or 0),
+        profile=link.profile or {},
+    )
+
+
+def _component_competency_out(
+    link: ComponentCompetency,
+) -> ComponentCompetencyOut:
+    competency = link.competency
+    return ComponentCompetencyOut(
+        id=link.id,
+        component_id=link.component_id,
+        competency_id=link.competency_id,
+        code=competency.code if competency else "",
+        name=competency.name if competency else "",
+        competency_type=(
+            competency.competency_type  # type: ignore[arg-type]
+            if competency
+            else "other"
+        ),
+        weight=float(link.weight or 0),
+        profile=link.profile or {},
+    )
+
+
 def _credit_transfer_out(item: CreditTransfer) -> CreditTransferOut:
     return CreditTransferOut(
         id=item.id,
@@ -682,6 +739,22 @@ async def _student_profile_for_institution(
     return item
 
 
+async def _competency_for_institution(
+    session: AsyncSession,
+    competency_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> Competency:
+    item = await session.get(Competency, competency_id)
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(status_code=404, detail="Competency not found")
+    return item
+
+
 async def _component_for_institution(
     session: AsyncSession,
     component_id: uuid.UUID,
@@ -729,6 +802,83 @@ async def _user_for_institution(
     if allowed_roles is not None and user.role not in allowed_roles:
         raise HTTPException(status_code=400, detail="User role is not allowed")
     return user
+
+
+async def _build_competency_matrix(
+    session: AsyncSession,
+    *,
+    curriculum: EducationCurriculum,
+    school_id: uuid.UUID,
+    level: str,
+) -> CompetencyMatrixOut:
+    components = sorted(
+        curriculum.components,
+        key=lambda item: (item.semester, item.order_index, item.code),
+    )
+    component_ids = [component.id for component in components]
+    competencies = (
+        (
+            await session.execute(
+                select(Competency)
+                .where(
+                    Competency.institution_id == school_id,
+                    Competency.education_level == level,
+                )
+                .order_by(Competency.code)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    links: list[ComponentCompetency] = []
+    if component_ids:
+        links = (
+            (
+                await session.execute(
+                    select(ComponentCompetency)
+                    .where(ComponentCompetency.component_id.in_(component_ids))
+                    .options(selectinload(ComponentCompetency.competency))
+                    .order_by(
+                        ComponentCompetency.component_id,
+                        ComponentCompetency.competency_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+    return CompetencyMatrixOut(
+        curriculum_id=curriculum.id,
+        curriculum_name=curriculum.name,
+        program_id=curriculum.program_id,
+        components=[
+            CompetencyMatrixComponentOut(
+                id=component.id,
+                code=component.code,
+                name=component.name,
+                semester=component.semester,
+                component_type=component.component_type,  # type: ignore[arg-type]
+            )
+            for component in components
+        ],
+        competencies=[
+            CompetencyMatrixCompetencyOut(
+                id=competency.id,
+                code=competency.code,
+                name=competency.name,
+                competency_type=competency.competency_type,  # type: ignore[arg-type]
+            )
+            for competency in competencies
+        ],
+        links=[
+            CompetencyMatrixLinkOut(
+                component_id=link.component_id,
+                competency_id=link.competency_id,
+                weight=float(link.weight or 0),
+            )
+            for link in links
+        ],
+    )
 
 
 def _build_level_router(level: str) -> APIRouter:
@@ -2277,6 +2427,419 @@ def _build_level_router(level: str) -> APIRouter:
                 session, item.id, school.id, level
             )
             return _credit_transfer_out(saved)
+
+        @level_router.get(
+            "/competencies",
+            response_model=list[CompetencyOut],
+            summary="Профессиональные компетенции",
+        )
+        async def list_competencies(
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            search: str | None = Query(default=None, max_length=100),
+            competency_type: str | None = Query(default=None),
+            is_active: bool | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            if competency_type is not None and competency_type not in (
+                "universal",
+                "general",
+                "professional",
+                "other",
+            ):
+                raise HTTPException(
+                    status_code=422, detail="Unknown competency type"
+                )
+            stmt = (
+                select(Competency)
+                .where(
+                    Competency.institution_id == school.id,
+                    Competency.education_level == level,
+                )
+                .order_by(Competency.code)
+            )
+            if search:
+                pattern = f"%{search.strip()}%"
+                stmt = stmt.where(
+                    or_(
+                        Competency.code.ilike(pattern),
+                        Competency.name.ilike(pattern),
+                    )
+                )
+            if competency_type is not None:
+                stmt = stmt.where(
+                    Competency.competency_type == competency_type
+                )
+            if is_active is not None:
+                stmt = stmt.where(Competency.is_active.is_(is_active))
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_competency_out(item) for item in rows]
+
+        @level_router.post(
+            "/competencies",
+            response_model=CompetencyOut,
+            status_code=201,
+            summary="Создать компетенцию",
+        )
+        async def create_competency(
+            payload: CompetencyCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            code = payload.code.strip()
+            name = payload.name.strip()
+            if not code or not name:
+                raise HTTPException(
+                    status_code=422, detail="Code and name cannot be empty"
+                )
+            exists = (
+                await session.execute(
+                    select(Competency.id).where(
+                        Competency.institution_id == school.id,
+                        Competency.code == code,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Competency with this code already exists",
+                )
+            item = Competency(
+                institution_id=school.id,
+                education_level=level,
+                code=code,
+                name=name,
+                description=payload.description,
+                competency_type=payload.competency_type,
+                profile=payload.profile,
+                is_active=payload.is_active,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="competency_created",
+                entity_type="competency",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "code": item.code,
+                    "competency_type": item.competency_type,
+                },
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _competency_out(item)
+
+        @level_router.patch(
+            "/competencies/{competency_id}",
+            response_model=CompetencyOut,
+            summary="Изменить компетенцию",
+        )
+        async def update_competency(
+            competency_id: uuid.UUID,
+            payload: CompetencyUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _competency_for_institution(
+                session, competency_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in (
+                "code",
+                "name",
+                "competency_type",
+                "profile",
+                "is_active",
+            ):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            if "code" in updates:
+                updates["code"] = updates["code"].strip()
+                if not updates["code"]:
+                    raise HTTPException(
+                        status_code=422, detail="Code cannot be empty"
+                    )
+                number_exists = (
+                    await session.execute(
+                        select(Competency.id).where(
+                            Competency.institution_id == school.id,
+                            Competency.code == updates["code"],
+                            Competency.id != item.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if number_exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Competency with this code already exists",
+                    )
+            if "name" in updates:
+                updates["name"] = updates["name"].strip()
+                if not updates["name"]:
+                    raise HTTPException(
+                        status_code=422, detail="Name cannot be empty"
+                    )
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="competency_updated",
+                entity_type="competency",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _competency_out(item)
+
+        @level_router.get(
+            "/programs/{program_id}/competencies",
+            response_model=list[ProgramCompetencyOut],
+            summary="Компетенции образовательной программы",
+        )
+        async def list_program_competencies(
+            program_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            program = await _program_for_institution(
+                session, program_id, school.id, level
+            )
+            rows = (
+                (
+                    await session.execute(
+                        select(ProgramCompetency)
+                        .where(ProgramCompetency.program_id == program.id)
+                        .options(
+                            selectinload(ProgramCompetency.competency)
+                        )
+                        .order_by(ProgramCompetency.competency_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [_program_competency_out(item) for item in rows]
+
+        @level_router.put(
+            "/programs/{program_id}/competencies",
+            response_model=list[ProgramCompetencyOut],
+            summary="Заменить матрицу компетенций программы",
+        )
+        async def replace_program_competencies(
+            program_id: uuid.UUID,
+            payload: ProgramCompetencyBulk,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            program = await _program_for_institution(
+                session, program_id, school.id, level
+            )
+            competency_ids = [item.competency_id for item in payload.items]
+            if len(set(competency_ids)) != len(competency_ids):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Program competency list contains duplicates",
+                )
+            for competency_id in competency_ids:
+                await _competency_for_institution(
+                    session, competency_id, school.id, level
+                )
+            await session.execute(
+                delete(ProgramCompetency).where(
+                    ProgramCompetency.program_id == program.id
+                )
+            )
+            for item in payload.items:
+                session.add(
+                    ProgramCompetency(
+                        program_id=program.id,
+                        competency_id=item.competency_id,
+                        target_level=item.target_level,
+                        weight=item.weight,
+                        profile=item.profile,
+                    )
+                )
+            add_audit_event(
+                session,
+                action="program_competencies_replaced",
+                entity_type="education_program",
+                entity_id=program.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "competencies": len(payload.items),
+                },
+            )
+            await session.commit()
+            rows = (
+                (
+                    await session.execute(
+                        select(ProgramCompetency)
+                        .where(ProgramCompetency.program_id == program.id)
+                        .options(
+                            selectinload(ProgramCompetency.competency)
+                        )
+                        .order_by(ProgramCompetency.competency_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [_program_competency_out(item) for item in rows]
+
+        @level_router.get(
+            "/curricula/{curriculum_id}/competency-matrix",
+            response_model=CompetencyMatrixOut,
+            summary="Матрица компетенций учебного плана",
+        )
+        async def get_competency_matrix(
+            curriculum_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            curriculum = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            return await _build_competency_matrix(
+                session,
+                curriculum=curriculum,
+                school_id=school.id,
+                level=level,
+            )
+
+        @level_router.put(
+            "/curricula/{curriculum_id}/competency-matrix",
+            response_model=CompetencyMatrixOut,
+            summary="Заменить матрицу компетенций учебного плана",
+        )
+        async def replace_competency_matrix(
+            curriculum_id: uuid.UUID,
+            payload: CompetencyMatrixBulk,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            curriculum = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            component_ids = {
+                component.id for component in curriculum.components
+            }
+            pair_keys = [
+                (item.component_id, item.competency_id)
+                for item in payload.links
+            ]
+            if len(set(pair_keys)) != len(pair_keys):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Competency matrix contains duplicate links",
+                )
+            if any(
+                item.component_id not in component_ids
+                for item in payload.links
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Component does not belong to the curriculum",
+                )
+            valid_competencies = set(
+                (
+                    await session.execute(
+                        select(Competency.id).where(
+                            Competency.institution_id == school.id,
+                            Competency.education_level == level,
+                        )
+                    )
+                ).scalars().all()
+            )
+            if any(
+                item.competency_id not in valid_competencies
+                for item in payload.links
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Competency does not belong to the institution",
+                )
+            if component_ids:
+                await session.execute(
+                    delete(ComponentCompetency).where(
+                        ComponentCompetency.component_id.in_(component_ids)
+                    )
+                )
+            for item in payload.links:
+                session.add(
+                    ComponentCompetency(
+                        component_id=item.component_id,
+                        competency_id=item.competency_id,
+                        weight=item.weight,
+                    )
+                )
+            add_audit_event(
+                session,
+                action="component_competencies_replaced",
+                entity_type="education_curriculum",
+                entity_id=curriculum.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "links": len(payload.links),
+                },
+            )
+            await session.commit()
+            refreshed = await _curriculum_for_institution(
+                session, curriculum_id, school.id, level
+            )
+            return await _build_competency_matrix(
+                session,
+                curriculum=refreshed,
+                school_id=school.id,
+                level=level,
+            )
 
     @level_router.get(
         "/profiles",
