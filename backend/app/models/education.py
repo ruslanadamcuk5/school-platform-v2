@@ -8,17 +8,19 @@ breaking the school workflow.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -47,6 +49,15 @@ COMPONENT_TYPE_SQL = (
 ASSESSMENT_TYPE_SQL = (
     "assessment_type IN "
     "('exam','credit','differentiated_credit','coursework','practice_report','other')"
+)
+SESSION_STATUS_SQL = "status IN ('planned','active','completed','archived')"
+SESSION_TYPE_SQL = "session_type IN ('winter','summer','additional','other')"
+STATEMENT_STATUS_SQL = "status IN ('draft','published','approved','archived')"
+STATEMENT_RESULT_SQL = (
+    "result IN ('planned','passed','failed','not_appeared','exempt','transferred')"
+)
+TRANSFER_STATUS_SQL = (
+    "status IN ('draft','pending','approved','rejected','archived')"
 )
 
 
@@ -339,4 +350,317 @@ class CurriculumComponent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     curriculum: Mapped["EducationCurriculum"] = relationship(
         back_populates="components"
+    )
+
+
+class AcademicSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Examination session for a professional institution."""
+
+    __tablename__ = "academic_sessions"
+    __table_args__ = (
+        UniqueConstraint(
+            "institution_id",
+            "academic_year",
+            "semester",
+            "name",
+            name="uq_academic_sessions_institution_year_semester_name",
+        ),
+        CheckConstraint(LEVEL_SQL, name="education_level"),
+        CheckConstraint(SESSION_STATUS_SQL, name="status"),
+        CheckConstraint(SESSION_TYPE_SQL, name="session_type"),
+        CheckConstraint(
+            "academic_year ~ '^[0-9]{4}/[0-9]{4}$'",
+            name="academic_year_format",
+        ),
+        CheckConstraint("semester BETWEEN 1 AND 12", name="semester_range"),
+        {"schema": "org"},
+    )
+
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    academic_year: Mapped[str] = mapped_column(
+        String(9), nullable=False, index=True
+    )
+    semester: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    session_type: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="winter", server_default="winter"
+    )
+    starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="planned", server_default="planned"
+    )
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    institution: Mapped["School"] = relationship()
+    statements: Mapped[list["SessionStatement"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="SessionStatement.statement_number",
+    )
+
+
+class SessionStatement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Examination statement for one group and one curriculum component."""
+
+    __tablename__ = "session_statements"
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "group_id",
+            "component_id",
+            name="uq_session_statements_session_group_component",
+        ),
+        UniqueConstraint(
+            "institution_id",
+            "statement_number",
+            name="uq_session_statements_institution_number",
+        ),
+        CheckConstraint(LEVEL_SQL, name="education_level"),
+        CheckConstraint(STATEMENT_STATUS_SQL, name="status"),
+        {"schema": "org"},
+    )
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.academic_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.classes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    curriculum_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.education_curricula.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.curriculum_components.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    statement_number: Mapped[str] = mapped_column(String(64), nullable=False)
+    issued_on: Mapped[date] = mapped_column(
+        Date, nullable=False, server_default=text("CURRENT_DATE")
+    )
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="draft", server_default="draft"
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    approved_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    session: Mapped["AcademicSession"] = relationship(back_populates="statements")
+    institution: Mapped["School"] = relationship()
+    group: Mapped["SchoolClass"] = relationship()
+    curriculum: Mapped["EducationCurriculum"] = relationship()
+    component: Mapped["CurriculumComponent"] = relationship()
+    teacher: Mapped["User | None"] = relationship(foreign_keys=[teacher_id])
+    approved_by: Mapped["User | None"] = relationship(
+        foreign_keys=[approved_by_id]
+    )
+    records: Mapped[list["StatementRecord"]] = relationship(
+        back_populates="statement",
+        cascade="all, delete-orphan",
+        order_by="StatementRecord.student_id",
+    )
+
+
+class StatementRecord(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Result of one student in an examination statement."""
+
+    __tablename__ = "statement_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "statement_id",
+            "student_id",
+            name="uq_statement_records_statement_student",
+        ),
+        CheckConstraint(STATEMENT_RESULT_SQL, name="result"),
+        CheckConstraint(
+            "grade IS NULL OR (grade BETWEEN 1 AND 10)", name="grade_range"
+        ),
+        CheckConstraint(
+            "credits_awarded >= 0 AND credits_awarded <= 100",
+            name="credits_range",
+        ),
+        {"schema": "org"},
+    )
+
+    statement_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.session_statements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    result: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="planned", server_default="planned"
+    )
+    credits_awarded: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    statement: Mapped["SessionStatement"] = relationship(back_populates="records")
+    student: Mapped["User"] = relationship(foreign_keys=[student_id])
+
+
+class CreditTransfer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Recognition of credits earned at another institution or programme."""
+
+    __tablename__ = "credit_transfers"
+    __table_args__ = (
+        UniqueConstraint(
+            "institution_id",
+            "student_id",
+            "source_institution",
+            "source_component_code",
+            "source_academic_year",
+            name="uq_credit_transfers_source",
+        ),
+        CheckConstraint(TRANSFER_STATUS_SQL, name="status"),
+        CheckConstraint(
+            "source_academic_year ~ '^[0-9]{4}/[0-9]{4}$'",
+            name="source_academic_year_format",
+        ),
+        CheckConstraint(
+            "source_credits >= 0 AND source_credits <= 100",
+            name="source_credits_range",
+        ),
+        CheckConstraint(
+            "awarded_credits >= 0 AND awarded_credits <= 100",
+            name="awarded_credits_range",
+        ),
+        CheckConstraint(
+            "source_grade IS NULL OR (source_grade BETWEEN 1 AND 10)",
+            name="source_grade_range",
+        ),
+        {"schema": "org"},
+    )
+
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_program_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.education_programs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    target_component_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.curriculum_components.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_institution: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_program: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_component_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_component_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_academic_year: Mapped[str] = mapped_column(String(9), nullable=False)
+    source_credits: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    awarded_credits: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    source_grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    document_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="draft", server_default="draft"
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    decided_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    institution: Mapped["School"] = relationship()
+    student: Mapped["User"] = relationship(foreign_keys=[student_id])
+    target_program: Mapped["EducationProgram | None"] = relationship()
+    target_component: Mapped["CurriculumComponent | None"] = relationship()
+    decided_by: Mapped["User | None"] = relationship(
+        foreign_keys=[decided_by_id]
     )

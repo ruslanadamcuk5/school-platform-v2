@@ -379,6 +379,151 @@ export interface EducationOverview {
   staff_profiles_count: number;
 }
 
+export type SessionStatus = 'planned' | 'active' | 'completed' | 'archived';
+export type SessionType = 'winter' | 'summer' | 'additional' | 'other';
+export type StatementStatus = 'draft' | 'published' | 'approved' | 'archived';
+export type StatementResult =
+  | 'planned'
+  | 'passed'
+  | 'failed'
+  | 'not_appeared'
+  | 'exempt'
+  | 'transferred';
+export type CreditTransferStatus =
+  | 'draft'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'archived';
+
+export interface AcademicSession {
+  id: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  academic_year: string;
+  semester: number;
+  name: string;
+  session_type: SessionType;
+  starts_on: string | null;
+  ends_on: string | null;
+  status: SessionStatus;
+  description: string | null;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StatementRecord {
+  id: string;
+  statement_id: string;
+  student_id: string;
+  student_login: string;
+  student_name: string;
+  grade: number | null;
+  result: StatementResult;
+  credits_awarded: number;
+  comment: string | null;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionStatement {
+  id: string;
+  session_id: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  group_id: string;
+  group_name: string;
+  curriculum_id: string;
+  curriculum_name: string;
+  component_id: string;
+  component_code: string;
+  component_name: string;
+  component_type: CurriculumComponentType;
+  semester: number;
+  component_credits: number;
+  teacher_id: string | null;
+  teacher_name: string | null;
+  statement_number: string;
+  issued_on: string;
+  status: StatementStatus;
+  approved_at: string | null;
+  approved_by_id: string | null;
+  notes: string | null;
+  profile: Record<string, unknown>;
+  records: StatementRecord[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditTransfer {
+  id: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  student_id: string;
+  student_login: string;
+  student_name: string;
+  target_program_id: string | null;
+  target_program_name: string | null;
+  target_component_id: string | null;
+  target_component_code: string | null;
+  target_component_name: string | null;
+  source_institution: string;
+  source_program: string;
+  source_component_code: string;
+  source_component_name: string;
+  source_academic_year: string;
+  source_credits: number;
+  awarded_credits: number;
+  source_grade: number | null;
+  document_number: string | null;
+  reason: string | null;
+  status: CreditTransferStatus;
+  decided_at: string | null;
+  decided_by_id: string | null;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TranscriptItem {
+  component_id: string | null;
+  component_code: string;
+  component_name: string;
+  semester: number | null;
+  credits: number;
+  grade: number | null;
+  result: StatementResult | 'recognized';
+  source: 'statement' | 'transfer';
+  academic_year: string;
+  statement_id: string | null;
+  transfer_id: string | null;
+  statement_number: string | null;
+  document_number: string | null;
+  issued_on: string | null;
+  decided_at: string | null;
+}
+
+export interface Transcript {
+  student_id: string;
+  login: string;
+  full_name: string;
+  record_book_number: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  group_id: string | null;
+  group_name: string | null;
+  curriculum_id: string | null;
+  curriculum_name: string | null;
+  academic_year: string | null;
+  total_credits: number;
+  curriculum_total_credits: number;
+  progress_percent: number;
+  items: TranscriptItem[];
+  generated_at: string;
+}
+
 export interface UserList {
   items: User[];
   total: number;

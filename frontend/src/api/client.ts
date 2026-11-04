@@ -1,10 +1,13 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 
 import type {
+  AcademicSession,
   AdminStats,
   AnalyticsOverview,
   AssessmentType,
   City,
+  CreditTransfer,
+  CreditTransferStatus,
   CurriculumComponent,
   CurriculumComponentType,
   CurriculumStatus,
@@ -29,9 +32,15 @@ import type {
   School,
   SchoolClass,
   Service,
+  SessionStatement,
+  SessionStatus,
+  SessionType,
   StaffAcademicProfile,
+  StatementRecord,
+  StatementResult,
   StudentAcademicProfile,
   TokenPair,
+  Transcript,
   User,
   UserList,
 } from './types';
@@ -552,6 +561,236 @@ export async function deleteCurriculumComponent(
     `/education/${level}/curricula/${curriculumId}/components/${componentId}`,
     { params: { school_id: schoolId || undefined } },
   );
+}
+
+export async function fetchAcademicSessions(
+  level: EducationLevel,
+  schoolId?: string,
+  academicYear?: string,
+  status?: SessionStatus,
+): Promise<AcademicSession[]> {
+  const { data } = await api.get<AcademicSession[]>(
+    `/education/${level}/sessions`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        academic_year: academicYear || undefined,
+        status: status || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createAcademicSession(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    academic_year: string;
+    semester: number;
+    name: string;
+    session_type?: SessionType;
+    starts_on?: string | null;
+    ends_on?: string | null;
+    status?: SessionStatus;
+    description?: string | null;
+    profile?: Record<string, unknown>;
+  },
+): Promise<AcademicSession> {
+  const { data } = await api.post<AcademicSession>(
+    `/education/${level}/sessions`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateAcademicSession(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  sessionId: string,
+  payload: Partial<{
+    academic_year: string;
+    semester: number;
+    name: string;
+    session_type: SessionType;
+    starts_on: string | null;
+    ends_on: string | null;
+    status: SessionStatus;
+    description: string | null;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<AcademicSession> {
+  const { data } = await api.patch<AcademicSession>(
+    `/education/${level}/sessions/${sessionId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchSessionStatements(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  sessionId: string,
+): Promise<SessionStatement[]> {
+  const { data } = await api.get<SessionStatement[]>(
+    `/education/${level}/sessions/${sessionId}/statements`,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function createSessionStatement(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  sessionId: string,
+  payload: {
+    group_id: string;
+    component_id: string;
+    teacher_id?: string | null;
+    statement_number: string;
+    issued_on?: string | null;
+    notes?: string | null;
+    profile?: Record<string, unknown>;
+  },
+): Promise<SessionStatement> {
+  const { data } = await api.post<SessionStatement>(
+    `/education/${level}/sessions/${sessionId}/statements`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateSessionStatement(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  statementId: string,
+  payload: Partial<{
+    teacher_id: string | null;
+    statement_number: string;
+    issued_on: string;
+    status: SessionStatement['status'];
+    notes: string | null;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<SessionStatement> {
+  const { data } = await api.patch<SessionStatement>(
+    `/education/${level}/statements/${statementId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function upsertStatementRecords(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  statementId: string,
+  records: Array<{
+    student_id: string;
+    grade?: number | null;
+    result?: StatementResult;
+    credits_awarded?: number | null;
+    comment?: string | null;
+  }>,
+): Promise<SessionStatement> {
+  const { data } = await api.post<SessionStatement>(
+    `/education/${level}/statements/${statementId}/records/bulk`,
+    { records },
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchStudentTranscript(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  profileId: string,
+  curriculumId?: string,
+): Promise<Transcript> {
+  const { data } = await api.get<Transcript>(
+    `/education/${level}/students/${profileId}/transcript`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        curriculum_id: curriculumId || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function fetchCreditTransfers(
+  level: EducationLevel,
+  schoolId?: string,
+  studentId?: string,
+  status?: CreditTransferStatus,
+): Promise<CreditTransfer[]> {
+  const { data } = await api.get<CreditTransfer[]>(
+    `/education/${level}/credit-transfers`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        student_id: studentId || undefined,
+        status: status || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createCreditTransfer(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    student_id: string;
+    target_program_id?: string | null;
+    target_component_id?: string | null;
+    source_institution: string;
+    source_program: string;
+    source_component_code: string;
+    source_component_name: string;
+    source_academic_year: string;
+    source_credits: number;
+    awarded_credits?: number | null;
+    source_grade?: number | null;
+    document_number?: string | null;
+    reason?: string | null;
+    status?: CreditTransferStatus;
+    profile?: Record<string, unknown>;
+  },
+): Promise<CreditTransfer> {
+  const { data } = await api.post<CreditTransfer>(
+    `/education/${level}/credit-transfers`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updateCreditTransfer(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  transferId: string,
+  payload: Partial<{
+    target_program_id: string | null;
+    target_component_id: string | null;
+    awarded_credits: number;
+    source_grade: number | null;
+    document_number: string | null;
+    reason: string | null;
+    status: CreditTransferStatus;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<CreditTransfer> {
+  const { data } = await api.patch<CreditTransfer>(
+    `/education/${level}/credit-transfers/${transferId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
 }
 
 export async function fetchStudentProfiles(

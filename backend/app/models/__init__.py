@@ -18,10 +18,14 @@ from app.models.assessment import (
 from app.models.audit import AuditEvent
 from app.models.communication import Notification
 from app.models.education import (
+    AcademicSession,
+    CreditTransfer,
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    SessionStatement,
     StaffAcademicProfile,
+    StatementRecord,
     StudentAcademicProfile,
 )
 from app.models.iam import (
@@ -64,6 +68,7 @@ from app.models.system import (
 )
 
 __all__ = [
+    "AcademicSession",
     "AIExplanation",
     "AIRequest",
     "AISetting",
@@ -77,6 +82,7 @@ __all__ = [
     "Course",
     "CourseClass",
     "CourseTopic",
+    "CreditTransfer",
     "CurriculumComponent",
     "DailyAnswer",
     "EducationCurriculum",
@@ -110,8 +116,10 @@ __all__ = [
     "SchoolClass",
     "Service",
     "ServiceActivation",
+    "SessionStatement",
     "Setting",
     "StaffAcademicProfile",
+    "StatementRecord",
     "StoredFile",
     "StudentAcademicProfile",
     "Subject",

@@ -53,7 +53,8 @@
 | PRO-04 | Профиль преподавателя | `staff_academic_profiles` | Education | API + UI | Реализовано |
 | PRO-05 | Учебные планы и кредиты | `education_curricula`, `curriculum_components` | Education | API + UI | Реализовано |
 | PRO-06 | Практика в учебном плане | `component_type=practice` | Education | API + UI | Реализовано |
-| PRO-07 | Зачётные ведомости и сессии | Требует проектирования | Education | — | Не начато |
+| PRO-07 | Зачётные ведомости и сессии | `academic_sessions`, `session_statements`, `statement_records` | Education | API + UI | Реализовано |
+| PRO-08 | Перезачёт кредитов и зачётная книжка | `credit_transfers` + transcript API | Education | API + UI | Реализовано |
 
 ## Правила ведения
 - Каждое обязательное требование должно иметь минимум один тест.

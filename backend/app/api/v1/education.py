@@ -8,7 +8,7 @@ academic profiles.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
@@ -31,15 +31,25 @@ from app.core.education import (
     EducationLevelInfo,
 )
 from app.models.education import (
+    AcademicSession,
+    CreditTransfer,
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    SessionStatement,
     StaffAcademicProfile,
+    StatementRecord,
     StudentAcademicProfile,
 )
 from app.models.iam import User
 from app.models.org import ClassMembership, School, SchoolClass
 from app.schemas.education import (
+    AcademicSessionCreate,
+    AcademicSessionOut,
+    AcademicSessionUpdate,
+    CreditTransferCreate,
+    CreditTransferOut,
+    CreditTransferUpdate,
     CurriculumComponentCreate,
     CurriculumComponentOut,
     CurriculumComponentUpdate,
@@ -53,12 +63,19 @@ from app.schemas.education import (
     EducationProgramOut,
     EducationProgramUpdate,
     EducationTotalsOut,
+    SessionStatementCreate,
+    SessionStatementOut,
+    SessionStatementUpdate,
     StaffAcademicProfileCreate,
     StaffAcademicProfileOut,
     StaffAcademicProfileUpdate,
+    StatementRecordBulk,
+    StatementRecordOut,
     StudentAcademicProfileCreate,
     StudentAcademicProfileOut,
     StudentAcademicProfileUpdate,
+    TranscriptItemOut,
+    TranscriptOut,
 )
 from app.services.audit import add_audit_event
 
@@ -465,6 +482,253 @@ def _ensure_component_hours(
             status_code=422,
             detail="contact_hours cannot exceed academic_hours",
         )
+
+
+def _session_out(item: AcademicSession) -> AcademicSessionOut:
+    return AcademicSessionOut.model_validate(item)
+
+
+def _statement_record_out(record: StatementRecord) -> StatementRecordOut:
+    return StatementRecordOut(
+        id=record.id,
+        statement_id=record.statement_id,
+        student_id=record.student_id,
+        student_login=record.student.login if record.student else "",
+        student_name=record.student.full_name if record.student else "",
+        grade=record.grade,
+        result=record.result,  # type: ignore[arg-type]
+        credits_awarded=float(record.credits_awarded or 0),
+        comment=record.comment,
+        profile=record.profile or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    )
+
+
+def _statement_out(statement: SessionStatement) -> SessionStatementOut:
+    records = sorted(
+        statement.records,
+        key=lambda item: (
+            item.student.full_name if item.student else "",
+            item.student_id,
+        ),
+    )
+    return SessionStatementOut(
+        id=statement.id,
+        session_id=statement.session_id,
+        institution_id=statement.institution_id,
+        education_level=statement.education_level,  # type: ignore[arg-type]
+        group_id=statement.group_id,
+        group_name=statement.group.display_name if statement.group else "",
+        curriculum_id=statement.curriculum_id,
+        curriculum_name=statement.curriculum.name if statement.curriculum else "",
+        component_id=statement.component_id,
+        component_code=statement.component.code if statement.component else "",
+        component_name=statement.component.name if statement.component else "",
+        component_type=(
+            statement.component.component_type  # type: ignore[arg-type]
+            if statement.component
+            else "other"
+        ),
+        semester=statement.component.semester if statement.component else 0,
+        component_credits=(
+            float(statement.component.credits) if statement.component else 0
+        ),
+        teacher_id=statement.teacher_id,
+        teacher_name=statement.teacher.full_name if statement.teacher else None,
+        statement_number=statement.statement_number,
+        issued_on=statement.issued_on,
+        status=statement.status,  # type: ignore[arg-type]
+        approved_at=statement.approved_at,
+        approved_by_id=statement.approved_by_id,
+        notes=statement.notes,
+        profile=statement.profile or {},
+        records=[_statement_record_out(record) for record in records],
+        created_at=statement.created_at,
+        updated_at=statement.updated_at,
+    )
+
+
+def _credit_transfer_out(item: CreditTransfer) -> CreditTransferOut:
+    return CreditTransferOut(
+        id=item.id,
+        institution_id=item.institution_id,
+        education_level=item.education_level,  # type: ignore[arg-type]
+        student_id=item.student_id,
+        student_login=item.student.login if item.student else "",
+        student_name=item.student.full_name if item.student else "",
+        target_program_id=item.target_program_id,
+        target_program_name=(
+            item.target_program.name if item.target_program else None
+        ),
+        target_component_id=item.target_component_id,
+        target_component_code=(
+            item.target_component.code if item.target_component else None
+        ),
+        target_component_name=(
+            item.target_component.name if item.target_component else None
+        ),
+        source_institution=item.source_institution,
+        source_program=item.source_program,
+        source_component_code=item.source_component_code,
+        source_component_name=item.source_component_name,
+        source_academic_year=item.source_academic_year,
+        source_credits=float(item.source_credits or 0),
+        awarded_credits=float(item.awarded_credits or 0),
+        source_grade=item.source_grade,
+        document_number=item.document_number,
+        reason=item.reason,
+        status=item.status,  # type: ignore[arg-type]
+        decided_at=item.decided_at,
+        decided_by_id=item.decided_by_id,
+        profile=item.profile or {},
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+async def _session_for_institution(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> AcademicSession:
+    item = await session.get(AcademicSession, session_id)
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(status_code=404, detail="Academic session not found")
+    return item
+
+
+async def _statement_for_institution(
+    session: AsyncSession,
+    statement_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> SessionStatement:
+    item = (
+        await session.execute(
+            select(SessionStatement)
+            .where(SessionStatement.id == statement_id)
+            .options(
+                selectinload(SessionStatement.group),
+                selectinload(SessionStatement.curriculum),
+                selectinload(SessionStatement.component),
+                selectinload(SessionStatement.teacher),
+                selectinload(SessionStatement.records).selectinload(
+                    StatementRecord.student
+                ),
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(status_code=404, detail="Academic statement not found")
+    return item
+
+
+async def _credit_transfer_for_institution(
+    session: AsyncSession,
+    transfer_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> CreditTransfer:
+    item = (
+        await session.execute(
+            select(CreditTransfer)
+            .where(CreditTransfer.id == transfer_id)
+            .options(
+                selectinload(CreditTransfer.student),
+                selectinload(CreditTransfer.target_program),
+                selectinload(CreditTransfer.target_component),
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(status_code=404, detail="Credit transfer not found")
+    return item
+
+
+async def _student_profile_for_institution(
+    session: AsyncSession,
+    profile_id: uuid.UUID,
+    school_id: uuid.UUID,
+) -> StudentAcademicProfile:
+    item = (
+        await session.execute(
+            select(StudentAcademicProfile)
+            .where(StudentAcademicProfile.id == profile_id)
+            .options(
+                selectinload(StudentAcademicProfile.user),
+                selectinload(StudentAcademicProfile.program),
+                selectinload(StudentAcademicProfile.group),
+            )
+        )
+    ).scalar_one_or_none()
+    if item is None or item.institution_id != school_id:
+        raise HTTPException(
+            status_code=404, detail="Student academic profile not found"
+        )
+    return item
+
+
+async def _component_for_institution(
+    session: AsyncSession,
+    component_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> CurriculumComponent:
+    item = (
+        await session.execute(
+            select(CurriculumComponent)
+            .join(
+                EducationCurriculum,
+                CurriculumComponent.curriculum_id == EducationCurriculum.id,
+            )
+            .where(
+                CurriculumComponent.id == component_id,
+                EducationCurriculum.institution_id == school_id,
+                EducationCurriculum.education_level == level,
+            )
+            .options(selectinload(CurriculumComponent.curriculum))
+        )
+    ).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(
+            status_code=404, detail="Curriculum component not found"
+        )
+    return item
+
+
+async def _user_for_institution(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    school_id: uuid.UUID,
+    allowed_roles: set[str] | None = None,
+) -> User:
+    user = await session.get(User, user_id)
+    if (
+        user is None
+        or user.deleted_at is not None
+        or user.school_id != school_id
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="User must belong to the same institution",
+        )
+    if allowed_roles is not None and user.role not in allowed_roles:
+        raise HTTPException(status_code=400, detail="User role is not allowed")
+    return user
 
 
 def _build_level_router(level: str) -> APIRouter:
@@ -1037,6 +1301,982 @@ def _build_level_router(level: str) -> APIRouter:
             await session.delete(component)
             await session.commit()
             return Response(status_code=204)
+
+    if professional and program_dep is not None:
+
+        @level_router.get(
+            "/sessions",
+            response_model=list[AcademicSessionOut],
+            summary="Экзаменационные сессии",
+        )
+        async def list_sessions(
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            academic_year: str | None = Query(
+                default=None, pattern=r"^\d{4}/\d{4}$"
+            ),
+            status: str | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            if status is not None and status not in (
+                "planned",
+                "active",
+                "completed",
+                "archived",
+            ):
+                raise HTTPException(
+                    status_code=422, detail="Unknown session status"
+                )
+            stmt = (
+                select(AcademicSession)
+                .where(
+                    AcademicSession.institution_id == school.id,
+                    AcademicSession.education_level == level,
+                )
+                .order_by(
+                    AcademicSession.academic_year.desc(),
+                    AcademicSession.semester,
+                    AcademicSession.name,
+                )
+            )
+            if academic_year is not None:
+                stmt = stmt.where(
+                    AcademicSession.academic_year == academic_year
+                )
+            if status is not None:
+                stmt = stmt.where(AcademicSession.status == status)
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_session_out(item) for item in rows]
+
+        @level_router.post(
+            "/sessions",
+            response_model=AcademicSessionOut,
+            status_code=201,
+            summary="Создать экзаменационную сессию",
+        )
+        async def create_session(
+            payload: AcademicSessionCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            exists = (
+                await session.execute(
+                    select(AcademicSession.id).where(
+                        AcademicSession.institution_id == school.id,
+                        AcademicSession.academic_year == payload.academic_year,
+                        AcademicSession.semester == payload.semester,
+                        AcademicSession.name == payload.name,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Academic session with this name already exists",
+                )
+            item = AcademicSession(
+                institution_id=school.id,
+                education_level=level,
+                academic_year=payload.academic_year,
+                semester=payload.semester,
+                name=payload.name,
+                session_type=payload.session_type,
+                starts_on=payload.starts_on,
+                ends_on=payload.ends_on,
+                status=payload.status,
+                description=payload.description,
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="academic_session_created",
+                entity_type="academic_session",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "academic_year": payload.academic_year,
+                    "semester": payload.semester,
+                },
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _session_out(item)
+
+        @level_router.patch(
+            "/sessions/{session_id}",
+            response_model=AcademicSessionOut,
+            summary="Изменить экзаменационную сессию",
+        )
+        async def update_session(
+            session_id: uuid.UUID,
+            payload: AcademicSessionUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _session_for_institution(
+                session, session_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in (
+                "academic_year",
+                "semester",
+                "name",
+                "session_type",
+                "status",
+                "profile",
+            ):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            new_year = updates.get("academic_year", item.academic_year)
+            new_semester = updates.get("semester", item.semester)
+            new_name = updates.get("name", item.name)
+            if (
+                new_year != item.academic_year
+                or new_semester != item.semester
+                or new_name != item.name
+            ):
+                exists = (
+                    await session.execute(
+                        select(AcademicSession.id).where(
+                            AcademicSession.institution_id == school.id,
+                            AcademicSession.academic_year == new_year,
+                            AcademicSession.semester == new_semester,
+                            AcademicSession.name == new_name,
+                            AcademicSession.id != item.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Academic session with this name already exists",
+                    )
+            starts_on = updates.get("starts_on", item.starts_on)
+            ends_on = updates.get("ends_on", item.ends_on)
+            if starts_on is not None and ends_on is not None and ends_on < starts_on:
+                raise HTTPException(
+                    status_code=422,
+                    detail="ends_on cannot be earlier than starts_on",
+                )
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="academic_session_updated",
+                entity_type="academic_session",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _session_out(item)
+
+        @level_router.get(
+            "/sessions/{session_id}/statements",
+            response_model=list[SessionStatementOut],
+            summary="Зачётные и экзаменационные ведомости сессии",
+        )
+        async def list_statements(
+            session_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            group_id: uuid.UUID | None = Query(default=None),
+            status: str | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            academic_session = await _session_for_institution(
+                session, session_id, school.id, level
+            )
+            if status is not None and status not in (
+                "draft",
+                "published",
+                "approved",
+                "archived",
+            ):
+                raise HTTPException(
+                    status_code=422, detail="Unknown statement status"
+                )
+            stmt = (
+                select(SessionStatement)
+                .where(SessionStatement.session_id == academic_session.id)
+                .options(
+                    selectinload(SessionStatement.group),
+                    selectinload(SessionStatement.curriculum),
+                    selectinload(SessionStatement.component),
+                    selectinload(SessionStatement.teacher),
+                    selectinload(SessionStatement.records).selectinload(
+                        StatementRecord.student
+                    ),
+                )
+                .order_by(SessionStatement.statement_number)
+            )
+            if group_id is not None:
+                stmt = stmt.where(SessionStatement.group_id == group_id)
+            if status is not None:
+                stmt = stmt.where(SessionStatement.status == status)
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_statement_out(item) for item in rows]
+
+        @level_router.post(
+            "/sessions/{session_id}/statements",
+            response_model=SessionStatementOut,
+            status_code=201,
+            summary="Создать зачётную ведомость",
+        )
+        async def create_statement(
+            session_id: uuid.UUID,
+            payload: SessionStatementCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            academic_session = await _session_for_institution(
+                session, session_id, school.id, level
+            )
+            group = await _group_for_institution(
+                session, payload.group_id, school.id, level
+            )
+            component = await _component_for_institution(
+                session, payload.component_id, school.id, level
+            )
+            if (
+                group.program_id is not None
+                and component.curriculum.program_id != group.program_id
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Component belongs to another education program",
+                )
+            if payload.teacher_id is not None:
+                await _user_for_institution(
+                    session,
+                    payload.teacher_id,
+                    school.id,
+                    {"teacher", "methodologist", "admin"},
+                )
+            exists = (
+                await session.execute(
+                    select(SessionStatement.id).where(
+                        SessionStatement.session_id == academic_session.id,
+                        SessionStatement.group_id == group.id,
+                        SessionStatement.component_id == component.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Statement for this group and component already exists",
+                )
+            number_exists = (
+                await session.execute(
+                    select(SessionStatement.id).where(
+                        SessionStatement.institution_id == school.id,
+                        SessionStatement.statement_number
+                        == payload.statement_number,
+                    )
+                )
+            ).scalar_one_or_none()
+            if number_exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Statement with this number already exists",
+                )
+            item = SessionStatement(
+                session_id=academic_session.id,
+                institution_id=school.id,
+                education_level=level,
+                group_id=group.id,
+                curriculum_id=component.curriculum_id,
+                component_id=component.id,
+                teacher_id=payload.teacher_id,
+                statement_number=payload.statement_number,
+                issued_on=payload.issued_on or date.today(),
+                status="draft",
+                notes=payload.notes,
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="session_statement_created",
+                entity_type="session_statement",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "session_id": str(academic_session.id),
+                    "group_id": str(group.id),
+                    "component_id": str(component.id),
+                },
+            )
+            await session.commit()
+            saved = await _statement_for_institution(
+                session, item.id, school.id, level
+            )
+            return _statement_out(saved)
+
+        @level_router.get(
+            "/statements/{statement_id}",
+            response_model=SessionStatementOut,
+            summary="Зачётная ведомость с результатами",
+        )
+        async def get_statement(
+            statement_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _statement_for_institution(
+                session, statement_id, school.id, level
+            )
+            return _statement_out(item)
+
+        @level_router.patch(
+            "/statements/{statement_id}",
+            response_model=SessionStatementOut,
+            summary="Изменить или утвердить ведомость",
+        )
+        async def update_statement(
+            statement_id: uuid.UUID,
+            payload: SessionStatementUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _statement_for_institution(
+                session, statement_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in ("statement_number", "status", "profile"):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            if "teacher_id" in updates and updates["teacher_id"] is not None:
+                await _user_for_institution(
+                    session,
+                    updates["teacher_id"],
+                    school.id,
+                    {"teacher", "methodologist", "admin"},
+                )
+            if "statement_number" in updates:
+                number_exists = (
+                    await session.execute(
+                        select(SessionStatement.id).where(
+                            SessionStatement.institution_id == school.id,
+                            SessionStatement.statement_number
+                            == updates["statement_number"],
+                            SessionStatement.id != item.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if number_exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Statement with this number already exists",
+                    )
+            if "status" in updates:
+                if updates["status"] == "approved":
+                    item.approved_at = datetime.now(timezone.utc)
+                    item.approved_by_id = current_user.id
+                else:
+                    item.approved_at = None
+                    item.approved_by_id = None
+            if "issued_on" in updates and updates["issued_on"] is None:
+                raise HTTPException(
+                    status_code=422, detail="issued_on cannot be empty"
+                )
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="session_statement_updated",
+                entity_type="session_statement",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            saved = await _statement_for_institution(
+                session, item.id, school.id, level
+            )
+            return _statement_out(saved)
+
+        @level_router.post(
+            "/statements/{statement_id}/records/bulk",
+            response_model=SessionStatementOut,
+            summary="Внести результаты студентов в ведомость",
+        )
+        async def upsert_statement_records(
+            statement_id: uuid.UUID,
+            payload: StatementRecordBulk,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            statement = await _statement_for_institution(
+                session, statement_id, school.id, level
+            )
+            if statement.status in {"approved", "archived"}:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Approved or archived statement cannot be changed",
+                )
+            student_ids = [record.student_id for record in payload.records]
+            if len(set(student_ids)) != len(student_ids):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Statement records contain duplicate students",
+                )
+            memberships = set(
+                (
+                    await session.execute(
+                        select(ClassMembership.user_id).where(
+                            ClassMembership.class_id == statement.group_id,
+                            ClassMembership.user_id.in_(student_ids),
+                            ClassMembership.left_at.is_(None),
+                            ClassMembership.role_in_class == "student",
+                        )
+                    )
+                ).scalars().all()
+            )
+            missing = set(student_ids) - memberships
+            if missing:
+                raise HTTPException(
+                    status_code=400,
+                    detail="All students must belong to the statement group",
+                )
+            existing = {
+                record.student_id: record
+                for record in (
+                    await session.execute(
+                        select(StatementRecord).where(
+                            StatementRecord.statement_id == statement.id,
+                            StatementRecord.student_id.in_(student_ids),
+                        )
+                    )
+                ).scalars().all()
+            }
+            default_credits = (
+                float(statement.component.credits) if statement.component else 0
+            )
+            for entry in payload.records:
+                effective_result = entry.result
+                if effective_result == "planned" and entry.grade is not None:
+                    effective_result = "passed"
+                credits = entry.credits_awarded
+                if credits is None:
+                    credits = (
+                        default_credits
+                        if effective_result in {"passed", "exempt", "transferred"}
+                        else 0
+                    )
+                if effective_result == "planned":
+                    credits = 0
+                record = existing.get(entry.student_id)
+                if record is None:
+                    record = StatementRecord(
+                        statement_id=statement.id,
+                        student_id=entry.student_id,
+                    )
+                    session.add(record)
+                record.grade = entry.grade
+                record.result = effective_result
+                record.credits_awarded = credits
+                record.comment = entry.comment
+                record.profile = entry.profile
+            add_audit_event(
+                session,
+                action="session_statement_records_updated",
+                entity_type="session_statement",
+                entity_id=statement.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "records": len(payload.records),
+                },
+            )
+            await session.commit()
+            saved = await _statement_for_institution(
+                session, statement.id, school.id, level
+            )
+            return _statement_out(saved)
+
+        @level_router.get(
+            "/students/{profile_id}/transcript",
+            response_model=TranscriptOut,
+            summary="Зачётная книжка и перезачёт кредитов",
+        )
+        async def get_transcript(
+            profile_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            curriculum_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            profile = await _student_profile_for_institution(
+                session, profile_id, school.id
+            )
+            curriculum: EducationCurriculum | None = None
+            if curriculum_id is not None:
+                curriculum = await _curriculum_for_institution(
+                    session, curriculum_id, school.id, level
+                )
+                if (
+                    profile.program_id is not None
+                    and curriculum.program_id != profile.program_id
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Curriculum belongs to another program",
+                    )
+            elif profile.program_id is not None:
+                curriculum = (
+                    await session.execute(
+                        select(EducationCurriculum)
+                        .where(
+                            EducationCurriculum.institution_id == school.id,
+                            EducationCurriculum.education_level == level,
+                            EducationCurriculum.program_id
+                            == profile.program_id,
+                            EducationCurriculum.status != "archived",
+                        )
+                        .options(selectinload(EducationCurriculum.components))
+                        .order_by(
+                            EducationCurriculum.academic_year.desc(),
+                            EducationCurriculum.created_at.desc(),
+                        )
+                    )
+                ).scalars().first()
+            records = (
+                await session.execute(
+                    select(StatementRecord)
+                    .join(
+                        SessionStatement,
+                        StatementRecord.statement_id == SessionStatement.id,
+                    )
+                    .where(
+                        SessionStatement.institution_id == school.id,
+                        SessionStatement.education_level == level,
+                        StatementRecord.student_id == profile.user_id,
+                        SessionStatement.status == "approved",
+                    )
+                    .options(
+                        selectinload(StatementRecord.statement).selectinload(
+                            SessionStatement.session
+                        ),
+                        selectinload(StatementRecord.statement).selectinload(
+                            SessionStatement.component
+                        ),
+                    )
+                    .order_by(SessionStatement.issued_on.desc())
+                )
+            ).scalars().all()
+            transfers = (
+                await session.execute(
+                    select(CreditTransfer)
+                    .where(
+                        CreditTransfer.institution_id == school.id,
+                        CreditTransfer.education_level == level,
+                        CreditTransfer.student_id == profile.user_id,
+                        CreditTransfer.status == "approved",
+                    )
+                    .options(selectinload(CreditTransfer.target_component))
+                    .order_by(CreditTransfer.decided_at.desc())
+                )
+            ).scalars().all()
+            items: list[TranscriptItemOut] = []
+            for record in records:
+                statement = record.statement
+                if (
+                    statement is None
+                    or record.result not in {"passed", "exempt", "transferred"}
+                ):
+                    continue
+                component = statement.component
+                items.append(
+                    TranscriptItemOut(
+                        component_id=component.id if component else None,
+                        component_code=component.code if component else "",
+                        component_name=component.name if component else "",
+                        semester=component.semester if component else None,
+                        credits=float(record.credits_awarded or 0),
+                        grade=record.grade,
+                        result=record.result,  # type: ignore[arg-type]
+                        source="statement",
+                        academic_year=(
+                            statement.session.academic_year
+                            if statement.session
+                            else ""
+                        ),
+                        statement_id=statement.id,
+                        statement_number=statement.statement_number,
+                        issued_on=statement.issued_on,
+                    )
+                )
+            credited_components = {
+                item.component_id for item in items if item.component_id is not None
+            }
+            for transfer in transfers:
+                if (
+                    transfer.target_component_id is not None
+                    and transfer.target_component_id in credited_components
+                ):
+                    continue
+                component = transfer.target_component
+                items.append(
+                    TranscriptItemOut(
+                        component_id=(
+                            component.id if component else transfer.target_component_id
+                        ),
+                        component_code=transfer.source_component_code,
+                        component_name=transfer.source_component_name,
+                        semester=component.semester if component else None,
+                        credits=float(transfer.awarded_credits or 0),
+                        grade=transfer.source_grade,
+                        result="recognized",
+                        source="transfer",
+                        academic_year=transfer.source_academic_year,
+                        transfer_id=transfer.id,
+                        document_number=transfer.document_number,
+                        decided_at=transfer.decided_at,
+                    )
+                )
+                if transfer.target_component_id is not None:
+                    credited_components.add(transfer.target_component_id)
+            items.sort(
+                key=lambda item: (
+                    item.semester or 99,
+                    item.component_code,
+                    item.academic_year,
+                )
+            )
+            total_credits = round(sum(item.credits for item in items), 2)
+            curriculum_total = (
+                round(
+                    sum(float(component.credits) for component in curriculum.components),
+                    2,
+                )
+                if curriculum is not None
+                else 0
+            )
+            progress = (
+                min(100, round(total_credits / curriculum_total * 100))
+                if curriculum_total > 0
+                else 0
+            )
+            return TranscriptOut(
+                student_id=profile.user_id,
+                login=profile.user.login if profile.user else "",
+                full_name=profile.user.full_name if profile.user else "",
+                record_book_number=profile.record_book_number,
+                program_id=profile.program_id,
+                program_name=profile.program.name if profile.program else None,
+                group_id=profile.group_id,
+                group_name=profile.group.display_name if profile.group else None,
+                curriculum_id=curriculum.id if curriculum is not None else None,
+                curriculum_name=(
+                    curriculum.name if curriculum is not None else None
+                ),
+                academic_year=(
+                    curriculum.academic_year if curriculum is not None else None
+                ),
+                total_credits=total_credits,
+                curriculum_total_credits=curriculum_total,
+                progress_percent=progress,
+                items=items,
+                generated_at=datetime.now(timezone.utc),
+            )
+
+        @level_router.get(
+            "/credit-transfers",
+            response_model=list[CreditTransferOut],
+            summary="Перезачёт кредитов",
+        )
+        async def list_credit_transfers(
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            student_id: uuid.UUID | None = Query(default=None),
+            status: str | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            if status is not None and status not in (
+                "draft",
+                "pending",
+                "approved",
+                "rejected",
+                "archived",
+            ):
+                raise HTTPException(
+                    status_code=422, detail="Unknown credit transfer status"
+                )
+            stmt = (
+                select(CreditTransfer)
+                .where(
+                    CreditTransfer.institution_id == school.id,
+                    CreditTransfer.education_level == level,
+                )
+                .options(
+                    selectinload(CreditTransfer.student),
+                    selectinload(CreditTransfer.target_program),
+                    selectinload(CreditTransfer.target_component),
+                )
+                .order_by(CreditTransfer.created_at.desc())
+            )
+            if student_id is not None:
+                stmt = stmt.where(CreditTransfer.student_id == student_id)
+            if status is not None:
+                stmt = stmt.where(CreditTransfer.status == status)
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_credit_transfer_out(item) for item in rows]
+
+        @level_router.post(
+            "/credit-transfers",
+            response_model=CreditTransferOut,
+            status_code=201,
+            summary="Создать перезачёт кредитов",
+        )
+        async def create_credit_transfer(
+            payload: CreditTransferCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            student = await _user_for_institution(
+                session, payload.student_id, school.id
+            )
+            profile = (
+                await session.execute(
+                    select(StudentAcademicProfile).where(
+                        StudentAcademicProfile.user_id == student.id,
+                        StudentAcademicProfile.institution_id == school.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if profile is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Student academic profile not found",
+                )
+            target_program_id = payload.target_program_id
+            if target_program_id is not None:
+                await _program_for_institution(
+                    session, target_program_id, school.id, level
+                )
+            target_component = None
+            if payload.target_component_id is not None:
+                target_component = await _component_for_institution(
+                    session, payload.target_component_id, school.id, level
+                )
+                component_program_id = target_component.curriculum.program_id
+                if (
+                    target_program_id is not None
+                    and component_program_id != target_program_id
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Target component belongs to another program",
+                    )
+                target_program_id = target_program_id or component_program_id
+            exists = (
+                await session.execute(
+                    select(CreditTransfer.id).where(
+                        CreditTransfer.institution_id == school.id,
+                        CreditTransfer.student_id == student.id,
+                        CreditTransfer.source_institution
+                        == payload.source_institution,
+                        CreditTransfer.source_component_code
+                        == payload.source_component_code,
+                        CreditTransfer.source_academic_year
+                        == payload.source_academic_year,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Credit transfer for this source already exists",
+                )
+            status = payload.status
+            decided = status in {"approved", "rejected"}
+            item = CreditTransfer(
+                institution_id=school.id,
+                education_level=level,
+                student_id=student.id,
+                target_program_id=target_program_id,
+                target_component_id=payload.target_component_id,
+                source_institution=payload.source_institution,
+                source_program=payload.source_program,
+                source_component_code=payload.source_component_code,
+                source_component_name=payload.source_component_name,
+                source_academic_year=payload.source_academic_year,
+                source_credits=payload.source_credits,
+                awarded_credits=(
+                    payload.awarded_credits
+                    if payload.awarded_credits is not None
+                    else payload.source_credits
+                ),
+                source_grade=payload.source_grade,
+                document_number=payload.document_number,
+                reason=payload.reason,
+                status=status,
+                decided_at=datetime.now(timezone.utc) if decided else None,
+                decided_by_id=current_user.id if decided else None,
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="credit_transfer_created",
+                entity_type="credit_transfer",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "student_id": str(student.id),
+                    "status": status,
+                },
+            )
+            await session.commit()
+            saved = await _credit_transfer_for_institution(
+                session, item.id, school.id, level
+            )
+            return _credit_transfer_out(saved)
+
+        @level_router.patch(
+            "/credit-transfers/{transfer_id}",
+            response_model=CreditTransferOut,
+            summary="Изменить решение о перезачёте кредитов",
+        )
+        async def update_credit_transfer(
+            transfer_id: uuid.UUID,
+            payload: CreditTransferUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _credit_transfer_for_institution(
+                session, transfer_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in ("awarded_credits", "status", "profile"):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            if "target_program_id" in updates and updates["target_program_id"] is not None:
+                await _program_for_institution(
+                    session,
+                    updates["target_program_id"],
+                    school.id,
+                    level,
+                )
+            if "target_component_id" in updates and updates["target_component_id"] is not None:
+                component = await _component_for_institution(
+                    session,
+                    updates["target_component_id"],
+                    school.id,
+                    level,
+                )
+                target_program_id = updates.get(
+                    "target_program_id", item.target_program_id
+                )
+                if (
+                    target_program_id is not None
+                    and component.curriculum.program_id != target_program_id
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Target component belongs to another program",
+                    )
+            if "status" in updates:
+                if updates["status"] in {"approved", "rejected"}:
+                    item.decided_at = datetime.now(timezone.utc)
+                    item.decided_by_id = current_user.id
+                else:
+                    item.decided_at = None
+                    item.decided_by_id = None
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="credit_transfer_updated",
+                entity_type="credit_transfer",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            saved = await _credit_transfer_for_institution(
+                session, item.id, school.id, level
+            )
+            return _credit_transfer_out(saved)
 
     @level_router.get(
         "/profiles",

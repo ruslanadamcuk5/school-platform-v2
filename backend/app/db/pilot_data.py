@@ -48,10 +48,14 @@ from app.models.assessment import (
     Submission,
 )
 from app.models.education import (
+    AcademicSession,
+    CreditTransfer,
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    SessionStatement,
     StaffAcademicProfile,
+    StatementRecord,
     StudentAcademicProfile,
 )
 from app.models.iam import User, UserGroup, UserRelation
@@ -1266,6 +1270,179 @@ async def _add_components(
     return created
 
 
+async def _ensure_academic_session(
+    session: AsyncSession,
+    *,
+    school: School,
+    level: str,
+    academic_year: str,
+    semester: int,
+    name: str,
+    session_type: str,
+    starts_on: date,
+    ends_on: date,
+) -> tuple[AcademicSession, int]:
+    item = (
+        await session.execute(
+            select(AcademicSession).where(
+                AcademicSession.institution_id == school.id,
+                AcademicSession.academic_year == academic_year,
+                AcademicSession.semester == semester,
+                AcademicSession.name == name,
+            )
+        )
+    ).scalar_one_or_none()
+    created = item is None
+    if item is None:
+        item = AcademicSession(
+            institution_id=school.id,
+            education_level=level,
+            academic_year=academic_year,
+            semester=semester,
+            name=name,
+            session_type=session_type,
+            starts_on=starts_on,
+            ends_on=ends_on,
+            status="completed",
+            description=f"Синтетическая {name.lower()} для демонстрации зачётных ведомостей.",
+            profile={"data_origin": DEMO_TAG},
+        )
+        session.add(item)
+        await session.flush()
+    return item, created
+
+
+async def _ensure_session_statement(
+    session: AsyncSession,
+    *,
+    academic_session: AcademicSession,
+    school: School,
+    level: str,
+    group: SchoolClass,
+    component: CurriculumComponent,
+    teacher: User,
+    admin: User,
+    statement_number: str,
+) -> tuple[SessionStatement, int]:
+    item = (
+        await session.execute(
+            select(SessionStatement).where(
+                SessionStatement.session_id == academic_session.id,
+                SessionStatement.group_id == group.id,
+                SessionStatement.component_id == component.id,
+            )
+        )
+    ).scalar_one_or_none()
+    created = item is None
+    if item is None:
+        item = SessionStatement(
+            session_id=academic_session.id,
+            institution_id=school.id,
+            education_level=level,
+            group_id=group.id,
+            curriculum_id=component.curriculum_id,
+            component_id=component.id,
+            teacher_id=teacher.id,
+            statement_number=statement_number,
+            issued_on=academic_session.ends_on or date(2027, 1, 20),
+            status="approved",
+            approved_at=NOW,
+            approved_by_id=admin.id,
+            notes="Синтетическая ведомость для проверки зачётной книжки.",
+            profile={"data_origin": DEMO_TAG},
+        )
+        session.add(item)
+        await session.flush()
+    return item, created
+
+
+async def _ensure_statement_record(
+    session: AsyncSession,
+    *,
+    statement: SessionStatement,
+    student: User,
+    grade: int,
+    result: str,
+    credits: float,
+) -> int:
+    existing = (
+        await session.execute(
+            select(StatementRecord.id).where(
+                StatementRecord.statement_id == statement.id,
+                StatementRecord.student_id == student.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return 0
+    session.add(
+        StatementRecord(
+            statement_id=statement.id,
+            student_id=student.id,
+            grade=grade,
+            result=result,
+            credits_awarded=credits,
+            comment="Синтетический результат.",
+            profile={"data_origin": DEMO_TAG},
+        )
+    )
+    await session.flush()
+    return 1
+
+
+async def _ensure_credit_transfer(
+    session: AsyncSession,
+    *,
+    school: School,
+    level: str,
+    student: User,
+    program: EducationProgram,
+    component: CurriculumComponent,
+    admin: User,
+    suffix: str,
+) -> int:
+    source_code = f"TRANSFER-{suffix}"
+    existing = (
+        await session.execute(
+            select(CreditTransfer.id).where(
+                CreditTransfer.institution_id == school.id,
+                CreditTransfer.student_id == student.id,
+                CreditTransfer.source_institution
+                == "Синтетический колледж-партнёр",
+                CreditTransfer.source_component_code == source_code,
+                CreditTransfer.source_academic_year == "2024/2025",
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return 0
+    session.add(
+        CreditTransfer(
+            institution_id=school.id,
+            education_level=level,
+            student_id=student.id,
+            target_program_id=program.id,
+            target_component_id=component.id,
+            source_institution="Синтетический колледж-партнёр",
+            source_program="Синтетическая программа перезачёта",
+            source_component_code=source_code,
+            source_component_name="Информационные технологии",
+            source_academic_year="2024/2025",
+            source_credits=5,
+            awarded_credits=5,
+            source_grade=9,
+            document_number=f"ПЗ-{suffix}-2026",
+            reason="Синтетическое решение о перезачёте для проверки зачётной книжки.",
+            status="approved",
+            decided_at=NOW,
+            decided_by_id=admin.id,
+            profile={"data_origin": DEMO_TAG},
+        )
+    )
+    await session.flush()
+    return 1
+
+
 async def _ensure_student_profile(
     session: AsyncSession,
     *,
@@ -2371,6 +2548,129 @@ async def seed_pilot_data() -> None:
                 components=components,
             )
 
+        sessions_created = 0
+        statements_created = 0
+        records_created = 0
+        transfers_created = 0
+        academic_year_start = int(ACADEMIC_YEAR.split("/")[0])
+        for (
+            institution,
+            level,
+            classes,
+            students_by_class_for_level,
+            institution_admin,
+        ) in (
+            (
+                college,
+                "vocational",
+                college_classes,
+                college_students_by_class,
+                admin_college,
+            ),
+            (
+                university,
+                "higher",
+                university_classes,
+                university_students_by_class,
+                admin_university,
+            ),
+        ):
+            academic_session, created = await _ensure_academic_session(
+                session,
+                school=institution,
+                level=level,
+                academic_year=ACADEMIC_YEAR,
+                semester=1,
+                name=f"Зимняя сессия {ACADEMIC_YEAR}",
+                session_type="winter",
+                starts_on=date(academic_year_start + 1, 1, 10),
+                ends_on=date(academic_year_start + 1, 1, 25),
+            )
+            sessions_created += int(created)
+            for class_index, (school_class, program, curator) in enumerate(classes):
+                curriculum = (
+                    await session.execute(
+                        select(EducationCurriculum)
+                        .where(
+                            EducationCurriculum.program_id == program.id,
+                            EducationCurriculum.academic_year == ACADEMIC_YEAR,
+                        )
+                        .order_by(EducationCurriculum.created_at)
+                    )
+                ).scalars().first()
+                if curriculum is None:
+                    continue
+                components = (
+                    (
+                        await session.execute(
+                            select(CurriculumComponent)
+                            .where(
+                                CurriculumComponent.curriculum_id
+                                == curriculum.id
+                            )
+                            .order_by(
+                                CurriculumComponent.semester,
+                                CurriculumComponent.order_index,
+                                CurriculumComponent.code,
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if not components:
+                    continue
+                students = students_by_class_for_level.get(school_class.id, [])
+                for component in components[:2]:
+                    prefix = "К" if level == "vocational" else "У"
+                    statement, created = await _ensure_session_statement(
+                        session,
+                        academic_session=academic_session,
+                        school=institution,
+                        level=level,
+                        group=school_class,
+                        component=component,
+                        teacher=curator,
+                        admin=institution_admin,
+                        statement_number=(
+                            f"{prefix}-{school_class.id.hex[:4]}-{component.code}"
+                        ),
+                    )
+                    statements_created += int(created)
+                    for student_index, student in enumerate(students, start=1):
+                        result = (
+                            "failed"
+                            if student_index % 11 == 0
+                            else "passed"
+                        )
+                        grade = 10 - (student_index + class_index) % 4
+                        records_created += await _ensure_statement_record(
+                            session,
+                            statement=statement,
+                            student=student,
+                            grade=grade,
+                            result=result,
+                            credits=(
+                                float(component.credits)
+                                if result == "passed"
+                                else 0
+                            ),
+                        )
+                if class_index == 0 and students and components:
+                    transfer_component = (
+                        components[2] if len(components) > 2 else components[0]
+                    )
+                    transfers_created += await _ensure_credit_transfer(
+                        session,
+                        school=institution,
+                        level=level,
+                        student=students[0],
+                        program=program,
+                        component=transfer_component,
+                        admin=institution_admin,
+                        suffix=f"{'K' if level == 'vocational' else 'U'}-01",
+                    )
+
         curator_by_class: dict = {}
         for index, school_class in enumerate(school_classes):
             curator_by_class[school_class.id] = homeroom_teachers[index]
@@ -2572,6 +2872,8 @@ async def seed_pilot_data() -> None:
             f"college groups {len(college_classes)}, "
             f"university groups {len(university_classes)}, "
             f"journal entries +{journal_created}, "
+            f"sessions +{sessions_created}, statements +{statements_created}, "
+            f"statement records +{records_created}, credit transfers +{transfers_created}, "
             f"textbooks +{textbook_created}, library items +{library_created}, "
             f"recommendations +{recommendations_created}, "
             f"grading scales +{grading_scales_created}, quizzes +{quiz_created}"

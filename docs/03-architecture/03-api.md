@@ -217,6 +217,18 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 | POST | `/api/v1/education/{level}/curricula/{id}/components` | `{service}.programs.manage` | Добавить компонент |
 | PATCH | `/api/v1/education/{level}/curricula/{id}/components/{component_id}` | `{service}.programs.manage` | Изменить компонент |
 | DELETE | `/api/v1/education/{level}/curricula/{id}/components/{component_id}` | `{service}.programs.manage` | Удалить компонент |
+| GET | `/api/v1/education/{level}/sessions` | `{service}.read` | Экзаменационные сессии |
+| POST | `/api/v1/education/{level}/sessions` | `{service}.programs.manage` | Создать сессию |
+| PATCH | `/api/v1/education/{level}/sessions/{id}` | `{service}.programs.manage` | Изменить сессию |
+| GET | `/api/v1/education/{level}/sessions/{id}/statements` | `{service}.read` | Ведомости сессии |
+| POST | `/api/v1/education/{level}/sessions/{id}/statements` | `{service}.programs.manage` | Создать ведомость |
+| GET | `/api/v1/education/{level}/statements/{id}` | `{service}.read` | Ведомость с результатами |
+| PATCH | `/api/v1/education/{level}/statements/{id}` | `{service}.programs.manage` | Изменить или утвердить ведомость |
+| POST | `/api/v1/education/{level}/statements/{id}/records/bulk` | `{service}.programs.manage` | Внести результаты обучающихся |
+| GET | `/api/v1/education/{level}/students/{profile_id}/transcript` | `{service}.read` | Зачётная книжка |
+| GET | `/api/v1/education/{level}/credit-transfers` | `{service}.read` | Перезачёты кредитов |
+| POST | `/api/v1/education/{level}/credit-transfers` | `{service}.programs.manage` | Создать перезачёт |
+| PATCH | `/api/v1/education/{level}/credit-transfers/{id}` | `{service}.programs.manage` | Изменить решение о перезачёте |
 
 Правила:
 
@@ -230,8 +242,17 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 - учебный год плана имеет формат `2026/2027`; код компонента уникален внутри
   плана; контактные часы не превышают академические;
 - в архивный учебный план нельзя добавлять компоненты;
-- изменения программ, профилей, планов, компонентов и учреждений фиксируются
-  в аудите.
+- сессии, ведомости, зачётные книжки и перезачёты доступны только для
+  `vocational` и `higher`; для школьных ступеней маршруты отсутствуют;
+- ведомость привязана к сессии, группе и компоненту учебного плана; номер
+  ведомости уникален внутри учреждения;
+- после утверждения или архивирования ведомости результаты нельзя изменить;
+- зачётная книжка включает только утверждённые ведомости и одобренные
+  перезачёты; кредиты по целевому компоненту не учитываются дважды;
+- перезачёт уникален по источнику, дисциплине и учебному году для одного
+  обучающегося;
+- изменения программ, профилей, планов, компонентов, сессий, ведомостей,
+  перезачётов и учреждений фиксируются в аудите.
 
 ## 5. Учебный контент (LMS)
 

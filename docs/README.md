@@ -54,6 +54,7 @@
 | ШК-10-11 | Отчёт о тестировании веб-клиента | `10-reporting/11-otchet-o-testirovanii-web-klienta.md` |
 | ШК-10-12 | Отчёт о тестировании обучения и аналитики | `10-reporting/12-otchet-o-testirovanii-obucheniya-i-analitiki.md` |
 | ШК-10-13 | Отчёт о тестировании ступеней образования | `10-reporting/13-otchet-o-testirovanii-stupeney-obrazovaniya.md` |
+| ШК-10-14 | Отчёт о тестировании сессий, ведомостей и кредитов | `10-reporting/14-otchet-o-testirovanii-sessiy-i-kreditov.md` |
 | ШК-11-01 | Правила OpenCode и промпты | `11-opencode/01-pravila-i-prompty.md` |
 
 Актуальный объединённый пакет DOCX:
