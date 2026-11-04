@@ -791,6 +791,35 @@ export interface Health {
   time: string;
 }
 
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  channel: 'in_app';
+  notification_type: string;
+  title: string;
+  body: string | null;
+  payload: Record<string, unknown>;
+  read_at: string | null;
+  sent_at: string | null;
+  status: 'pending' | 'sent' | 'read' | 'failed';
+  created_at: string;
+}
+
+export interface NotificationCreatePayload {
+  user_id: string;
+  title: string;
+  body?: string | null;
+  notification_type?: string;
+  channel?: 'in_app';
+  payload?: Record<string, unknown>;
+}
+
+export interface NotificationFilters {
+  unread_only?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
 export interface AuditEvent {
   id: string;
   school_id: string | null;

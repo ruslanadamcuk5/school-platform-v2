@@ -4,6 +4,7 @@ import type {
   AcademicSession,
   AdminStats,
   AnalyticsOverview,
+  AppNotification,
   AssessmentType,
   City,
   Competency,
@@ -26,6 +27,8 @@ import type {
   Health,
   MyPermissions,
   MyServices,
+  NotificationCreatePayload,
+  NotificationFilters,
   OnboardingModule,
   OnboardingOverview,
   OnboardingProgress,
@@ -1458,5 +1461,37 @@ export async function downloadOnboardingReport(params?: {
     },
     responseType: 'blob',
   });
+  return data;
+}
+
+export async function fetchNotifications(
+  params?: NotificationFilters,
+): Promise<AppNotification[]> {
+  const { data } = await api.get<AppNotification[]>('/communication/notifications', {
+    params: {
+      unread_only: params?.unread_only ?? false,
+      limit: params?.limit ?? 50,
+      offset: params?.offset ?? 0,
+    },
+  });
+  return data;
+}
+
+export async function markNotificationRead(
+  notificationId: string,
+): Promise<AppNotification> {
+  const { data } = await api.post<AppNotification>(
+    `/communication/notifications/${encodeURIComponent(notificationId)}/read`,
+  );
+  return data;
+}
+
+export async function sendNotification(
+  payload: NotificationCreatePayload,
+): Promise<AppNotification> {
+  const { data } = await api.post<AppNotification>(
+    '/communication/notifications',
+    payload,
+  );
   return data;
 }

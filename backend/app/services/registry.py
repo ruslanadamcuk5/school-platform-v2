@@ -447,6 +447,16 @@ SERVICES: tuple[ServiceManifest, ...] = (
         default_enabled=True,
         permissions=(
             PermissionSpec("communication.chat.use", "Использование чатов", "use"),
+            PermissionSpec(
+                "communication.notifications.read",
+                "Просмотр уведомлений",
+                "read",
+            ),
+            PermissionSpec(
+                "communication.notifications.manage",
+                "Отправка уведомлений",
+                "admin",
+            ),
             PermissionSpec("communication.announcements.read", "Просмотр объявлений", "read"),
             PermissionSpec("communication.announcements.write", "Публикация объявлений", "write"),
             PermissionSpec("communication.video.use", "Видеосвязь", "use"),

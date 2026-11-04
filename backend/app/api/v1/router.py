@@ -6,6 +6,7 @@ from app.api.v1 import (
     analytics,
     assessment,
     auth,
+    communication,
     education,
     groups,
     journal,
@@ -25,6 +26,7 @@ api_router.include_router(me.router)
 api_router.include_router(groups.router)
 api_router.include_router(services.router)
 api_router.include_router(org.router)
+api_router.include_router(communication.router)
 api_router.include_router(education.primary_router)
 api_router.include_router(education.secondary_router)
 api_router.include_router(education.vocational_router)

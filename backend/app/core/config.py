@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     app_debug: bool = False
     app_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
-    api_version: str = "0.8.1"
+    api_version: str = "0.8.2"
     secret_key: str = "change-me-in-production"
 
     # Database
