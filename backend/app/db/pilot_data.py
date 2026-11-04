@@ -55,6 +55,10 @@ from app.models.education import (
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    PracticeContract,
+    PracticeDiaryEntry,
+    PracticePlace,
+    PracticePlacement,
     ProgramCompetency,
     SessionStatement,
     StaffAcademicProfile,
@@ -1541,6 +1545,189 @@ async def _ensure_component_competency(
     return 1
 
 
+async def _ensure_practice_place(
+    session: AsyncSession,
+    *,
+    school: School,
+    level: str,
+    code: str,
+    name: str,
+    industry: str,
+    address: str,
+    contact_person: str,
+    contact_phone: str,
+    contact_email: str,
+) -> tuple[PracticePlace, int]:
+    item = (
+        await session.execute(
+            select(PracticePlace).where(
+                PracticePlace.institution_id == school.id,
+                PracticePlace.code == code,
+            )
+        )
+    ).scalar_one_or_none()
+    created = item is None
+    if item is None:
+        item = PracticePlace(
+            institution_id=school.id,
+            education_level=level,
+            code=code,
+            name=name,
+            industry=industry,
+            address=address,
+            contact_person=contact_person,
+            contact_phone=contact_phone,
+            contact_email=contact_email,
+            is_active=True,
+            profile={"data_origin": DEMO_TAG, "verified": True},
+        )
+        session.add(item)
+        await session.flush()
+    return item, int(created)
+
+
+async def _ensure_practice_contract(
+    session: AsyncSession,
+    *,
+    school: School,
+    level: str,
+    place: PracticePlace,
+    program: EducationProgram,
+    component: CurriculumComponent,
+    admin: User,
+    contract_number: str,
+    starts_on: date,
+    ends_on: date,
+) -> tuple[PracticeContract, int]:
+    item = (
+        await session.execute(
+            select(PracticeContract).where(
+                PracticeContract.institution_id == school.id,
+                PracticeContract.contract_number == contract_number,
+            )
+        )
+    ).scalar_one_or_none()
+    created = item is None
+    if item is None:
+        item = PracticeContract(
+            institution_id=school.id,
+            education_level=level,
+            practice_place_id=place.id,
+            program_id=program.id,
+            component_id=component.id,
+            contract_number=contract_number,
+            academic_year=ACADEMIC_YEAR,
+            starts_on=starts_on,
+            ends_on=ends_on,
+            signed_on=starts_on,
+            status="active",
+            responsible_id=admin.id,
+            document_number=f"{contract_number}-Д",
+            notes="Синтетический договор о практике для демонстрации.",
+            profile={"data_origin": DEMO_TAG, "synthetic": True},
+        )
+        session.add(item)
+        await session.flush()
+    return item, int(created)
+
+
+async def _ensure_practice_placement(
+    session: AsyncSession,
+    *,
+    school: School,
+    level: str,
+    contract: PracticeContract,
+    component: CurriculumComponent,
+    student: User,
+    group: SchoolClass,
+    supervisor: User,
+    enterprise_supervisor: str,
+    starts_on: date,
+    ends_on: date,
+) -> tuple[PracticePlacement, int]:
+    item = (
+        await session.execute(
+            select(PracticePlacement).where(
+                PracticePlacement.contract_id == contract.id,
+                PracticePlacement.student_id == student.id,
+            )
+        )
+    ).scalar_one_or_none()
+    created = item is None
+    if item is None:
+        item = PracticePlacement(
+            contract_id=contract.id,
+            institution_id=school.id,
+            education_level=level,
+            student_id=student.id,
+            group_id=group.id,
+            component_id=component.id,
+            supervisor_id=supervisor.id,
+            enterprise_supervisor=enterprise_supervisor,
+            starts_on=starts_on,
+            ends_on=ends_on,
+            total_hours=component.academic_hours,
+            status="active",
+            result="not_assessed",
+            notes="Синтетическая практика для проверки дневника.",
+            profile={"data_origin": DEMO_TAG, "synthetic": True},
+        )
+        session.add(item)
+        await session.flush()
+    return item, int(created)
+
+
+async def _ensure_practice_diary_entry(
+    session: AsyncSession,
+    *,
+    placement: PracticePlacement,
+    entry_date: date,
+    hours: float,
+    activity: str,
+    outcome: str,
+    status: str,
+    approver: User | None = None,
+) -> int:
+    existing = (
+        await session.execute(
+            select(PracticeDiaryEntry.id).where(
+                PracticeDiaryEntry.placement_id == placement.id,
+                PracticeDiaryEntry.entry_date == entry_date,
+                PracticeDiaryEntry.activity == activity,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return 0
+    submitted_at = (
+        NOW if status in {"submitted", "approved"} else None
+    )
+    approved_at = NOW if status == "approved" else None
+    session.add(
+        PracticeDiaryEntry(
+            placement_id=placement.id,
+            entry_date=entry_date,
+            hours=hours,
+            activity=activity,
+            outcome=outcome,
+            supervisor_comment=(
+                "Синтетическая проверка записи руководителем практики."
+                if status == "approved"
+                else None
+            ),
+            status=status,
+            submitted_at=submitted_at,
+            approved_at=approved_at,
+            approved_by_id=(
+                approver.id if status == "approved" and approver else None
+            ),
+            profile={"data_origin": DEMO_TAG},
+        )
+    )
+    await session.flush()
+    return 1
+
+
 async def _ensure_student_profile(
     session: AsyncSession,
     *,
@@ -2901,6 +3088,252 @@ async def seed_pilot_data() -> None:
                             )
                         )
 
+        practice_places_created = 0
+        practice_contracts_created = 0
+        practice_placements_created = 0
+        practice_diary_created = 0
+        practice_assessments_updated = 0
+        practice_place_templates = {
+            "vocational": (
+                (
+                    "PR-COL-01",
+                    "ООО «Синтетические цифровые системы»",
+                    "Информационные технологии",
+                    "г. Минск, ул. Кодовая, 10",
+                    "Синтетический руководитель ИТ-практики",
+                    "+375 17 000-10-01",
+                    "it-practice@example.test",
+                ),
+                (
+                    "PR-COL-02",
+                    "ООО «Синтетическая бухгалтерия»",
+                    "Финансы и учёт",
+                    "г. Минск, ул. Учётная, 7",
+                    "Синтетический руководитель практики",
+                    "+375 17 000-10-02",
+                    "finance-practice@example.test",
+                ),
+            ),
+            "higher": (
+                (
+                    "PR-UNI-01",
+                    "Синтетический научно-технический центр",
+                    "Наука и информационные технологии",
+                    "г. Минск, пр-т Научный, 3",
+                    "Синтетический научный руководитель",
+                    "+375 17 000-20-01",
+                    "science-practice@example.test",
+                ),
+                (
+                    "PR-UNI-02",
+                    "Синтетическая финансовая компания",
+                    "Финансы и анализ",
+                    "г. Минск, ул. Финансовая, 14",
+                    "Синтетический финансовый руководитель",
+                    "+375 17 000-20-02",
+                    "finance-lab@example.test",
+                ),
+            ),
+        }
+        practice_diary_templates = (
+            (
+                "Изучение регламентов и инструкций предприятия.",
+                "Согласованы правила охраны труда и внутреннего распорядка.",
+            ),
+            (
+                "Выполнение индивидуального задания под руководством наставника.",
+                "Задание выполнено и проверено руководителем практики.",
+            ),
+            (
+                "Подготовка материалов для отчёта по практике.",
+                "Собраны данные и оформлен раздел отчёта.",
+            ),
+        )
+        for (
+            institution,
+            level,
+            prefix,
+            classes,
+            students_by_class_for_level,
+            institution_admin,
+        ) in (
+            (
+                college,
+                "vocational",
+                "К",
+                college_classes,
+                college_students_by_class,
+                admin_college,
+            ),
+            (
+                university,
+                "higher",
+                "У",
+                university_classes,
+                university_students_by_class,
+                admin_university,
+            ),
+        ):
+            places: list[PracticePlace] = []
+            for (
+                place_code,
+                place_name,
+                industry,
+                address,
+                contact_person,
+                contact_phone,
+                contact_email,
+            ) in practice_place_templates[level]:
+                place, created = await _ensure_practice_place(
+                    session,
+                    school=institution,
+                    level=level,
+                    code=place_code,
+                    name=place_name,
+                    industry=industry,
+                    address=address,
+                    contact_person=contact_person,
+                    contact_phone=contact_phone,
+                    contact_email=contact_email,
+                )
+                places.append(place)
+                practice_places_created += created
+            programs = (
+                (
+                    await session.execute(
+                        select(EducationProgram)
+                        .where(
+                            EducationProgram.institution_id == institution.id,
+                            EducationProgram.education_level == level,
+                        )
+                        .order_by(EducationProgram.code)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for program_index, program in enumerate(programs):
+                curriculum = (
+                    await session.execute(
+                        select(EducationCurriculum)
+                        .where(
+                            EducationCurriculum.program_id == program.id,
+                            EducationCurriculum.academic_year == ACADEMIC_YEAR,
+                        )
+                        .order_by(EducationCurriculum.created_at)
+                    )
+                ).scalars().first()
+                if curriculum is None:
+                    continue
+                components = (
+                    (
+                        await session.execute(
+                            select(CurriculumComponent)
+                            .where(
+                                CurriculumComponent.curriculum_id
+                                == curriculum.id
+                            )
+                            .order_by(
+                                CurriculumComponent.semester,
+                                CurriculumComponent.order_index,
+                                CurriculumComponent.code,
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                practice_component = next(
+                    (
+                        component
+                        for component in components
+                        if component.component_type in {"practice", "internship"}
+                    ),
+                    None,
+                )
+                if practice_component is None:
+                    continue
+                class_entry = next(
+                    (
+                        item
+                        for item in classes
+                        if item[1].id == program.id
+                    ),
+                    None,
+                )
+                if class_entry is None:
+                    continue
+                school_class, _, supervisor = class_entry
+                students = students_by_class_for_level.get(school_class.id, [])[
+                    :3
+                ]
+                if not students:
+                    continue
+                place = places[program_index % len(places)]
+                contract, created = await _ensure_practice_contract(
+                    session,
+                    school=institution,
+                    level=level,
+                    place=place,
+                    program=program,
+                    component=practice_component,
+                    admin=institution_admin,
+                    contract_number=(
+                        f"ПР-{prefix}-{program_index + 1:02d}-2026"
+                    ),
+                    starts_on=date(2027, 2, 1),
+                    ends_on=date(2027, 5, 1),
+                )
+                practice_contracts_created += created
+                for student_index, student in enumerate(students):
+                    placement, created = await _ensure_practice_placement(
+                        session,
+                        school=institution,
+                        level=level,
+                        contract=contract,
+                        component=practice_component,
+                        student=student,
+                        group=school_class,
+                        supervisor=supervisor,
+                        enterprise_supervisor=place.contact_person
+                        or "Синтетический наставник",
+                        starts_on=date(2027, 3, 1),
+                        ends_on=date(2027, 4, 30),
+                    )
+                    practice_placements_created += created
+                    if created and student_index == 2:
+                        placement.status = "planned"
+                    entry_statuses = (
+                        ("approved", "approved", "approved")
+                        if student_index == 0
+                        else (
+                            ("approved", "approved", "submitted")
+                            if student_index == 1
+                            else ("draft", "draft", "draft")
+                        )
+                    )
+                    for day_index, entry_status in enumerate(entry_statuses):
+                        activity, outcome = practice_diary_templates[day_index]
+                        practice_diary_created += (
+                            await _ensure_practice_diary_entry(
+                                session,
+                                placement=placement,
+                                entry_date=date(2027, 3, 3 + day_index * 7),
+                                hours=6,
+                                activity=activity,
+                                outcome=outcome,
+                                status=entry_status,
+                                approver=institution_admin,
+                            )
+                        )
+                    if student_index == 0 and placement.result != "passed":
+                        placement.status = "completed"
+                        placement.result = "passed"
+                        placement.grade = 9
+                        placement.assessed_at = NOW
+                        placement.assessed_by_id = institution_admin.id
+                        practice_assessments_updated += 1
+
         curator_by_class: dict = {}
         for index, school_class in enumerate(school_classes):
             curator_by_class[school_class.id] = homeroom_teachers[index]
@@ -3107,6 +3540,11 @@ async def seed_pilot_data() -> None:
             f"competencies +{competencies_created}, "
             f"program competencies +{program_competencies_created}, "
             f"matrix links +{matrix_links_created}, "
+            f"practice places +{practice_places_created}, "
+            f"practice contracts +{practice_contracts_created}, "
+            f"practice placements +{practice_placements_created}, "
+            f"practice diary entries +{practice_diary_created}, "
+            f"practice assessments ~{practice_assessments_updated}, "
             f"textbooks +{textbook_created}, library items +{library_created}, "
             f"recommendations +{recommendations_created}, "
             f"grading scales +{grading_scales_created}, quizzes +{quiz_created}"

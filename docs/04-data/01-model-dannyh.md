@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.5 |
+| Версия | 0.6 |
 | Статус | Рабочий |
 | Дата | 04.11.2026 |
 
@@ -211,7 +211,44 @@
 ### 4.18. `org.component_competencies`
 - id, component_id FK, competency_id FK, weight (numeric 5,2), profile
   (jsonb), created_at, updated_at.
-- Unique: (component_id, competency_id); вес 0–100.
+- Unique: (component_id, competency_id); вес 0-100.
+
+### 4.19. `org.practice_places`
+- id, institution_id FK, education_level, code, name, industry, address,
+  contact_person, contact_phone, contact_email, is_active, profile (jsonb),
+  created_at, updated_at.
+- Unique: (institution_id, code).
+- Код предприятия уникален внутри учреждения; ступень ограничена
+  `primary`, `secondary`, `vocational`, `higher`.
+
+### 4.20. `org.practice_contracts`
+- id, institution_id FK, education_level, practice_place_id FK, program_id FK
+  null, component_id FK null, contract_number, academic_year, starts_on,
+  ends_on, signed_on, status, responsible_id FK null, document_number, notes,
+  profile (jsonb), created_at, updated_at.
+- Unique: (institution_id, contract_number).
+- `status`: `draft`, `signed`, `active`, `completed`, `terminated`, `archived`.
+- `academic_year` — `2026/2027`; `ends_on >= starts_on`; компонент должен
+  относиться к типу `practice` или `internship`.
+
+### 4.21. `org.practice_placements`
+- id, contract_id FK, institution_id FK, education_level, student_id FK,
+  group_id FK null, component_id FK null, supervisor_id FK null,
+  enterprise_supervisor, starts_on, ends_on, total_hours, status, result,
+  grade, assessed_at, assessed_by_id FK null, notes, profile (jsonb),
+  created_at, updated_at.
+- Unique: (contract_id, student_id).
+- `status`: `planned`, `active`, `completed`, `failed`, `cancelled`, `archived`.
+- `result`: `not_assessed`, `passed`, `failed`, `exempt`; оценка 1-10.
+- `total_hours` — 0-2000; период не выходит за период договора.
+
+### 4.22. `org.practice_diary_entries`
+- id, placement_id FK, entry_date, hours (numeric 5,2), activity, outcome,
+  supervisor_comment, status, submitted_at, approved_at, approved_by_id FK
+  null, profile (jsonb), created_at, updated_at.
+- `status`: `draft`, `submitted`, `approved`, `rejected`; часы 0-24.
+- Дата записи находится внутри периода практики; утверждённые часы не
+  превышают плановые часы распределения.
 
 ## 5. LMS
 ### 5.1. `lms.subjects`
@@ -414,6 +451,14 @@ erDiagram
   EDUCATION_PROGRAMS ||--o{ STUDENT_ACADEMIC_PROFILES : program
   CLASSES ||--o{ STUDENT_ACADEMIC_PROFILES : group
   SCHOOLS ||--o{ STAFF_ACADEMIC_PROFILES : employs
+  SCHOOLS ||--o{ PRACTICE_PLACES : partners
+  PRACTICE_PLACES ||--o{ PRACTICE_CONTRACTS : signs
+  EDUCATION_PROGRAMS ||--o{ PRACTICE_CONTRACTS : program
+  CURRICULUM_COMPONENTS ||--o{ PRACTICE_CONTRACTS : practice
+  PRACTICE_CONTRACTS ||--o{ PRACTICE_PLACEMENTS : places
+  USERS ||--o{ PRACTICE_PLACEMENTS : practices
+  CLASSES ||--o{ PRACTICE_PLACEMENTS : group
+  PRACTICE_PLACEMENTS ||--o{ PRACTICE_DIARY_ENTRIES : diary
   CLASSES ||--o{ CLASS_MEMBERSHIPS : includes
   USERS ||--o{ CLASS_MEMBERSHIPS : member
   USERS ||--o{ STUDENT_ACADEMIC_PROFILES : student

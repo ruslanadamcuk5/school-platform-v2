@@ -30,6 +30,14 @@ CreditTransferStatus = Literal[
     "draft", "pending", "approved", "rejected", "archived"
 ]
 CompetencyType = Literal["universal", "general", "professional", "other"]
+PracticeContractStatus = Literal[
+    "draft", "signed", "active", "completed", "terminated", "archived"
+]
+PracticePlacementStatus = Literal[
+    "planned", "active", "completed", "failed", "cancelled", "archived"
+]
+PracticeResult = Literal["not_assessed", "passed", "failed", "exempt"]
+PracticeDiaryStatus = Literal["draft", "submitted", "approved", "rejected"]
 
 
 class EducationLevelOut(BaseModel):
@@ -634,3 +642,225 @@ class CompetencyMatrixBulk(BaseModel):
     links: list[CompetencyMatrixLinkIn] = Field(
         default_factory=list, max_length=2000
     )
+
+
+class PracticePlaceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    institution_id: uuid.UUID
+    education_level: EducationLevel
+    code: str
+    name: str
+    industry: str | None = None
+    address: str | None = None
+    contact_person: str | None = None
+    contact_phone: str | None = None
+    contact_email: str | None = None
+    is_active: bool
+    profile: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class PracticePlaceCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+    industry: str | None = Field(default=None, max_length=128)
+    address: str | None = Field(default=None, max_length=500)
+    contact_person: str | None = Field(default=None, max_length=255)
+    contact_phone: str | None = Field(default=None, max_length=64)
+    contact_email: str | None = Field(default=None, max_length=255)
+    is_active: bool = True
+    profile: dict = Field(default_factory=dict)
+
+
+class PracticePlaceUpdate(BaseModel):
+    code: str | None = Field(default=None, min_length=1, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    industry: str | None = Field(default=None, max_length=128)
+    address: str | None = Field(default=None, max_length=500)
+    contact_person: str | None = Field(default=None, max_length=255)
+    contact_phone: str | None = Field(default=None, max_length=64)
+    contact_email: str | None = Field(default=None, max_length=255)
+    is_active: bool | None = None
+    profile: dict | None = None
+
+
+class PracticeContractOut(BaseModel):
+    id: uuid.UUID
+    institution_id: uuid.UUID
+    education_level: EducationLevel
+    practice_place_id: uuid.UUID
+    place_name: str
+    program_id: uuid.UUID | None = None
+    program_name: str | None = None
+    component_id: uuid.UUID | None = None
+    component_code: str | None = None
+    component_name: str | None = None
+    contract_number: str
+    academic_year: str
+    starts_on: date
+    ends_on: date
+    signed_on: date | None = None
+    status: PracticeContractStatus
+    responsible_id: uuid.UUID | None = None
+    responsible_name: str | None = None
+    document_number: str | None = None
+    notes: str | None = None
+    profile: dict = Field(default_factory=dict)
+    placements_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class PracticeContractCreate(BaseModel):
+    practice_place_id: uuid.UUID
+    program_id: uuid.UUID | None = None
+    component_id: uuid.UUID | None = None
+    contract_number: str = Field(min_length=1, max_length=64)
+    academic_year: str = Field(pattern=r"^\d{4}/\d{4}$")
+    starts_on: date
+    ends_on: date
+    signed_on: date | None = None
+    status: PracticeContractStatus = "draft"
+    responsible_id: uuid.UUID | None = None
+    document_number: str | None = Field(default=None, max_length=64)
+    notes: str | None = None
+    profile: dict = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "PracticeContractCreate":
+        if self.ends_on < self.starts_on:
+            raise ValueError("ends_on cannot be earlier than starts_on")
+        return self
+
+
+class PracticeContractUpdate(BaseModel):
+    practice_place_id: uuid.UUID | None = None
+    program_id: uuid.UUID | None = None
+    component_id: uuid.UUID | None = None
+    contract_number: str | None = Field(
+        default=None, min_length=1, max_length=64
+    )
+    academic_year: str | None = Field(
+        default=None, pattern=r"^\d{4}/\d{4}$"
+    )
+    starts_on: date | None = None
+    ends_on: date | None = None
+    signed_on: date | None = None
+    status: PracticeContractStatus | None = None
+    responsible_id: uuid.UUID | None = None
+    document_number: str | None = Field(default=None, max_length=64)
+    notes: str | None = None
+    profile: dict | None = None
+
+
+class PracticePlacementOut(BaseModel):
+    id: uuid.UUID
+    contract_id: uuid.UUID
+    contract_number: str
+    place_name: str
+    institution_id: uuid.UUID
+    education_level: EducationLevel
+    student_id: uuid.UUID
+    student_login: str
+    student_name: str
+    group_id: uuid.UUID | None = None
+    group_name: str | None = None
+    component_id: uuid.UUID | None = None
+    component_code: str | None = None
+    component_name: str | None = None
+    supervisor_id: uuid.UUID | None = None
+    supervisor_name: str | None = None
+    enterprise_supervisor: str | None = None
+    starts_on: date
+    ends_on: date
+    total_hours: int = 0
+    completed_hours: float = 0
+    status: PracticePlacementStatus
+    result: PracticeResult
+    grade: int | None = None
+    assessed_at: datetime | None = None
+    assessed_by_id: uuid.UUID | None = None
+    notes: str | None = None
+    profile: dict = Field(default_factory=dict)
+    diary_entries_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class PracticePlacementCreate(BaseModel):
+    contract_id: uuid.UUID
+    student_id: uuid.UUID
+    group_id: uuid.UUID | None = None
+    component_id: uuid.UUID | None = None
+    supervisor_id: uuid.UUID | None = None
+    enterprise_supervisor: str | None = Field(default=None, max_length=255)
+    starts_on: date
+    ends_on: date
+    total_hours: int = Field(default=0, ge=0, le=2000)
+    status: PracticePlacementStatus = "planned"
+    notes: str | None = None
+    profile: dict = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "PracticePlacementCreate":
+        if self.ends_on < self.starts_on:
+            raise ValueError("ends_on cannot be earlier than starts_on")
+        return self
+
+
+class PracticePlacementUpdate(BaseModel):
+    group_id: uuid.UUID | None = None
+    component_id: uuid.UUID | None = None
+    supervisor_id: uuid.UUID | None = None
+    enterprise_supervisor: str | None = Field(default=None, max_length=255)
+    starts_on: date | None = None
+    ends_on: date | None = None
+    total_hours: int | None = Field(default=None, ge=0, le=2000)
+    status: PracticePlacementStatus | None = None
+    notes: str | None = None
+    profile: dict | None = None
+
+
+class PracticeAssessmentIn(BaseModel):
+    result: PracticeResult
+    grade: int | None = Field(default=None, ge=1, le=10)
+
+
+class PracticeDiaryEntryOut(BaseModel):
+    id: uuid.UUID
+    placement_id: uuid.UUID
+    entry_date: date
+    hours: float
+    activity: str
+    outcome: str | None = None
+    supervisor_comment: str | None = None
+    status: PracticeDiaryStatus
+    submitted_at: datetime | None = None
+    approved_at: datetime | None = None
+    approved_by_id: uuid.UUID | None = None
+    profile: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class PracticeDiaryEntryCreate(BaseModel):
+    entry_date: date
+    hours: float = Field(default=0, ge=0, le=24)
+    activity: str = Field(min_length=1, max_length=4000)
+    outcome: str | None = Field(default=None, max_length=4000)
+    supervisor_comment: str | None = Field(default=None, max_length=4000)
+    status: PracticeDiaryStatus = "draft"
+    profile: dict = Field(default_factory=dict)
+
+
+class PracticeDiaryEntryUpdate(BaseModel):
+    entry_date: date | None = None
+    hours: float | None = Field(default=None, ge=0, le=24)
+    activity: str | None = Field(default=None, min_length=1, max_length=4000)
+    outcome: str | None = Field(default=None, max_length=4000)
+    supervisor_comment: str | None = Field(default=None, max_length=4000)
+    status: PracticeDiaryStatus | None = None
+    profile: dict | None = None

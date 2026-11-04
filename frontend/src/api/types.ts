@@ -593,6 +593,118 @@ export interface CompetencyMatrix {
   links: CompetencyMatrixLink[];
 }
 
+export type PracticeContractStatus =
+  | 'draft'
+  | 'signed'
+  | 'active'
+  | 'completed'
+  | 'terminated'
+  | 'archived';
+export type PracticePlacementStatus =
+  | 'planned'
+  | 'active'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'archived';
+export type PracticeResult = 'not_assessed' | 'passed' | 'failed' | 'exempt';
+export type PracticeDiaryStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+export interface PracticePlace {
+  id: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  code: string;
+  name: string;
+  industry: string | null;
+  address: string | null;
+  contact_person: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  is_active: boolean;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PracticeContract {
+  id: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  practice_place_id: string;
+  place_name: string;
+  program_id: string | null;
+  program_name: string | null;
+  component_id: string | null;
+  component_code: string | null;
+  component_name: string | null;
+  contract_number: string;
+  academic_year: string;
+  starts_on: string;
+  ends_on: string;
+  signed_on: string | null;
+  status: PracticeContractStatus;
+  responsible_id: string | null;
+  responsible_name: string | null;
+  document_number: string | null;
+  notes: string | null;
+  profile: Record<string, unknown>;
+  placements_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PracticePlacement {
+  id: string;
+  contract_id: string;
+  contract_number: string;
+  place_name: string;
+  institution_id: string;
+  education_level: EducationLevel;
+  student_id: string;
+  student_login: string;
+  student_name: string;
+  group_id: string | null;
+  group_name: string | null;
+  component_id: string | null;
+  component_code: string | null;
+  component_name: string | null;
+  supervisor_id: string | null;
+  supervisor_name: string | null;
+  enterprise_supervisor: string | null;
+  starts_on: string;
+  ends_on: string;
+  total_hours: number;
+  completed_hours: number;
+  status: PracticePlacementStatus;
+  result: PracticeResult;
+  grade: number | null;
+  assessed_at: string | null;
+  assessed_by_id: string | null;
+  notes: string | null;
+  profile: Record<string, unknown>;
+  diary_entries_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PracticeDiaryEntry {
+  id: string;
+  placement_id: string;
+  entry_date: string;
+  hours: number;
+  activity: string;
+  outcome: string | null;
+  supervisor_comment: string | null;
+  status: PracticeDiaryStatus;
+  submitted_at: string | null;
+  approved_at: string | null;
+  approved_by_id: string | null;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserList {
   items: User[];
   total: number;

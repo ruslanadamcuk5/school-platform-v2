@@ -31,6 +31,14 @@ import type {
   OnboardingProgress,
   OnboardingReportUsers,
   PermissionList,
+  PracticeContract,
+  PracticeContractStatus,
+  PracticeDiaryEntry,
+  PracticeDiaryStatus,
+  PracticePlace,
+  PracticePlacement,
+  PracticePlacementStatus,
+  PracticeResult,
   ProgramCompetency,
   Region,
   School,
@@ -918,6 +926,298 @@ export async function replaceCompetencyMatrix(
   const { data } = await api.put<CompetencyMatrix>(
     `/education/${level}/curricula/${curriculumId}/competency-matrix`,
     { links },
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchPracticePlaces(
+  level: EducationLevel,
+  schoolId?: string,
+  options?: { search?: string; isActive?: boolean },
+): Promise<PracticePlace[]> {
+  const { data } = await api.get<PracticePlace[]>(
+    `/education/${level}/practice-places`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        search: options?.search || undefined,
+        is_active:
+          options?.isActive === undefined ? undefined : options.isActive,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createPracticePlace(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    code: string;
+    name: string;
+    industry?: string | null;
+    address?: string | null;
+    contact_person?: string | null;
+    contact_phone?: string | null;
+    contact_email?: string | null;
+    is_active?: boolean;
+    profile?: Record<string, unknown>;
+  },
+): Promise<PracticePlace> {
+  const { data } = await api.post<PracticePlace>(
+    `/education/${level}/practice-places`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updatePracticePlace(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  placeId: string,
+  payload: Partial<{
+    code: string;
+    name: string;
+    industry: string | null;
+    address: string | null;
+    contact_person: string | null;
+    contact_phone: string | null;
+    contact_email: string | null;
+    is_active: boolean;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<PracticePlace> {
+  const { data } = await api.patch<PracticePlace>(
+    `/education/${level}/practice-places/${placeId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchPracticeContracts(
+  level: EducationLevel,
+  schoolId?: string,
+  options?: {
+    practicePlaceId?: string;
+    programId?: string;
+    academicYear?: string;
+    status?: PracticeContractStatus;
+  },
+): Promise<PracticeContract[]> {
+  const { data } = await api.get<PracticeContract[]>(
+    `/education/${level}/practice-contracts`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        practice_place_id: options?.practicePlaceId || undefined,
+        program_id: options?.programId || undefined,
+        academic_year: options?.academicYear || undefined,
+        status: options?.status || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createPracticeContract(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    practice_place_id: string;
+    program_id?: string | null;
+    component_id?: string | null;
+    contract_number: string;
+    academic_year: string;
+    starts_on: string;
+    ends_on: string;
+    signed_on?: string | null;
+    status?: PracticeContractStatus;
+    responsible_id?: string | null;
+    document_number?: string | null;
+    notes?: string | null;
+    profile?: Record<string, unknown>;
+  },
+): Promise<PracticeContract> {
+  const { data } = await api.post<PracticeContract>(
+    `/education/${level}/practice-contracts`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updatePracticeContract(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  contractId: string,
+  payload: Partial<{
+    practice_place_id: string;
+    program_id: string | null;
+    component_id: string | null;
+    contract_number: string;
+    academic_year: string;
+    starts_on: string;
+    ends_on: string;
+    signed_on: string | null;
+    status: PracticeContractStatus;
+    responsible_id: string | null;
+    document_number: string | null;
+    notes: string | null;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<PracticeContract> {
+  const { data } = await api.patch<PracticeContract>(
+    `/education/${level}/practice-contracts/${contractId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchPracticePlacements(
+  level: EducationLevel,
+  schoolId?: string,
+  options?: {
+    contractId?: string;
+    groupId?: string;
+    studentId?: string;
+    status?: PracticePlacementStatus;
+  },
+): Promise<PracticePlacement[]> {
+  const { data } = await api.get<PracticePlacement[]>(
+    `/education/${level}/practice-placements`,
+    {
+      params: {
+        school_id: schoolId || undefined,
+        contract_id: options?.contractId || undefined,
+        group_id: options?.groupId || undefined,
+        student_id: options?.studentId || undefined,
+        status: options?.status || undefined,
+      },
+    },
+  );
+  return data;
+}
+
+export async function createPracticePlacement(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  payload: {
+    contract_id: string;
+    student_id: string;
+    group_id?: string | null;
+    component_id?: string | null;
+    supervisor_id?: string | null;
+    enterprise_supervisor?: string | null;
+    starts_on: string;
+    ends_on: string;
+    total_hours?: number;
+    status?: PracticePlacementStatus;
+    notes?: string | null;
+    profile?: Record<string, unknown>;
+  },
+): Promise<PracticePlacement> {
+  const { data } = await api.post<PracticePlacement>(
+    `/education/${level}/practice-placements`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updatePracticePlacement(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  placementId: string,
+  payload: Partial<{
+    group_id: string | null;
+    component_id: string | null;
+    supervisor_id: string | null;
+    enterprise_supervisor: string | null;
+    starts_on: string;
+    ends_on: string;
+    total_hours: number;
+    status: PracticePlacementStatus;
+    notes: string | null;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<PracticePlacement> {
+  const { data } = await api.patch<PracticePlacement>(
+    `/education/${level}/practice-placements/${placementId}`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function assessPracticePlacement(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  placementId: string,
+  payload: { result: PracticeResult; grade?: number | null },
+): Promise<PracticePlacement> {
+  const { data } = await api.post<PracticePlacement>(
+    `/education/${level}/practice-placements/${placementId}/assessment`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function fetchPracticeDiary(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  placementId: string,
+): Promise<PracticeDiaryEntry[]> {
+  const { data } = await api.get<PracticeDiaryEntry[]>(
+    `/education/${level}/practice-placements/${placementId}/diary`,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function createPracticeDiaryEntry(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  placementId: string,
+  payload: {
+    entry_date: string;
+    hours: number;
+    activity: string;
+    outcome?: string | null;
+    supervisor_comment?: string | null;
+    status?: PracticeDiaryStatus;
+    profile?: Record<string, unknown>;
+  },
+): Promise<PracticeDiaryEntry> {
+  const { data } = await api.post<PracticeDiaryEntry>(
+    `/education/${level}/practice-placements/${placementId}/diary`,
+    payload,
+    { params: { school_id: schoolId || undefined } },
+  );
+  return data;
+}
+
+export async function updatePracticeDiaryEntry(
+  level: EducationLevel,
+  schoolId: string | undefined,
+  entryId: string,
+  payload: Partial<{
+    entry_date: string;
+    hours: number;
+    activity: string;
+    outcome: string | null;
+    supervisor_comment: string | null;
+    status: PracticeDiaryStatus;
+    profile: Record<string, unknown>;
+  }>,
+): Promise<PracticeDiaryEntry> {
+  const { data } = await api.patch<PracticeDiaryEntry>(
+    `/education/${level}/practice-diary/${entryId}`,
+    payload,
     { params: { school_id: schoolId || undefined } },
   );
   return data;

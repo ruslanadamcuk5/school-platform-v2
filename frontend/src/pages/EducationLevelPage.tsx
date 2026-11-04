@@ -66,6 +66,7 @@ import {
 import { cn } from '../lib/cn';
 import { formatDate, pluralize } from '../lib/labels';
 import { EducationCompetenciesCard } from './EducationCompetenciesCard';
+import { EducationPracticeCard } from './EducationPracticeCard';
 import { EducationSessionsCard } from './EducationSessionsCard';
 
 const LEVEL_META: Record<
@@ -1784,6 +1785,17 @@ export function EducationLevelPage({ level }: { level: EducationLevel }) {
                 canManage={canManagePrograms}
               />
               <EducationSessionsCard
+                level={level}
+                schoolId={schoolId}
+                academicYear={data.academic_year}
+                groups={data.groups}
+                curricula={curricula}
+                profiles={profiles}
+                staff={staffProfiles}
+                canManage={canManagePrograms}
+                onDataChanged={() => setReloadKey((value) => value + 1)}
+              />
+              <EducationPracticeCard
                 level={level}
                 schoolId={schoolId}
                 academicYear={data.academic_year}

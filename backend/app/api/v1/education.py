@@ -38,6 +38,10 @@ from app.models.education import (
     CurriculumComponent,
     EducationCurriculum,
     EducationProgram,
+    PracticeContract,
+    PracticeDiaryEntry,
+    PracticePlace,
+    PracticePlacement,
     ProgramCompetency,
     SessionStatement,
     StaffAcademicProfile,
@@ -75,6 +79,19 @@ from app.schemas.education import (
     EducationProgramOut,
     EducationProgramUpdate,
     EducationTotalsOut,
+    PracticeAssessmentIn,
+    PracticeContractCreate,
+    PracticeContractOut,
+    PracticeContractUpdate,
+    PracticeDiaryEntryCreate,
+    PracticeDiaryEntryOut,
+    PracticeDiaryEntryUpdate,
+    PracticePlaceCreate,
+    PracticePlaceOut,
+    PracticePlaceUpdate,
+    PracticePlacementCreate,
+    PracticePlacementOut,
+    PracticePlacementUpdate,
     ProgramCompetencyBulk,
     ProgramCompetencyOut,
     SessionStatementCreate,
@@ -879,6 +896,276 @@ async def _build_competency_matrix(
             for link in links
         ],
     )
+
+
+def _practice_place_out(item: PracticePlace) -> PracticePlaceOut:
+    return PracticePlaceOut.model_validate(item)
+
+
+def _practice_contract_out(item: PracticeContract) -> PracticeContractOut:
+    return PracticeContractOut(
+        id=item.id,
+        institution_id=item.institution_id,
+        education_level=item.education_level,  # type: ignore[arg-type]
+        practice_place_id=item.practice_place_id,
+        place_name=item.place.name if item.place else "",
+        program_id=item.program_id,
+        program_name=item.program.name if item.program else None,
+        component_id=item.component_id,
+        component_code=item.component.code if item.component else None,
+        component_name=item.component.name if item.component else None,
+        contract_number=item.contract_number,
+        academic_year=item.academic_year,
+        starts_on=item.starts_on,
+        ends_on=item.ends_on,
+        signed_on=item.signed_on,
+        status=item.status,  # type: ignore[arg-type]
+        responsible_id=item.responsible_id,
+        responsible_name=(
+            item.responsible.full_name if item.responsible else None
+        ),
+        document_number=item.document_number,
+        notes=item.notes,
+        profile=item.profile or {},
+        placements_count=len(item.placements),
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+def _practice_completed_hours(item: PracticePlacement) -> float:
+    return round(
+        sum(
+            float(entry.hours or 0)
+            for entry in item.diary_entries
+            if entry.status == "approved"
+        ),
+        2,
+    )
+
+
+def _practice_placement_out(item: PracticePlacement) -> PracticePlacementOut:
+    contract = item.contract
+    return PracticePlacementOut(
+        id=item.id,
+        contract_id=item.contract_id,
+        contract_number=contract.contract_number if contract else "",
+        place_name=(
+            contract.place.name if contract and contract.place else ""
+        ),
+        institution_id=item.institution_id,
+        education_level=item.education_level,  # type: ignore[arg-type]
+        student_id=item.student_id,
+        student_login=item.student.login if item.student else "",
+        student_name=item.student.full_name if item.student else "",
+        group_id=item.group_id,
+        group_name=item.group.display_name if item.group else None,
+        component_id=item.component_id,
+        component_code=item.component.code if item.component else None,
+        component_name=item.component.name if item.component else None,
+        supervisor_id=item.supervisor_id,
+        supervisor_name=(
+            item.supervisor.full_name if item.supervisor else None
+        ),
+        enterprise_supervisor=item.enterprise_supervisor,
+        starts_on=item.starts_on,
+        ends_on=item.ends_on,
+        total_hours=item.total_hours,
+        completed_hours=_practice_completed_hours(item),
+        status=item.status,  # type: ignore[arg-type]
+        result=item.result,  # type: ignore[arg-type]
+        grade=item.grade,
+        assessed_at=item.assessed_at,
+        assessed_by_id=item.assessed_by_id,
+        notes=item.notes,
+        profile=item.profile or {},
+        diary_entries_count=len(item.diary_entries),
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+def _practice_diary_out(item: PracticeDiaryEntry) -> PracticeDiaryEntryOut:
+    return PracticeDiaryEntryOut(
+        id=item.id,
+        placement_id=item.placement_id,
+        entry_date=item.entry_date,
+        hours=float(item.hours or 0),
+        activity=item.activity,
+        outcome=item.outcome,
+        supervisor_comment=item.supervisor_comment,
+        status=item.status,  # type: ignore[arg-type]
+        submitted_at=item.submitted_at,
+        approved_at=item.approved_at,
+        approved_by_id=item.approved_by_id,
+        profile=item.profile or {},
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+async def _practice_place_for_institution(
+    session: AsyncSession,
+    place_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> PracticePlace:
+    item = await session.get(PracticePlace, place_id)
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(status_code=404, detail="Practice place not found")
+    return item
+
+
+async def _practice_contract_for_institution(
+    session: AsyncSession,
+    contract_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> PracticeContract:
+    item = (
+        await session.execute(
+            select(PracticeContract)
+            .where(PracticeContract.id == contract_id)
+            .options(
+                selectinload(PracticeContract.place),
+                selectinload(PracticeContract.program),
+                selectinload(PracticeContract.component),
+                selectinload(PracticeContract.responsible),
+                selectinload(PracticeContract.placements),
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(
+            status_code=404, detail="Practice contract not found"
+        )
+    return item
+
+
+async def _practice_placement_for_institution(
+    session: AsyncSession,
+    placement_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> PracticePlacement:
+    item = (
+        await session.execute(
+            select(PracticePlacement)
+            .where(PracticePlacement.id == placement_id)
+            .options(
+                selectinload(PracticePlacement.contract).selectinload(
+                    PracticeContract.place
+                ),
+                selectinload(PracticePlacement.student),
+                selectinload(PracticePlacement.group),
+                selectinload(PracticePlacement.component),
+                selectinload(PracticePlacement.supervisor),
+                selectinload(PracticePlacement.diary_entries),
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        item is None
+        or item.institution_id != school_id
+        or item.education_level != level
+    ):
+        raise HTTPException(
+            status_code=404, detail="Practice placement not found"
+        )
+    return item
+
+
+async def _practice_diary_for_institution(
+    session: AsyncSession,
+    entry_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> PracticeDiaryEntry:
+    item = (
+        await session.execute(
+            select(PracticeDiaryEntry)
+            .where(PracticeDiaryEntry.id == entry_id)
+            .options(selectinload(PracticeDiaryEntry.placement))
+        )
+    ).scalar_one_or_none()
+    if (
+        item is None
+        or item.placement is None
+        or item.placement.institution_id != school_id
+        or item.placement.education_level != level
+    ):
+        raise HTTPException(
+            status_code=404, detail="Practice diary entry not found"
+        )
+    return item
+
+
+def _ensure_practice_dates(
+    starts_on: date,
+    ends_on: date,
+    contract: PracticeContract | None = None,
+) -> None:
+    if ends_on < starts_on:
+        raise HTTPException(
+            status_code=422,
+            detail="ends_on cannot be earlier than starts_on",
+        )
+    if contract is not None and (
+        starts_on < contract.starts_on or ends_on > contract.ends_on
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Placement dates must be inside the contract period",
+        )
+
+
+async def _practice_component_for_institution(
+    session: AsyncSession,
+    component_id: uuid.UUID,
+    school_id: uuid.UUID,
+    level: str,
+) -> CurriculumComponent:
+    component = await _component_for_institution(
+        session, component_id, school_id, level
+    )
+    if component.component_type not in {"practice", "internship"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Curriculum component must be a practice or internship",
+        )
+    return component
+
+
+async def _practice_student_for_institution(
+    session: AsyncSession,
+    student_id: uuid.UUID,
+    school_id: uuid.UUID,
+) -> User:
+    student = await _user_for_institution(
+        session, student_id, school_id, {"student"}
+    )
+    profile = (
+        await session.execute(
+            select(StudentAcademicProfile.id).where(
+                StudentAcademicProfile.user_id == student.id,
+                StudentAcademicProfile.institution_id == school_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Student academic profile not found",
+        )
+    return student
 
 
 def _build_level_router(level: str) -> APIRouter:
@@ -2840,6 +3127,1001 @@ def _build_level_router(level: str) -> APIRouter:
                 school_id=school.id,
                 level=level,
             )
+
+        @level_router.get(
+            "/practice-places",
+            response_model=list[PracticePlaceOut],
+            summary="Предприятия и организации для практики",
+        )
+        async def list_practice_places(
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            search: str | None = Query(default=None, max_length=100),
+            is_active: bool | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            stmt = (
+                select(PracticePlace)
+                .where(
+                    PracticePlace.institution_id == school.id,
+                    PracticePlace.education_level == level,
+                )
+                .order_by(PracticePlace.name)
+            )
+            if search:
+                pattern = f"%{search.strip()}%"
+                stmt = stmt.where(
+                    or_(
+                        PracticePlace.code.ilike(pattern),
+                        PracticePlace.name.ilike(pattern),
+                        PracticePlace.industry.ilike(pattern),
+                    )
+                )
+            if is_active is not None:
+                stmt = stmt.where(PracticePlace.is_active.is_(is_active))
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_practice_place_out(item) for item in rows]
+
+        @level_router.post(
+            "/practice-places",
+            response_model=PracticePlaceOut,
+            status_code=201,
+            summary="Добавить предприятие для практики",
+        )
+        async def create_practice_place(
+            payload: PracticePlaceCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            code = payload.code.strip()
+            name = payload.name.strip()
+            if not code or not name:
+                raise HTTPException(
+                    status_code=422, detail="Code and name cannot be empty"
+                )
+            exists = (
+                await session.execute(
+                    select(PracticePlace.id).where(
+                        PracticePlace.institution_id == school.id,
+                        PracticePlace.code == code,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Practice place with this code already exists",
+                )
+            item = PracticePlace(
+                institution_id=school.id,
+                education_level=level,
+                code=code,
+                name=name,
+                industry=payload.industry,
+                address=payload.address,
+                contact_person=payload.contact_person,
+                contact_phone=payload.contact_phone,
+                contact_email=payload.contact_email,
+                is_active=payload.is_active,
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="practice_place_created",
+                entity_type="practice_place",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "code": item.code},
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _practice_place_out(item)
+
+        @level_router.patch(
+            "/practice-places/{place_id}",
+            response_model=PracticePlaceOut,
+            summary="Изменить предприятие для практики",
+        )
+        async def update_practice_place(
+            place_id: uuid.UUID,
+            payload: PracticePlaceUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _practice_place_for_institution(
+                session, place_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in ("code", "name", "is_active", "profile"):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            if "code" in updates:
+                updates["code"] = updates["code"].strip()
+                if not updates["code"]:
+                    raise HTTPException(
+                        status_code=422, detail="Code cannot be empty"
+                    )
+                number_exists = (
+                    await session.execute(
+                        select(PracticePlace.id).where(
+                            PracticePlace.institution_id == school.id,
+                            PracticePlace.code == updates["code"],
+                            PracticePlace.id != item.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if number_exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Practice place with this code already exists",
+                    )
+            if "name" in updates:
+                updates["name"] = updates["name"].strip()
+                if not updates["name"]:
+                    raise HTTPException(
+                        status_code=422, detail="Name cannot be empty"
+                    )
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="practice_place_updated",
+                entity_type="practice_place",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _practice_place_out(item)
+
+        @level_router.get(
+            "/practice-contracts",
+            response_model=list[PracticeContractOut],
+            summary="Договоры с предприятиями",
+        )
+        async def list_practice_contracts(
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            practice_place_id: uuid.UUID | None = Query(default=None),
+            program_id: uuid.UUID | None = Query(default=None),
+            academic_year: str | None = Query(
+                default=None, pattern=r"^\d{4}/\d{4}$"
+            ),
+            status: str | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            if status is not None and status not in (
+                "draft",
+                "signed",
+                "active",
+                "completed",
+                "terminated",
+                "archived",
+            ):
+                raise HTTPException(
+                    status_code=422, detail="Unknown contract status"
+                )
+            stmt = (
+                select(PracticeContract)
+                .where(
+                    PracticeContract.institution_id == school.id,
+                    PracticeContract.education_level == level,
+                )
+                .options(
+                    selectinload(PracticeContract.place),
+                    selectinload(PracticeContract.program),
+                    selectinload(PracticeContract.component),
+                    selectinload(PracticeContract.responsible),
+                    selectinload(PracticeContract.placements),
+                )
+                .order_by(
+                    PracticeContract.academic_year.desc(),
+                    PracticeContract.starts_on.desc(),
+                    PracticeContract.contract_number,
+                )
+            )
+            if practice_place_id is not None:
+                stmt = stmt.where(
+                    PracticeContract.practice_place_id == practice_place_id
+                )
+            if program_id is not None:
+                stmt = stmt.where(PracticeContract.program_id == program_id)
+            if academic_year is not None:
+                stmt = stmt.where(
+                    PracticeContract.academic_year == academic_year
+                )
+            if status is not None:
+                stmt = stmt.where(PracticeContract.status == status)
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_practice_contract_out(item) for item in rows]
+
+        @level_router.post(
+            "/practice-contracts",
+            response_model=PracticeContractOut,
+            status_code=201,
+            summary="Заключить договор с предприятием",
+        )
+        async def create_practice_contract(
+            payload: PracticeContractCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            contract_number = payload.contract_number.strip()
+            if not contract_number:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Contract number cannot be empty",
+                )
+            await _practice_place_for_institution(
+                session, payload.practice_place_id, school.id, level
+            )
+            if payload.program_id is not None:
+                await _program_for_institution(
+                    session, payload.program_id, school.id, level
+                )
+            program_id = payload.program_id
+            if payload.component_id is not None:
+                component = await _practice_component_for_institution(
+                    session, payload.component_id, school.id, level
+                )
+                component_program_id = component.curriculum.program_id
+                if (
+                    program_id is not None
+                    and component_program_id != program_id
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Practice component belongs to another program",
+                    )
+                program_id = program_id or component_program_id
+            _ensure_practice_dates(payload.starts_on, payload.ends_on)
+            if payload.signed_on is not None and payload.signed_on > payload.ends_on:
+                raise HTTPException(
+                    status_code=422,
+                    detail="signed_on cannot be later than ends_on",
+                )
+            if payload.responsible_id is not None:
+                await _user_for_institution(
+                    session,
+                    payload.responsible_id,
+                    school.id,
+                    {"teacher", "methodologist", "admin"},
+                )
+            exists = (
+                await session.execute(
+                    select(PracticeContract.id).where(
+                        PracticeContract.institution_id == school.id,
+                        PracticeContract.contract_number == contract_number,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Contract with this number already exists",
+                )
+            item = PracticeContract(
+                institution_id=school.id,
+                education_level=level,
+                practice_place_id=payload.practice_place_id,
+                program_id=program_id,
+                component_id=payload.component_id,
+                contract_number=contract_number,
+                academic_year=payload.academic_year,
+                starts_on=payload.starts_on,
+                ends_on=payload.ends_on,
+                signed_on=payload.signed_on,
+                status=payload.status,
+                responsible_id=payload.responsible_id,
+                document_number=payload.document_number,
+                notes=payload.notes,
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="practice_contract_created",
+                entity_type="practice_contract",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "contract_number": item.contract_number,
+                },
+            )
+            await session.commit()
+            saved = await _practice_contract_for_institution(
+                session, item.id, school.id, level
+            )
+            return _practice_contract_out(saved)
+
+        @level_router.patch(
+            "/practice-contracts/{contract_id}",
+            response_model=PracticeContractOut,
+            summary="Изменить договор с предприятием",
+        )
+        async def update_practice_contract(
+            contract_id: uuid.UUID,
+            payload: PracticeContractUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _practice_contract_for_institution(
+                session, contract_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in (
+                "practice_place_id",
+                "contract_number",
+                "academic_year",
+                "starts_on",
+                "ends_on",
+                "status",
+                "profile",
+            ):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            if "practice_place_id" in updates:
+                await _practice_place_for_institution(
+                    session,
+                    updates["practice_place_id"],
+                    school.id,
+                    level,
+                )
+            new_program_id = updates.get("program_id", item.program_id)
+            if "program_id" in updates and updates["program_id"] is not None:
+                await _program_for_institution(
+                    session,
+                    updates["program_id"],
+                    school.id,
+                    level,
+                )
+            new_component_id = updates.get("component_id", item.component_id)
+            if new_component_id is not None:
+                component = await _practice_component_for_institution(
+                    session, new_component_id, school.id, level
+                )
+                component_program_id = component.curriculum.program_id
+                if new_program_id is None:
+                    updates["program_id"] = component_program_id
+                elif component_program_id != new_program_id:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Practice component belongs to another program",
+                    )
+            starts_on = updates.get("starts_on", item.starts_on)
+            ends_on = updates.get("ends_on", item.ends_on)
+            _ensure_practice_dates(starts_on, ends_on)
+            signed_on = updates.get("signed_on", item.signed_on)
+            if signed_on is not None and signed_on > ends_on:
+                raise HTTPException(
+                    status_code=422,
+                    detail="signed_on cannot be later than ends_on",
+                )
+            if item.placements:
+                new_program_id = updates.get("program_id", item.program_id)
+                new_component_id = updates.get("component_id", item.component_id)
+                if (
+                    new_program_id != item.program_id
+                    or new_component_id != item.component_id
+                ):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "Cannot change program or practice component "
+                            "of a contract with placements"
+                        ),
+                    )
+                if "starts_on" in updates or "ends_on" in updates:
+                    if any(
+                        placement.starts_on < starts_on
+                        or placement.ends_on > ends_on
+                        for placement in item.placements
+                    ):
+                        raise HTTPException(
+                            status_code=409,
+                            detail=(
+                                "Placements fall outside the new contract period"
+                            ),
+                        )
+            if "responsible_id" in updates and updates["responsible_id"] is not None:
+                await _user_for_institution(
+                    session,
+                    updates["responsible_id"],
+                    school.id,
+                    {"teacher", "methodologist", "admin"},
+                )
+            if "contract_number" in updates:
+                updates["contract_number"] = updates["contract_number"].strip()
+                if not updates["contract_number"]:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Contract number cannot be empty",
+                    )
+                number_exists = (
+                    await session.execute(
+                        select(PracticeContract.id).where(
+                            PracticeContract.institution_id == school.id,
+                            PracticeContract.contract_number
+                            == updates["contract_number"],
+                            PracticeContract.id != item.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if number_exists is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Contract with this number already exists",
+                    )
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="practice_contract_updated",
+                entity_type="practice_contract",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            saved = await _practice_contract_for_institution(
+                session, item.id, school.id, level
+            )
+            return _practice_contract_out(saved)
+
+        @level_router.get(
+            "/practice-placements",
+            response_model=list[PracticePlacementOut],
+            summary="Практиканты и места практики",
+        )
+        async def list_practice_placements(
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            contract_id: uuid.UUID | None = Query(default=None),
+            group_id: uuid.UUID | None = Query(default=None),
+            student_id: uuid.UUID | None = Query(default=None),
+            status: str | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            if status is not None and status not in (
+                "planned",
+                "active",
+                "completed",
+                "failed",
+                "cancelled",
+                "archived",
+            ):
+                raise HTTPException(
+                    status_code=422, detail="Unknown placement status"
+                )
+            stmt = (
+                select(PracticePlacement)
+                .where(
+                    PracticePlacement.institution_id == school.id,
+                    PracticePlacement.education_level == level,
+                )
+                .options(
+                    selectinload(PracticePlacement.contract).selectinload(
+                        PracticeContract.place
+                    ),
+                    selectinload(PracticePlacement.student),
+                    selectinload(PracticePlacement.group),
+                    selectinload(PracticePlacement.component),
+                    selectinload(PracticePlacement.supervisor),
+                    selectinload(PracticePlacement.diary_entries),
+                )
+                .order_by(
+                    PracticePlacement.starts_on.desc(),
+                    PracticePlacement.created_at.desc(),
+                )
+            )
+            if contract_id is not None:
+                stmt = stmt.where(
+                    PracticePlacement.contract_id == contract_id
+                )
+            if group_id is not None:
+                stmt = stmt.where(PracticePlacement.group_id == group_id)
+            if student_id is not None:
+                stmt = stmt.where(PracticePlacement.student_id == student_id)
+            if status is not None:
+                stmt = stmt.where(PracticePlacement.status == status)
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_practice_placement_out(item) for item in rows]
+
+        @level_router.post(
+            "/practice-placements",
+            response_model=PracticePlacementOut,
+            status_code=201,
+            summary="Назначить практику обучающемуся",
+        )
+        async def create_practice_placement(
+            payload: PracticePlacementCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            contract = await _practice_contract_for_institution(
+                session, payload.contract_id, school.id, level
+            )
+            await _practice_student_for_institution(
+                session, payload.student_id, school.id
+            )
+            if payload.group_id is not None:
+                await _group_for_institution(
+                    session, payload.group_id, school.id, level
+                )
+            if payload.supervisor_id is not None:
+                await _user_for_institution(
+                    session,
+                    payload.supervisor_id,
+                    school.id,
+                    {"teacher", "methodologist", "admin"},
+                )
+            component = None
+            component_id = (
+                payload.component_id
+                if payload.component_id is not None
+                else contract.component_id
+            )
+            if component_id is not None:
+                component = await _practice_component_for_institution(
+                    session, component_id, school.id, level
+                )
+                if (
+                    contract.program_id is not None
+                    and component.curriculum.program_id
+                    != contract.program_id
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Practice component belongs to another program",
+                    )
+            _ensure_practice_dates(
+                payload.starts_on, payload.ends_on, contract
+            )
+            exists = (
+                await session.execute(
+                    select(PracticePlacement.id).where(
+                        PracticePlacement.contract_id == contract.id,
+                        PracticePlacement.student_id == payload.student_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Student already has a placement in this contract",
+                )
+            total_hours = payload.total_hours
+            if total_hours == 0 and component is not None:
+                total_hours = component.academic_hours
+            item = PracticePlacement(
+                contract_id=contract.id,
+                institution_id=school.id,
+                education_level=level,
+                student_id=payload.student_id,
+                group_id=payload.group_id,
+                component_id=component_id,
+                supervisor_id=payload.supervisor_id,
+                enterprise_supervisor=payload.enterprise_supervisor,
+                starts_on=payload.starts_on,
+                ends_on=payload.ends_on,
+                total_hours=total_hours,
+                status=payload.status,
+                notes=payload.notes,
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="practice_placement_created",
+                entity_type="practice_placement",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "contract_id": str(contract.id),
+                    "student_id": str(payload.student_id),
+                },
+            )
+            await session.commit()
+            saved = await _practice_placement_for_institution(
+                session, item.id, school.id, level
+            )
+            return _practice_placement_out(saved)
+
+        @level_router.patch(
+            "/practice-placements/{placement_id}",
+            response_model=PracticePlacementOut,
+            summary="Изменить практику обучающегося",
+        )
+        async def update_practice_placement(
+            placement_id: uuid.UUID,
+            payload: PracticePlacementUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _practice_placement_for_institution(
+                session, placement_id, school.id, level
+            )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in (
+                "starts_on",
+                "ends_on",
+                "total_hours",
+                "status",
+                "profile",
+            ):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            if "group_id" in updates and updates["group_id"] is not None:
+                await _group_for_institution(
+                    session, updates["group_id"], school.id, level
+                )
+            if "supervisor_id" in updates and updates["supervisor_id"] is not None:
+                await _user_for_institution(
+                    session,
+                    updates["supervisor_id"],
+                    school.id,
+                    {"teacher", "methodologist", "admin"},
+                )
+            new_component_id = updates.get("component_id", item.component_id)
+            if new_component_id is not None:
+                component = await _practice_component_for_institution(
+                    session, new_component_id, school.id, level
+                )
+                contract = item.contract
+                if (
+                    contract is not None
+                    and contract.program_id is not None
+                    and component.curriculum.program_id != contract.program_id
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Practice component belongs to another program",
+                    )
+            starts_on = updates.get("starts_on", item.starts_on)
+            ends_on = updates.get("ends_on", item.ends_on)
+            contract = item.contract
+            _ensure_practice_dates(starts_on, ends_on, contract)
+            total_hours = updates.get("total_hours", item.total_hours)
+            if total_hours > 0 and _practice_completed_hours(item) > total_hours:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Approved hours exceed the new total hours",
+                )
+            if any(
+                entry.entry_date < starts_on or entry.entry_date > ends_on
+                for entry in item.diary_entries
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Diary entries fall outside the new practice period",
+                )
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="practice_placement_updated",
+                entity_type="practice_placement",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            saved = await _practice_placement_for_institution(
+                session, item.id, school.id, level
+            )
+            return _practice_placement_out(saved)
+
+        @level_router.post(
+            "/practice-placements/{placement_id}/assessment",
+            response_model=PracticePlacementOut,
+            summary="Оценить практику обучающегося",
+        )
+        async def assess_practice_placement(
+            placement_id: uuid.UUID,
+            payload: PracticeAssessmentIn,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _practice_placement_for_institution(
+                session, placement_id, school.id, level
+            )
+            item.result = payload.result
+            if payload.result == "not_assessed":
+                item.grade = None
+                item.assessed_at = None
+                item.assessed_by_id = None
+            else:
+                item.grade = payload.grade
+                item.assessed_at = datetime.now(timezone.utc)
+                item.assessed_by_id = current_user.id
+            add_audit_event(
+                session,
+                action="practice_placement_assessed",
+                entity_type="practice_placement",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "result": payload.result,
+                    "grade": payload.grade,
+                },
+            )
+            await session.commit()
+            saved = await _practice_placement_for_institution(
+                session, item.id, school.id, level
+            )
+            return _practice_placement_out(saved)
+
+        @level_router.get(
+            "/practice-placements/{placement_id}/diary",
+            response_model=list[PracticeDiaryEntryOut],
+            summary="Дневник практики",
+        )
+        async def list_practice_diary(
+            placement_id: uuid.UUID,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(read_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            placement = await _practice_placement_for_institution(
+                session, placement_id, school.id, level
+            )
+            entries = sorted(
+                placement.diary_entries,
+                key=lambda entry: (entry.entry_date, entry.created_at),
+            )
+            return [_practice_diary_out(entry) for entry in entries]
+
+        @level_router.post(
+            "/practice-placements/{placement_id}/diary",
+            response_model=PracticeDiaryEntryOut,
+            status_code=201,
+            summary="Добавить запись дневника практики",
+        )
+        async def create_practice_diary_entry(
+            placement_id: uuid.UUID,
+            payload: PracticeDiaryEntryCreate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            placement = await _practice_placement_for_institution(
+                session, placement_id, school.id, level
+            )
+            if placement.status in {"completed", "cancelled", "archived"}:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Completed or archived placement cannot be changed",
+                )
+            if (
+                payload.entry_date < placement.starts_on
+                or payload.entry_date > placement.ends_on
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Entry date must be inside the placement period",
+                )
+            activity = payload.activity.strip()
+            if not activity:
+                raise HTTPException(
+                    status_code=422, detail="Activity cannot be empty"
+                )
+            if payload.status == "approved":
+                approved_hours = _practice_completed_hours(placement)
+                if (
+                    placement.total_hours > 0
+                    and approved_hours + payload.hours > placement.total_hours
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Approved hours exceed placement total hours",
+                    )
+            now = datetime.now(timezone.utc)
+            item = PracticeDiaryEntry(
+                placement_id=placement.id,
+                entry_date=payload.entry_date,
+                hours=payload.hours,
+                activity=activity,
+                outcome=payload.outcome,
+                supervisor_comment=payload.supervisor_comment,
+                status=payload.status,
+                submitted_at=(
+                    now if payload.status in {"submitted", "approved"} else None
+                ),
+                approved_at=now if payload.status == "approved" else None,
+                approved_by_id=(
+                    current_user.id if payload.status == "approved" else None
+                ),
+                profile=payload.profile,
+            )
+            session.add(item)
+            await session.flush()
+            add_audit_event(
+                session,
+                action="practice_diary_entry_created",
+                entity_type="practice_diary_entry",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={
+                    "education_level": level,
+                    "placement_id": str(placement.id),
+                },
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _practice_diary_out(item)
+
+        @level_router.patch(
+            "/practice-diary/{entry_id}",
+            response_model=PracticeDiaryEntryOut,
+            summary="Изменить или утвердить запись дневника",
+        )
+        async def update_practice_diary_entry(
+            entry_id: uuid.UUID,
+            payload: PracticeDiaryEntryUpdate,
+            current_user: CurrentUser,
+            session: SessionDep,
+            school_id: uuid.UUID | None = Query(default=None),
+            _: User = Depends(program_dep),
+        ):
+            school = await _school_for_level(
+                session, current_user, school_id, level
+            )
+            item = await _practice_diary_for_institution(
+                session, entry_id, school.id, level
+            )
+            placement = await _practice_placement_for_institution(
+                session, item.placement_id, school.id, level
+            )
+            if placement.status in {"cancelled", "archived"}:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Archived placement cannot be changed",
+                )
+            updates = payload.model_dump(exclude_unset=True)
+            for field in (
+                "entry_date",
+                "hours",
+                "activity",
+                "status",
+                "profile",
+            ):
+                if field in updates and updates[field] is None:
+                    raise HTTPException(
+                        status_code=422, detail=f"{field} cannot be empty"
+                    )
+            entry_date = updates.get("entry_date", item.entry_date)
+            if (
+                entry_date < placement.starts_on
+                or entry_date > placement.ends_on
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Entry date must be inside the placement period",
+                )
+            if "activity" in updates:
+                updates["activity"] = updates["activity"].strip()
+                if not updates["activity"]:
+                    raise HTTPException(
+                        status_code=422, detail="Activity cannot be empty"
+                    )
+            new_status = updates.get("status", item.status)
+            hours = float(updates.get("hours", item.hours or 0))
+            now = datetime.now(timezone.utc)
+            if new_status == "approved":
+                other_approved = round(
+                    sum(
+                        float(entry.hours or 0)
+                        for entry in placement.diary_entries
+                        if entry.id != item.id and entry.status == "approved"
+                    ),
+                    2,
+                )
+                if (
+                    placement.total_hours > 0
+                    and other_approved + hours > placement.total_hours
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Approved hours exceed placement total hours",
+                    )
+                item.approved_at = item.approved_at or now
+                item.approved_by_id = item.approved_by_id or current_user.id
+            else:
+                item.approved_at = None
+                item.approved_by_id = None
+            if new_status in {"submitted", "approved"} and item.submitted_at is None:
+                item.submitted_at = now
+            for field, value in updates.items():
+                setattr(item, field, value)
+            add_audit_event(
+                session,
+                action="practice_diary_entry_updated",
+                entity_type="practice_diary_entry",
+                entity_id=item.id,
+                school_id=school.id,
+                user_id=current_user.id,
+                details={"education_level": level, "fields": sorted(updates)},
+            )
+            await session.commit()
+            await session.refresh(item)
+            return _practice_diary_out(item)
 
     @level_router.get(
         "/profiles",

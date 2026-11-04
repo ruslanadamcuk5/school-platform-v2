@@ -52,7 +52,7 @@
 | PRO-03 | Профиль студента | `student_academic_profiles` | Education | API + UI | Реализовано |
 | PRO-04 | Профиль преподавателя | `staff_academic_profiles` | Education | API + UI | Реализовано |
 | PRO-05 | Учебные планы и кредиты | `education_curricula`, `curriculum_components` | Education | API + UI | Реализовано |
-| PRO-06 | Практика в учебном плане | `component_type=practice` | Education | API + UI | Реализовано |
+| PRO-06 | Практика, дневники и договоры с предприятиями | `practice_places`, `practice_contracts`, `practice_placements`, `practice_diary_entries` | Education | API + UI | Реализовано |
 | PRO-07 | Зачётные ведомости и сессии | `academic_sessions`, `session_statements`, `statement_records` | Education | API + UI | Реализовано |
 | PRO-08 | Перезачёт кредитов и зачётная книжка | `credit_transfers` + transcript API | Education | API + UI | Реализовано |
 | PRO-09 | Компетенции и матрица компетенций | `competencies`, `program_competencies`, `component_competencies` | Education | API + UI | Реализовано |

@@ -62,6 +62,16 @@ TRANSFER_STATUS_SQL = (
 COMPETENCY_TYPE_SQL = (
     "competency_type IN ('universal','general','professional','other')"
 )
+PRACTICE_CONTRACT_STATUS_SQL = (
+    "status IN ('draft','signed','active','completed','terminated','archived')"
+)
+PRACTICE_PLACEMENT_STATUS_SQL = (
+    "status IN ('planned','active','completed','failed','cancelled','archived')"
+)
+PRACTICE_RESULT_SQL = (
+    "result IN ('not_assessed','passed','failed','exempt')"
+)
+DIARY_STATUS_SQL = "status IN ('draft','submitted','approved','rejected')"
 
 
 class EducationProgram(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -828,4 +838,309 @@ class ComponentCompetency(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     competency: Mapped["Competency"] = relationship(
         back_populates="component_links"
+    )
+
+
+class PracticePlace(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Enterprise or organisation that accepts students for practice."""
+
+    __tablename__ = "practice_places"
+    __table_args__ = (
+        UniqueConstraint(
+            "institution_id",
+            "code",
+            name="uq_practice_places_institution_code",
+        ),
+        CheckConstraint(LEVEL_SQL, name="education_level"),
+        {"schema": "org"},
+    )
+
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    industry: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    contact_person: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    contact_phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    institution: Mapped["School"] = relationship()
+    contracts: Mapped[list["PracticeContract"]] = relationship(
+        back_populates="place", cascade="all, delete-orphan"
+    )
+
+
+class PracticeContract(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Agreement between an institution and an enterprise."""
+
+    __tablename__ = "practice_contracts"
+    __table_args__ = (
+        UniqueConstraint(
+            "institution_id",
+            "contract_number",
+            name="uq_practice_contracts_institution_number",
+        ),
+        CheckConstraint(LEVEL_SQL, name="education_level"),
+        CheckConstraint(PRACTICE_CONTRACT_STATUS_SQL, name="status"),
+        CheckConstraint(
+            "academic_year ~ '^[0-9]{4}/[0-9]{4}$'",
+            name="academic_year_format",
+        ),
+        CheckConstraint("ends_on >= starts_on", name="date_range"),
+        {"schema": "org"},
+    )
+
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    practice_place_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.practice_places.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    program_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.education_programs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    component_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.curriculum_components.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    contract_number: Mapped[str] = mapped_column(String(64), nullable=False)
+    academic_year: Mapped[str] = mapped_column(
+        String(9), nullable=False, index=True
+    )
+    starts_on: Mapped[date] = mapped_column(Date, nullable=False)
+    ends_on: Mapped[date] = mapped_column(Date, nullable=False)
+    signed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="draft", server_default="draft"
+    )
+    responsible_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    document_number: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    institution: Mapped["School"] = relationship()
+    place: Mapped["PracticePlace"] = relationship(back_populates="contracts")
+    program: Mapped["EducationProgram | None"] = relationship()
+    component: Mapped["CurriculumComponent | None"] = relationship()
+    responsible: Mapped["User | None"] = relationship(
+        foreign_keys=[responsible_id]
+    )
+    placements: Mapped[list["PracticePlacement"]] = relationship(
+        back_populates="contract", cascade="all, delete-orphan"
+    )
+
+
+class PracticePlacement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Assignment of one student to a practice under a contract."""
+
+    __tablename__ = "practice_placements"
+    __table_args__ = (
+        UniqueConstraint(
+            "contract_id",
+            "student_id",
+            name="uq_practice_placements_contract_student",
+        ),
+        CheckConstraint(LEVEL_SQL, name="education_level"),
+        CheckConstraint(PRACTICE_PLACEMENT_STATUS_SQL, name="status"),
+        CheckConstraint(PRACTICE_RESULT_SQL, name="result"),
+        CheckConstraint("ends_on >= starts_on", name="date_range"),
+        CheckConstraint(
+            "total_hours >= 0 AND total_hours <= 2000",
+            name="total_hours_range",
+        ),
+        CheckConstraint(
+            "grade IS NULL OR (grade BETWEEN 1 AND 10)", name="grade_range"
+        ),
+        {"schema": "org"},
+    )
+
+    contract_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.practice_contracts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    institution_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    education_level: Mapped[str] = mapped_column(
+        String(24), nullable=False, index=True
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    group_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.classes.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    component_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.curriculum_components.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    supervisor_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    enterprise_supervisor: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    starts_on: Mapped[date] = mapped_column(Date, nullable=False)
+    ends_on: Mapped[date] = mapped_column(Date, nullable=False)
+    total_hours: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="planned", server_default="planned"
+    )
+    result: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="not_assessed",
+        server_default="not_assessed",
+    )
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    assessed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    assessed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    contract: Mapped["PracticeContract"] = relationship(
+        back_populates="placements"
+    )
+    institution: Mapped["School"] = relationship()
+    student: Mapped["User"] = relationship(foreign_keys=[student_id])
+    group: Mapped["SchoolClass | None"] = relationship()
+    component: Mapped["CurriculumComponent | None"] = relationship()
+    supervisor: Mapped["User | None"] = relationship(
+        foreign_keys=[supervisor_id]
+    )
+    assessed_by: Mapped["User | None"] = relationship(
+        foreign_keys=[assessed_by_id]
+    )
+    diary_entries: Mapped[list["PracticeDiaryEntry"]] = relationship(
+        back_populates="placement",
+        cascade="all, delete-orphan",
+        order_by="PracticeDiaryEntry.entry_date",
+    )
+
+
+class PracticeDiaryEntry(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Daily practice record written by a student or their supervisor."""
+
+    __tablename__ = "practice_diary_entries"
+    __table_args__ = (
+        CheckConstraint(DIARY_STATUS_SQL, name="status"),
+        CheckConstraint(
+            "hours >= 0 AND hours <= 24", name="hours_range"
+        ),
+        {"schema": "org"},
+    )
+
+    placement_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org.practice_placements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    entry_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    hours: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    activity: Mapped[str] = mapped_column(Text, nullable=False)
+    outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
+    supervisor_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="draft", server_default="draft"
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    approved_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    profile: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    placement: Mapped["PracticePlacement"] = relationship(
+        back_populates="diary_entries"
+    )
+    approved_by: Mapped["User | None"] = relationship(
+        foreign_keys=[approved_by_id]
     )

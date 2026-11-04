@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.10 |
+| Версия | 0.11 |
 | Статус | Рабочий |
 | Дата | 04.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
@@ -236,6 +236,19 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 | PUT | `/api/v1/education/{level}/programs/{id}/competencies` | `{service}.programs.manage` | Заменить матрицу компетенций программы |
 | GET | `/api/v1/education/{level}/curricula/{id}/competency-matrix` | `{service}.read` | Матрица «компонент × компетенция» |
 | PUT | `/api/v1/education/{level}/curricula/{id}/competency-matrix` | `{service}.programs.manage` | Заменить матрицу учебного плана |
+| GET | `/api/v1/education/{level}/practice-places` | `{service}.read` | Предприятия и организации для практики |
+| POST | `/api/v1/education/{level}/practice-places` | `{service}.programs.manage` | Добавить предприятие |
+| PATCH | `/api/v1/education/{level}/practice-places/{place_id}` | `{service}.programs.manage` | Изменить предприятие |
+| GET | `/api/v1/education/{level}/practice-contracts` | `{service}.read` | Договоры с предприятиями |
+| POST | `/api/v1/education/{level}/practice-contracts` | `{service}.programs.manage` | Заключить договор |
+| PATCH | `/api/v1/education/{level}/practice-contracts/{contract_id}` | `{service}.programs.manage` | Изменить договор |
+| GET | `/api/v1/education/{level}/practice-placements` | `{service}.read` | Практиканты и распределения |
+| POST | `/api/v1/education/{level}/practice-placements` | `{service}.programs.manage` | Назначить практику обучающемуся |
+| PATCH | `/api/v1/education/{level}/practice-placements/{placement_id}` | `{service}.programs.manage` | Изменить распределение |
+| POST | `/api/v1/education/{level}/practice-placements/{placement_id}/assessment` | `{service}.programs.manage` | Оценить практику |
+| GET | `/api/v1/education/{level}/practice-placements/{placement_id}/diary` | `{service}.read` | Дневник практики |
+| POST | `/api/v1/education/{level}/practice-placements/{placement_id}/diary` | `{service}.programs.manage` | Добавить запись дневника |
+| PATCH | `/api/v1/education/{level}/practice-diary/{entry_id}` | `{service}.programs.manage` | Изменить или утвердить запись |
 
 Правила:
 
@@ -263,8 +276,20 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 - матрица программы хранит целевой уровень 1–5 и вес 0–100;
 - матрица учебного плана принимает только компоненты этого плана и
   компетенции этого учреждения и ступени, без повторяющихся пар;
+- предприятия, договоры, практиканты и дневники доступны только для
+  `vocational` и `higher`; для школьных ступеней маршруты отсутствуют;
+- код предприятия и номер договора уникальны внутри учреждения;
+- договор связывает предприятие, программу и компонент типа `practice` или
+  `internship`; программа компонента совпадает с программой договора;
+- период практики не выходит за период договора, а дата записи дневника — за
+  период практики; утверждённые часы не превышают плановые;
+- программа и практический компонент договора не меняются при наличии
+  практикантов; период договора нельзя сократить ниже периодов практикантов;
+- плановые часы и период практики нельзя сократить так, чтобы утверждённые
+  часы или даты дневника вышли за новые границы;
 - изменения программ, профилей, планов, компонентов, сессий, ведомостей,
-  перезачётов, компетенций и учреждений фиксируются в аудите.
+  перезачётов, компетенций, предприятий, договоров, практикантов, дневников
+  и учреждений фиксируются в аудите.
 
 ## 5. Учебный контент (LMS)
 

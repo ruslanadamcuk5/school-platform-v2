@@ -23,6 +23,10 @@ from app.schemas.education import (
     CreditTransferCreate,
     CurriculumComponentCreate,
     EducationCurriculumCreate,
+    PracticeContractCreate,
+    PracticeDiaryEntryCreate,
+    PracticePlaceCreate,
+    PracticePlacementCreate,
     ProgramCompetencyItem,
     StatementRecordBulk,
 )
@@ -253,3 +257,92 @@ def test_competency_routes_are_professional_only_in_openapi() -> None:
     )
     assert "/api/v1/education/primary/competencies" not in paths
     assert "/api/v1/education/secondary/competencies" not in paths
+
+
+def test_practice_schemas_validate_defaults_and_ranges() -> None:
+    place = PracticePlaceCreate(code="PR-01", name="Синтетическое предприятие")
+    assert place.is_active is True
+    assert place.profile == {}
+
+    with pytest.raises(ValidationError):
+        PracticeContractCreate(
+            practice_place_id=uuid.uuid4(),
+            contract_number="Д-01/2026",
+            academic_year="2026/2027",
+            starts_on=date(2027, 5, 1),
+            ends_on=date(2027, 4, 1),
+        )
+    with pytest.raises(ValidationError):
+        PracticeContractCreate(
+            practice_place_id=uuid.uuid4(),
+            contract_number="Д-01/2026",
+            academic_year="2026-2027",
+            starts_on=date(2027, 4, 1),
+            ends_on=date(2027, 5, 1),
+        )
+
+    contract = PracticeContractCreate(
+        practice_place_id=uuid.uuid4(),
+        contract_number="Д-01/2026",
+        academic_year="2026/2027",
+        starts_on=date(2027, 4, 1),
+        ends_on=date(2027, 5, 1),
+    )
+    assert contract.status == "draft"
+
+    with pytest.raises(ValidationError):
+        PracticePlacementCreate(
+            contract_id=uuid.uuid4(),
+            student_id=uuid.uuid4(),
+            starts_on=date(2027, 5, 1),
+            ends_on=date(2027, 4, 1),
+        )
+    with pytest.raises(ValidationError):
+        PracticePlacementCreate(
+            contract_id=uuid.uuid4(),
+            student_id=uuid.uuid4(),
+            starts_on=date(2027, 4, 1),
+            ends_on=date(2027, 5, 1),
+            total_hours=2001,
+        )
+
+    placement = PracticePlacementCreate(
+        contract_id=uuid.uuid4(),
+        student_id=uuid.uuid4(),
+        starts_on=date(2027, 4, 1),
+        ends_on=date(2027, 5, 1),
+    )
+    assert placement.status == "planned"
+    assert placement.total_hours == 0
+
+    with pytest.raises(ValidationError):
+        PracticeDiaryEntryCreate(
+            entry_date=date(2027, 4, 1),
+            hours=25,
+            activity="Синтетическая работа",
+        )
+
+    entry = PracticeDiaryEntryCreate(
+        entry_date=date(2027, 4, 1),
+        hours=6,
+        activity="Синтетическая работа",
+    )
+    assert entry.status == "draft"
+
+
+def test_practice_routes_are_professional_only_in_openapi() -> None:
+    paths = app.openapi()["paths"]
+    assert "/api/v1/education/vocational/practice-places" in paths
+    assert "/api/v1/education/higher/practice-contracts" in paths
+    assert "/api/v1/education/vocational/practice-placements" in paths
+    assert (
+        "/api/v1/education/higher/practice-placements/{placement_id}/diary"
+        in paths
+    )
+    assert (
+        "/api/v1/education/vocational/practice-placements/{placement_id}/assessment"
+        in paths
+    )
+    assert "/api/v1/education/vocational/practice-diary/{entry_id}" in paths
+    assert "/api/v1/education/primary/practice-places" not in paths
+    assert "/api/v1/education/secondary/practice-contracts" not in paths
