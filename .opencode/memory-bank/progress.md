@@ -230,7 +230,14 @@
 - [x] Backend `140 passed`, Ruff чистый; frontend typecheck и production build успешны.
 - [x] Alembic offline SQL `0008_practice_contracts` сгенерирован успешно.
 - [x] DOCX-пакет v0.8.1 пересобран; добавлен отчёт ШК-10-16.
+- [x] Коммит `9685352` отправлен в `origin/main`.
 - [ ] Миграции `0006`–`0008` и обновлённый seed на пилот не применялись до отдельной команды.
+
+## Этап 2.15 — аудит переходного моста ролей
+- [x] Проверены все точки использования `LEGACY_ROLE_PERMISSIONS`: API, onboarding и seed.
+- [x] Подтверждено, что мост действует только при `group_count == 0`; при наличии групп он не применяется.
+- [x] Добавлен тест `test_legacy_bridge_applies_only_without_group_memberships`.
+- [x] Backend `141 passed`, Ruff чистый.
 
 ## Этап 3 — расширение
 - [~] Электронный журнал: базовое API расписания, оценок и посещаемости готово; UI и расширения — далее.

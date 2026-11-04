@@ -5,6 +5,7 @@ import uuid
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from app.api import deps
@@ -100,3 +101,23 @@ async def test_module_rejects_missing_permission(monkeypatch, path, service):
     response = await _request(path)
     assert response.status_code == 403
     assert "Permission denied" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_legacy_bridge_applies_only_without_group_memberships(monkeypatch):
+    user = SimpleNamespace(role="teacher")
+    checker = deps.require_permission("library.catalog.read")
+
+    async def no_groups(_session, _user):
+        return EffectivePermissions(group_count=0)
+
+    monkeypatch.setattr(deps, "effective_permissions", no_groups)
+    assert await checker(user, object()) is user
+
+    async def has_groups(_session, _user):
+        return EffectivePermissions(group_count=1)
+
+    monkeypatch.setattr(deps, "effective_permissions", has_groups)
+    with pytest.raises(HTTPException) as error:
+        await checker(user, object())
+    assert error.value.status_code == 403
