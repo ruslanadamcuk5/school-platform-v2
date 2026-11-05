@@ -62,6 +62,24 @@ test('safety service is enabled and all permitted tabs are visible', async ({
   expectNoBrowserErrors(errors);
 });
 
+test('client-side navigation between dashboard, services and profile works', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+
+  const navigation = page.getByRole('navigation');
+
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigation.getByRole('link', { name: 'Сервисы', exact: true }).click();
+  await expect(page).toHaveURL(/\/services$/);
+  await navigation.getByRole('link', { name: 'Профиль и доступ', exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await navigation.getByRole('link', { name: 'Дашборд', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+
+  expectNoBrowserErrors(errors);
+});
+
 test('settings keep geolocation disabled and anonymous appeals enabled', async ({
   page,
 }) => {
