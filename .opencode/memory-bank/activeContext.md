@@ -8,19 +8,14 @@
 ## Состояние
 - Пилот: `0.9.0`; `/health` — `ok`, `database=ok`, `jwt_ready=true`;
   head `0010_safety`; backup `20261105T080100Z`.
-- Safety UI развёрнут: `frontend/dist` с `index-CAJYbBBE.js`,
-  `index-CrDWvJ6z.css` и `favicon.svg`; прежний dist —
-  `dist.pre-favicon-20261105T113013Z` (ранее
-  `dist.pre-safety-ui-20261105T103431Z`).
-- UI `/safety` проверен headless Edge под school_admin: сервис включён,
-  6 вкладок, геолокация off, анонимность on, консоль/сеть без ошибок;
-  `404 favicon.ico` устранён.
+- Safety UI: `dist` с `index-CAJYbBBE.js`, `index-CrDWvJ6z.css`,
+  `favicon.svg`; прежний — `dist.pre-favicon-20261105T113013Z`; UI под
+  school_admin проверен (6 вкладок, геолокация off, консоль/сеть чисто).
 - `safety` включён: country-активация уже была `enabled=true`; добавлена
-  явная school-активация для `pilot-school` (`enabled=true`).
-  `/me/services` — `enabled=true`, `source=activation`.
-- Глобальные настройки safety: 365/1095 дней, порог 16 лет, анонимные
-  обращения разрешены, `geolocation_enabled=false` до отдельного
-  юридического решения и мобильного consent-flow.
+  school-активация `pilot-school`; `/me/services` — `enabled=true`,
+  `source=activation`.
+- Настройки safety: 365/1095 дней, порог 16 лет, анонимность разрешена,
+  `geolocation_enabled=false` до юррешения и mobile consent-flow.
 - Backup активации:
   `backups/school-platform-v2/20261105T103431Z-safety-activation/` — дамп БД,
   архив прежнего dist, снимок активаций и настроек.
