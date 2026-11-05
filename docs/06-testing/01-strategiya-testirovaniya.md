@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-06-01 |
-| Версия | 0.2 |
+| Версия | 0.3 |
 | Статус | Черновик |
 | Дата | 05.11.2026 |
 
@@ -106,7 +106,7 @@
 
 ## 11. Автоматизация
 - Backend: pytest, httpx.AsyncClient, тестовая БД.
-- Frontend: Vitest, React Testing Library, Playwright.
+- Frontend: Vite 8, Vitest 5, React Testing Library, Playwright.
 - Mobile: Flutter integration_test, Patrol.
 - API: Schemathesis/контрактные тесты.
 - Нагрузка: k6 или Locust.

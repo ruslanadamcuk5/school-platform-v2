@@ -50,7 +50,13 @@
   `dist.pre-router7-20261105T124346Z`.
 - [x] Restore-drill: временный PostgreSQL 17.11, `RESTORE_EXIT=0` за 6,1 с;
   78 таблиц / 14 схем; `alembic=0010_safety`; users=217, audit=99.
+- [x] Vite `8.3.6`, Vitest `5.1.0`, plugin-react `6.2.1`, jsdom `28.1.0`;
+  build `index-BaAbEN3E.js`, backup `dist.pre-vite8-20261105T133933Z`;
+  E2E 4 passed, `npm audit` — 0.
 - [x] `opencode.json`: build steps увеличены с 50 до 200.
+- [ ] Redis-кеш прав/активаций и RLS: отдельный инфраструктурный цикл;
+  на пилоте Redis нет, RLS затрагивает контекст транзакций и 78 таблиц.
+- [ ] Мобильный consent-flow и геолокация: ждут юридического решения.
 
 ## Этап 2.18 — безопасность и психологическая поддержка
 - [x] Миграция `0010_safety`: обращения, инциденты, геолокация, согласия,

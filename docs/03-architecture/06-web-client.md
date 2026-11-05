@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-06 |
-| Версия | 1.7 |
+| Версия | 1.8 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 | Связанные документы | ШК-03-03, ШК-03-04, ШК-03-05, ШК-07-01 |
@@ -21,7 +21,8 @@
 | Слой | Решение |
 |---|---|
 | UI | React 18, TypeScript strict, functional components |
-| Сборка | Vite 5 |
+| Сборка | Vite 8, Rolldown |
+| Тесты | Vitest 5, React Testing Library, Playwright |
 | Стили | TailwindCSS 3, дизайн-токены brand/accent |
 | Маршрутизация | React Router 7.18.5 |
 | HTTP | Axios, JWT access/refresh, автоматическое обновление сессии |

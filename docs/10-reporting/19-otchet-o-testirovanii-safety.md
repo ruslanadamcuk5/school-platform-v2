@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-10-19 |
-| Версия | 1.4 |
+| Версия | 1.5 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 | Проект | ЕОРП «ВЕКТОР» |
@@ -79,6 +79,7 @@
 | 36 | E2E | Playwright: вход, `/safety`, 6 вкладок, настройки и клиентская навигация | 4 passed |
 | 37 | React Router 7 | `react-router-dom` 7.18.5; typecheck, Vitest, build и E2E после обновления | Проверки зелёные |
 | 38 | Backup | Дамп восстановлен во временный PostgreSQL 17.11; схема, `alembic_version` и ключевые таблицы проверены | `RESTORE_EXIT=0`, 6,1 с |
+| 39 | Vite 8 / Vitest 5 | Мажорное обновление frontend-сборки и тестов; typecheck, Vitest, build и E2E на пилоте | 4 passed, `npm audit` — 0 |
 
 ## 4. Автоматические проверки
 
@@ -92,7 +93,7 @@ alembic offline SQL: 0009_document_requests -> 0010_safety — успешно
 OpenAPI: 172 пути, 232 операции
 UI smoke: headless Edge — вход, /safety, 6 вкладок, настройки; 0 ошибок
 Playwright E2E: 4 passed (пилот, read-only)
-npm audit --omit=dev: 0 vulnerabilities
+npm audit (prod + dev): 0 vulnerabilities
 restore-drill: RESTORE_EXIT=0, 6.1 s, 78 tables / 14 schemas
 ```
 
@@ -138,5 +139,6 @@ production build. Миграция `0010_safety` применена на пил�
 сервис активирован для `pilot-school`, глобальная геолокация выключена до
 отдельного решения. UI `/safety` проверен под school_admin: все вкладки
 доступны, консоль и сеть без ошибок; favicon отдаётся корректно.
-Playwright E2E — 4 passed; React Router обновлён до 7.18.5 с чистым
-production-аудитом; backup восстановлен во временном PostgreSQL за 6,1 с.
+Playwright E2E — 4 passed; React Router обновлён до 7.18.5; Vite 8 и
+Vitest 5 развёрнуты, `npm audit` — 0; backup восстановлен во временном
+PostgreSQL за 6,1 с.

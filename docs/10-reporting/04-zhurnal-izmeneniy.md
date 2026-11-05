@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-10-04 |
-| Версия | 2.0 |
+| Версия | 2.1 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 
@@ -88,6 +88,7 @@
 | 69 | 05.11.2026 | QA | Frontend | Добавлен Playwright E2E-smoke: `frontend/e2e`, `playwright.config.ts`, `npm run test:e2e`; вход через env, storage state gitignored; 4 read-only сценария на пилоте | Автоматизировать проверку UI и защитить обновления от регрессий | 4 passed: вход, `/safety`, 6 вкладок, настройки, навигация; секреты не коммитятся; `vitest` ограничен `src/**` | Утверждено |
 | 70 | 05.11.2026 | Разработчик | Frontend/Пилот | `react-router-dom` обновлён до `7.18.5`, удалены устаревшие `future`-флаги; production `dist` обновлён (`index-BkTs77yj.js`), прежний — `dist.pre-router7-20261105T124346Z`; E2E — 4 passed; `npm audit --omit=dev` — 0 | Закрыть 2 moderate production-уязвимости React Router 6.x | Исправление требует мажорного перехода; typecheck, Vitest, build и E2E зелёные; откат — прежний dist/архив; backend/миграции не затрагивались | Утверждено |
 | 71 | 05.11.2026 | DevOps | Backup/БД | Проверено восстановление дампа `20261105T103431Z-safety-activation` во временный PostgreSQL 17.11: `pg_restore` — 0, 6,1 с, 78 таблиц в 14 схемах, `alembic_version=0010_safety`, `iam.users=217`, `audit.events=99` | Подтвердить пригодность backup и отработать restore-drill | Локальный PostgreSQL без `pgvector`: `CREATE EXTENSION vector` исключён, таблицы/данные восстановлены; временный кластер удалён; production не затрагивался | Утверждено |
+| 72 | 05.11.2026 | Разработчик | Frontend/Пилот | Обновлены `vite` 8.3.6, `vitest` 5.1.0, `@vitejs/plugin-react` 6.2.1, `jsdom` 28.1.0; production `dist` обновлён (`index-BaAbEN3E.js`, `index-BNJdgJYo.css`), прежний — `dist.pre-vite8-20261105T133933Z`; E2E — 4 passed; `npm audit` — 0 | Закрыть dev-уязвимости и завершить мажорный frontend-цикл | Node 22.14 совместим; typecheck, Vitest и build зелёные; откат — прежний dist/архив; backend/миграции не затрагивались | Утверждено |
 
 ## Шаблон записи
 | Поле | Значение |
