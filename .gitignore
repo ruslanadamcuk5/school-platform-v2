@@ -18,6 +18,9 @@ build/
 node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/e2e/.auth/
+frontend/playwright-report/
+frontend/test-results/
 .tools/
 npm-debug.log*
 yarn-debug.log*
