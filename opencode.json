@@ -61,7 +61,7 @@
   },
   "agent": {
     "build": {
-      "steps": 50
+      "steps": 200
     },
     "plan": {
       "steps": 30
