@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-11-01 |
-| Версия | 0.2 |
+| Версия | 0.3 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 
@@ -25,15 +25,29 @@
   сценарии, команды и подагенты.
 
 ## 3. Настройка OpenCode
-- Конфигурация: `opencode.json` (формат OpenCode 1.19.x).
-- Права `bash` и `edit` — `ask`; `read` запрещает `docs/word`, `node_modules`,
-  `.venv`, `backups`, `.env`.
-- `compaction.prune: true` и `watcher.ignore` для сгенерированных каталогов.
+- Конфигурация: `opencode.json` (формат OpenCode 1.19.x). Локальная БД
+  OpenCode имеет схему V2; для CLI-команд `db`/`models` нужен V2-бинарник
+  или обновление CLI.
+- Модели: `model` — `opencode/deepseek-v4.1-flash-free`; `small_model` —
+  `opencode/claude-haiku-5-5`; `explorer`, `test-runner`, `docs-writer` и
+  `browser` — на бесплатной модели; `reviewer` — на основной.
+- Права: `bash` — allowlist (`git status/diff`, `rg`, `pytest`, `ruff`, `tsc`,
+  `scripts/check.ps1`, сборка и генераторы); `edit` — `ask`; `webfetch` —
+  `allow`.
+- `read` запрещает `docs/word`, `node_modules`, `.venv`, `backups`, `.env*`,
+  `secrets`, `*.pem`, `*.key`, `package-lock.json`.
+- `browser*` и `opencode*` выключены; для UI — `@browser`; `general` — только
+  с подтверждением.
+- Подагенты: `explorer` (поиск), `reviewer` (ревью), `test-runner` (тесты),
+  `docs-writer` (документы), `browser` (UI). Команды `/check`, `/test`,
+  `/docs`, `/api`, `/release`, `/db-schema`, `/pilot-status` — `subtask`;
+  лимиты шагов — 10–50.
+- `compaction.prune: true`, `watcher.ignore` для `.git`, кешей, `secrets`,
+  `.env*`, `docs/word`, `frontend/dist`.
 - MCP PostgreSQL отключён; включать только read-only и только для отдельного
   подагента/задачи, `DATABASE_URL` — из переменной окружения.
-- Модели: `model` — сильная для архитектуры и безопасности, `small_model` —
-  дешёвая для summary; поиск и тесты — на дешёвой модели.
 - Git: MinGit 2.56 в `C:\Users\adamrv\AppData\Local\MinGit\cmd` (добавлен в PATH).
+- Замер экономии и ограничения — ШК-10-20.
 
 ## 4. Правила постановки задач
 1. Одна задача — один проверяемый результат.

@@ -70,6 +70,7 @@
 | ШК-10-17 | Отчёт о тестировании уведомлений communication | `10-reporting/17-otchet-o-testirovanii-uvedomleniy.md` |
 | ШК-10-18 | Отчёт о тестировании запросов документов | `10-reporting/18-otchet-o-testirovanii-zaprosov-dokumentov.md` |
 | ШК-10-19 | Отчёт о тестировании сервиса безопасности и психологической поддержки | `10-reporting/19-otchet-o-testirovanii-safety.md` |
+| ШК-10-20 | Отчёт об оптимизации OpenCode: экономия токенов и ускорение | `10-reporting/20-otchet-ob-optimizacii-opencode.md` |
 | ШК-11-01 | Правила OpenCode и промпты | `11-opencode/01-pravila-i-prompty.md` |
 
 Актуальный объединённый пакет DOCX:

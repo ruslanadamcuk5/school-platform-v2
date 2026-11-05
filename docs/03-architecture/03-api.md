@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.14 |
+| Версия | 0.15 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
@@ -506,7 +506,8 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
 - Миграция `0010_safety`: таблицы `safety.support_appeals`,
   `safety.incidents`, `safety.geolocation_points`, `safety.consents` и
   `iam.users.date_of_birth`.
-- Пилотная миграция `0010` не применяется до отдельного распоряжения.
+- Пилотная миграция `0010` применена 05.11.2026; сервис `safety` остаётся
+  выключенным (`default_enabled=false`) до отдельного распоряжения.
 
 ## 9. Системные
 
