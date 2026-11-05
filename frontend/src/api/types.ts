@@ -1149,3 +1149,24 @@ export interface SafetyGeolocationCreatePayload {
   event_type?: SafetyGeolocationEventType;
   recorded_at?: string | null;
 }
+
+export interface SafetySettings {
+  retention_days: number;
+  incident_retention_days: number;
+  consent_age_threshold: number;
+  allow_anonymous_appeals: boolean;
+  geolocation_enabled: boolean;
+}
+
+export type SafetySettingsUpdate = Partial<SafetySettings>;
+
+export interface SafetyPurgeResult {
+  deleted_appeals: number;
+  deleted_incidents: number;
+  deleted_geolocation: number;
+  deleted_consents: number;
+  retention_days: number;
+  incident_retention_days: number;
+  cutoff: string;
+  incident_cutoff: string;
+}

@@ -19,6 +19,7 @@ import { OnboardingModulePage } from './pages/OnboardingModulePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { OnboardingReportsPage } from './pages/OnboardingReportsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SafetyPage } from './pages/SafetyPage';
 import { ServicePlaceholderPage } from './pages/ServicePlaceholderPage';
 import { ServicesPage } from './pages/ServicesPage';
 
@@ -68,7 +69,6 @@ const servicePages: Array<{ path: string; code: string }> = [
   { path: '/assessment', code: 'assessment' },
   { path: '/communication', code: 'communication' },
   { path: '/documents', code: 'documents' },
-  { path: '/safety', code: 'safety' },
   { path: '/ai', code: 'ai' },
   { path: '/admin', code: 'admin' },
 ];
@@ -176,6 +176,23 @@ export function App() {
                 }
               />
               <Route path="profile" element={<ProfilePage />} />
+              <Route
+                path="safety"
+                element={
+                  <PermissionGate
+                    permission={[
+                      'safety.support.use',
+                      'safety.incidents.read',
+                      'safety.incidents.manage',
+                      'safety.consents.manage',
+                      'safety.geolocation.read',
+                      'safety.settings.manage',
+                    ]}
+                  >
+                    <SafetyPage />
+                  </PermissionGate>
+                }
+              />
               {servicePages.map((service) => (
                 <Route
                   key={service.path}

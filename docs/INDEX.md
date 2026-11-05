@@ -23,7 +23,7 @@
 | ШК-03-03 | API пилотного контура | 0.15 | 05.11.2026 | 40.6 | `docs/03-architecture/03-api.md` |
 | ШК-03-04 | Микросервисная архитектура платформы | 1.1 | 03.11.2026 | 16.0 | `docs/03-architecture/04-mikroservisy.md` |
 | ШК-03-05 | Группы пользователей и иерархические права | 1.1 | 03.11.2026 | 13.0 | `docs/03-architecture/05-gruppy-i-prava.md` |
-| ШК-03-06 | Веб-клиент и личный кабинет | 1.5 | 04.11.2026 | 17.8 | `docs/03-architecture/06-web-client.md` |
+| ШК-03-06 | Веб-клиент и личный кабинет | 1.6 | 05.11.2026 | 20.6 | `docs/03-architecture/06-web-client.md` |
 | ШК-03-07 | Обучение работе в платформе | 1.1 | 03.11.2026 | 13.0 | `docs/03-architecture/07-obuchenie-rabote-v-platforme.md` |
 | ШК-03-08 | Аналитика школы | 1.0 | 03.11.2026 | 4.4 | `docs/03-architecture/08-analitika-shkoly.md` |
 | ШК-03-09 | Ступени образования | 1.4 | 04.11.2026 | 32.0 | `docs/03-architecture/09-stupeni-obrazovaniya.md` |
@@ -39,7 +39,7 @@
 | ШК-10-01 | Шаблон отчёта о разработке | 0.1 | 27.10.2026 | 2.2 | `docs/10-reporting/01-shablon-otcheta-o-razrabotke.md` |
 | ШК-10-02 | Шаблон отчёта о тестировании | 0.1 | 27.10.2026 | 2.5 | `docs/10-reporting/02-shablon-otcheta-o-testirovanii.md` |
 | ШК-10-03 | Журнал рисков | 0.1 | 27.10.2026 | 2.3 | `docs/10-reporting/03-zhurnal-riskov.md` |
-| ШК-10-04 | Журнал изменений | 1.6 | 05.11.2026 | 35.5 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
+| ШК-10-04 | Журнал изменений | 1.7 | 05.11.2026 | 36.4 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
 | ШК-10-06 | Отчёт о завершении этапа 1 | 0.1 | 27.10.2026 | 5.7 | `docs/10-reporting/06-otchet-o-zavershenii-etapa-1.md` |
 | ШК-10-07 | Отчёт о тестировании API учебного контента (LMS) | 0.1 | 29.10.2026 | 3.9 | `docs/10-reporting/07-otchet-o-testirovanii-lms-api.md` |
 | ШК-10-08 | Отчёт о тестировании API тестов и работ (assessment) | 0.1 | 29.10.2026 | 5.0 | `docs/10-reporting/08-otchet-o-testirovanii-assessment-api.md` |

@@ -57,6 +57,9 @@ import type {
   SafetyIncident,
   SafetyIncidentCreatePayload,
   SafetyIncidentResolvePayload,
+  SafetyPurgeResult,
+  SafetySettings,
+  SafetySettingsUpdate,
   School,
   SchoolClass,
   Service,
@@ -1694,6 +1697,36 @@ export async function createSafetyGeolocationPoint(
   const { data } = await api.post<SafetyGeolocationPoint>(
     '/safety/geolocation',
     payload,
+  );
+  return data;
+}
+
+export async function fetchSafetySettings(
+  schoolId?: string,
+): Promise<SafetySettings> {
+  const { data } = await api.get<SafetySettings>('/safety/settings', {
+    params: { school_id: schoolId || undefined },
+  });
+  return data;
+}
+
+export async function updateSafetySettings(
+  payload: SafetySettingsUpdate,
+  schoolId?: string,
+): Promise<SafetySettings> {
+  const { data } = await api.put<SafetySettings>('/safety/settings', payload, {
+    params: { school_id: schoolId || undefined },
+  });
+  return data;
+}
+
+export async function purgeSafetyData(
+  schoolId?: string,
+): Promise<SafetyPurgeResult> {
+  const { data } = await api.post<SafetyPurgeResult>(
+    '/safety/maintenance/purge',
+    null,
+    { params: { school_id: schoolId || undefined } },
   );
   return data;
 }
