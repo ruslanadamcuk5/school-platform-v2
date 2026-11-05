@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 0.9 |
+| Версия | 1.0 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 
@@ -223,6 +223,37 @@ npm run dev
   `frontend/dist.pre-0.9.0-20261105T080100Z` и при необходимости выполнить
   `alembic downgrade 0009_document_requests`.
 
+### 3.4.5. Развёрнуто 05.11.2026 (safety UI и активация)
+- Создан backup
+  `/home/school-platform-v2/school-platform-v2/backups/school-platform-v2/20261105T103431Z-safety-activation/`:
+  дамп БД `db-pre-safety-activation-20261105T103431Z.dump` — 581 КБ,
+  архив прежнего frontend
+  `frontend-dist-pre-safety-ui-20261105T103431Z.tgz` — 161 КБ,
+  снимок активаций и настроек `safety-state-before.json`.
+- Собран и доставлен новый `frontend/dist` с экраном `/safety`:
+  `index-CAJYbBBE.js` — 662 734 байта, `index-CrDWvJ6z.css` — 45 588 байт;
+  SHA-256 совпадают с локальной production-сборкой. Предыдущий каталог
+  сохранён как `frontend/dist.pre-safety-ui-20261105T103431Z`.
+- Сервис `safety` уже имел country-активацию `enabled=true`; дополнительно
+  создана явная school-активация для `pilot-school`
+  (`0064759a-d6ea-4e5b-b4a3-0033e91f5efe`): `enabled=true`, `config={}`.
+  `/api/v1/me/services` возвращает `safety: enabled=true, source=activation`.
+- Глобальные настройки: хранение обращений 365 дней, инцидентов 1095 дней,
+  порог согласия 16 лет, анонимные обращения разрешены,
+  `geolocation_enabled=false` до отдельного юридического решения и готовности
+  мобильного consent-flow.
+- Smoke-проверки: `/health` — `200`, `version=0.9.0`, `database=ok`,
+  `jwt_ready=true`; `/safety` и новые JS/CSS — `200`; `/openapi.json` —
+  `0.9.0`, 172 пути и 232 операции; read-only маршруты `safety` для
+  `pilot-school` (свои обращения, обращения школы, инциденты, согласия,
+  геолокация) — `200`, списки пусты.
+- Уточнение к записи №64: утверждение «активаций нет» было ошибочным —
+  country-активация `safety` уже существовала и была включена.
+- Откат: восстановить дамп БД из backup (возвращает отсутствие school-строки
+  и `geolocation_enabled=true`) либо удалить school-активацию и вернуть
+  настройку; вернуть `frontend/dist.pre-safety-ui-20261105T103431Z`.
+  Миграции и backend в этом изменении не затрагивались, перезапуск не нужен.
+
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет
 аттестованный ЦОД для промышленной эксплуатации. Для промышленного контура
@@ -230,6 +261,13 @@ Alwaysdata подходит для пилота и демонстрации, н�
 В пилоте нет Redis, фоновых задач, rate limiting и WAF уровня приложения;
 внешние AI-сервисы выключены. Пароль супер-администратора хранится в
 `backend/.env` и должен быть сменён после передачи заказчику.
+- `npm audit` на 05.11.2026: всего 8 предупреждений (2 critical, 1 high,
+  5 moderate), из них production-зависимости — 2 moderate в
+  `react-router`/`react-router-dom` 6.x; critical/high относятся к dev-цепочке
+  Vitest/Vite и не попадают в production bundle. Исправление требует
+  мажорных обновлений (`react-router-dom` 7.18.5, `vitest` 5.1.0,
+  `vite` 8.3.6); `npm audit fix --force` не применять без отдельного
+  регрессионного цикла.
 
 ## 4. Промышленная инфраструктура
 - Kubernetes или отказоустойчивый кластер ВМ.
