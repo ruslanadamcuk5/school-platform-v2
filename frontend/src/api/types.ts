@@ -991,3 +991,161 @@ export interface OnboardingReportUsers {
   offset: number;
   summary: OnboardingReportSummary;
 }
+
+export type SafetyAppealCategory =
+  | 'psychological'
+  | 'conflict'
+  | 'bullying'
+  | 'family'
+  | 'other';
+
+export type SafetyPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export type SafetyAppealStatus =
+  | 'open'
+  | 'in_progress'
+  | 'responded'
+  | 'closed';
+
+export interface SafetyAppeal {
+  id: string;
+  school_id: string | null;
+  student_id: string | null;
+  requester_id: string | null;
+  category: SafetyAppealCategory;
+  priority: SafetyPriority;
+  status: SafetyAppealStatus;
+  subject: string;
+  message: string;
+  response: string | null;
+  responded_by_id: string | null;
+  responded_at: string | null;
+  closed_at: string | null;
+  is_anonymous: boolean;
+  consent_required: boolean;
+  consent_given: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SafetyAppealCreatePayload {
+  school_id?: string | null;
+  student_id?: string | null;
+  category?: SafetyAppealCategory;
+  priority?: SafetyPriority;
+  subject: string;
+  message: string;
+  is_anonymous?: boolean;
+  consent_required?: boolean;
+  consent_given?: boolean;
+}
+
+export interface SafetyAppealRespondPayload {
+  response: string;
+  status?: 'responded' | 'closed';
+}
+
+export type SafetyIncidentCategory =
+  | 'bullying'
+  | 'violence'
+  | 'self_harm'
+  | 'health'
+  | 'facility'
+  | 'other';
+
+export type SafetyIncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export type SafetyIncidentStatus =
+  | 'open'
+  | 'investigating'
+  | 'resolved'
+  | 'closed';
+
+export interface SafetyIncident {
+  id: string;
+  school_id: string;
+  category: SafetyIncidentCategory;
+  severity: SafetyIncidentSeverity;
+  title: string;
+  description: string | null;
+  reported_by_id: string | null;
+  status: SafetyIncidentStatus;
+  resolved_by_id: string | null;
+  resolved_at: string | null;
+  actions_taken: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SafetyIncidentCreatePayload {
+  school_id?: string | null;
+  category?: SafetyIncidentCategory;
+  severity?: SafetyIncidentSeverity;
+  title: string;
+  description?: string | null;
+}
+
+export interface SafetyIncidentResolvePayload {
+  actions_taken?: string | null;
+  status?: 'resolved' | 'closed';
+}
+
+export type SafetyConsentScope =
+  | 'geolocation'
+  | 'psychological_support'
+  | 'incident_reporting'
+  | 'health_data';
+
+export type SafetyConsentSource = 'written' | 'electronic' | 'verbal_recorded';
+
+export interface SafetyConsent {
+  id: string;
+  student_id: string;
+  legal_representative_id: string;
+  scope: SafetyConsentScope;
+  granted: boolean;
+  granted_at: string | null;
+  revoked_at: string | null;
+  expires_at: string | null;
+  source: SafetyConsentSource;
+  details: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SafetyConsentCreatePayload {
+  student_id: string;
+  legal_representative_id: string;
+  scope: SafetyConsentScope;
+  granted?: boolean;
+  source?: SafetyConsentSource;
+  expires_at?: string | null;
+  details?: Record<string, unknown> | null;
+}
+
+export type SafetyGeolocationEventType =
+  | 'location'
+  | 'enter_school'
+  | 'leave_school';
+
+export interface SafetyGeolocationPoint {
+  id: string;
+  student_id: string;
+  device_id: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy_m: number | null;
+  event_type: SafetyGeolocationEventType;
+  recorded_at: string;
+  consent_id: string | null;
+}
+
+export interface SafetyGeolocationCreatePayload {
+  student_id: string;
+  device_id?: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy_m?: number | null;
+  event_type?: SafetyGeolocationEventType;
+  recorded_at?: string | null;
+}

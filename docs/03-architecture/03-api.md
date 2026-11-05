@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.13 |
+| Версия | 0.14 |
 | Статус | Рабочий |
-| Дата | 04.11.2026 |
+| Дата | 05.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
 | OpenAPI | `/openapi.json`, `/docs`, `/redoc` |
 
@@ -454,6 +454,59 @@ PUT /api/v1/services/library/activation?scope_type=school&scope_id=uuid
   Для `ready` обязателен номер документа; для `rejected` номер запрещён.
 - Закрытую заявку нельзя повторно обработать или отменить (`409`).
 - Создание, обработка и отмена фиксируются в журнале аудита.
+
+## 8.3. Безопасность и психологическая поддержка
+
+| Метод | Путь | Роли | Назначение |
+|---|---|---|---|
+| GET | `/api/v1/safety/appeals/mine` | student, parent, staff | Свои обращения к психологу |
+| GET | `/api/v1/safety/appeals` | psychologist, admin | Обращения школы |
+| POST | `/api/v1/safety/appeals` | student, parent, staff | Создать обращение (в т.ч. анонимное) |
+| POST | `/api/v1/safety/appeals/{id}/respond` | psychologist, admin | Ответить и перевести в `responded`/`closed` |
+| POST | `/api/v1/safety/appeals/{id}/close` | psychologist, admin | Закрыть обращение |
+| GET | `/api/v1/safety/incidents` | teacher, psychologist, secretary, admin | Инциденты школы |
+| POST | `/api/v1/safety/incidents` | psychologist, admin | Зарегистрировать инцидент |
+| POST | `/api/v1/safety/incidents/{id}/resolve` | psychologist, admin | Закрыть инцидент и указать меры |
+| GET | `/api/v1/safety/consents` | admin | Согласия законных представителей |
+| POST | `/api/v1/safety/consents` | admin | Зафиксировать согласие |
+| POST | `/api/v1/safety/consents/{id}/revoke` | admin | Отозвать согласие |
+| GET | `/api/v1/safety/geolocation` | admin, secretary | Точки геолокации |
+| POST | `/api/v1/safety/geolocation` | student, parent, staff | Передать точку при активном согласии |
+| GET | `/api/v1/safety/settings` | psychologist, admin | Ограничения сервиса |
+| PUT | `/api/v1/safety/settings` | admin | Изменить ограничения |
+| POST | `/api/v1/safety/maintenance/purge` | admin, superadmin | Удалить данные по истечении срока |
+
+Правила:
+- Сервис `safety` по умолчанию отключён и проверяется зависимостью
+  `require_service`; при отключении маршруты возвращают `403`.
+- Чтение обращений и инцидентов школы — `safety.incidents.read`; управление —
+  `safety.incidents.manage`; свои обращения — `safety.support.use`.
+- Геолокация: чтение — `safety.geolocation.read`, запись — `safety.support.use`
+  и только при активном согласии `geolocation`.
+- Согласия и настройки ограничений — `safety.consents.manage` и
+  `safety.settings.manage`.
+- Анонимное обращение не содержит `student_id` и `requester_id`; школа нужна
+  для маршрутизации. Анонимность можно отключить в настройках.
+- Ограничения (`retention_days`, `incident_retention_days`,
+  `consent_age_threshold`, `allow_anonymous_appeals`, `geolocation_enabled`)
+  хранятся в `system.settings`: глобальный ключ `safety.settings` и
+  школьное переопределение `safety.settings:{school_id}`.
+- Несовершеннолетний моложе порога согласия (по умолчанию 16 лет) действует
+  через законного представителя; отказ от согласия запрещён, связь
+  «представитель — ребёнок» проверяется по `iam.user_relations`.
+- Сроки хранения настраиваются (`retention_days`, `incident_retention_days`);
+  очистка выполняется отдельным заданием/вызовом и фиксируется в аудите.
+- Создание и изменение записей, ответы, закрытие, отзыв согласия и очистка
+  фиксируются в журнале аудита. Ответы содержат минимум ПДн.
+
+Технические заметки:
+- Права: `safety.support.use`, `safety.incidents.read`,
+  `safety.incidents.manage`, `safety.geolocation.read`,
+  `safety.consents.manage`, `safety.settings.manage`.
+- Миграция `0010_safety`: таблицы `safety.support_appeals`,
+  `safety.incidents`, `safety.geolocation_points`, `safety.consents` и
+  `iam.users.date_of_birth`.
+- Пилотная миграция `0010` не применяется до отдельного распоряжения.
 
 ## 9. Системные
 

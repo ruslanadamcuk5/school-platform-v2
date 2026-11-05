@@ -47,6 +47,16 @@ import type {
   PracticeResult,
   ProgramCompetency,
   Region,
+  SafetyAppeal,
+  SafetyAppealCreatePayload,
+  SafetyAppealRespondPayload,
+  SafetyConsent,
+  SafetyConsentCreatePayload,
+  SafetyGeolocationCreatePayload,
+  SafetyGeolocationPoint,
+  SafetyIncident,
+  SafetyIncidentCreatePayload,
+  SafetyIncidentResolvePayload,
   School,
   SchoolClass,
   Service,
@@ -1554,6 +1564,136 @@ export async function cancelDocumentRequest(
 ): Promise<DocumentRequest> {
   const { data } = await api.post<DocumentRequest>(
     `/documents/requests/${encodeURIComponent(requestId)}/cancel`,
+  );
+  return data;
+}
+
+// --- Safety service -------------------------------------------------------
+
+export async function fetchMySafetyAppeals(
+  status?: string,
+): Promise<SafetyAppeal[]> {
+  const { data } = await api.get<SafetyAppeal[]>('/safety/appeals/mine', {
+    params: { status: status || undefined },
+  });
+  return data;
+}
+
+export async function fetchSafetyAppeals(
+  schoolId?: string,
+  status?: string,
+): Promise<SafetyAppeal[]> {
+  const { data } = await api.get<SafetyAppeal[]>('/safety/appeals', {
+    params: { school_id: schoolId || undefined, status: status || undefined },
+  });
+  return data;
+}
+
+export async function createSafetyAppeal(
+  payload: SafetyAppealCreatePayload,
+): Promise<SafetyAppeal> {
+  const { data } = await api.post<SafetyAppeal>('/safety/appeals', payload);
+  return data;
+}
+
+export async function respondSafetyAppeal(
+  appealId: string,
+  payload: SafetyAppealRespondPayload,
+): Promise<SafetyAppeal> {
+  const { data } = await api.post<SafetyAppeal>(
+    `/safety/appeals/${encodeURIComponent(appealId)}/respond`,
+    payload,
+  );
+  return data;
+}
+
+export async function closeSafetyAppeal(appealId: string): Promise<SafetyAppeal> {
+  const { data } = await api.post<SafetyAppeal>(
+    `/safety/appeals/${encodeURIComponent(appealId)}/close`,
+  );
+  return data;
+}
+
+export async function fetchSafetyIncidents(
+  schoolId?: string,
+  filters?: { status?: string; severity?: string },
+): Promise<SafetyIncident[]> {
+  const { data } = await api.get<SafetyIncident[]>('/safety/incidents', {
+    params: {
+      school_id: schoolId || undefined,
+      status: filters?.status || undefined,
+      severity: filters?.severity || undefined,
+    },
+  });
+  return data;
+}
+
+export async function createSafetyIncident(
+  payload: SafetyIncidentCreatePayload,
+): Promise<SafetyIncident> {
+  const { data } = await api.post<SafetyIncident>('/safety/incidents', payload);
+  return data;
+}
+
+export async function resolveSafetyIncident(
+  incidentId: string,
+  payload: SafetyIncidentResolvePayload,
+): Promise<SafetyIncident> {
+  const { data } = await api.post<SafetyIncident>(
+    `/safety/incidents/${encodeURIComponent(incidentId)}/resolve`,
+    payload,
+  );
+  return data;
+}
+
+export async function fetchSafetyConsents(
+  schoolId?: string,
+  filters?: { scope?: string; studentId?: string },
+): Promise<SafetyConsent[]> {
+  const { data } = await api.get<SafetyConsent[]>('/safety/consents', {
+    params: {
+      school_id: schoolId || undefined,
+      scope: filters?.scope || undefined,
+      student_id: filters?.studentId || undefined,
+    },
+  });
+  return data;
+}
+
+export async function createSafetyConsent(
+  payload: SafetyConsentCreatePayload,
+): Promise<SafetyConsent> {
+  const { data } = await api.post<SafetyConsent>('/safety/consents', payload);
+  return data;
+}
+
+export async function revokeSafetyConsent(
+  consentId: string,
+  reason?: string,
+): Promise<SafetyConsent> {
+  const { data } = await api.post<SafetyConsent>(
+    `/safety/consents/${encodeURIComponent(consentId)}/revoke`,
+    { reason: reason || null },
+  );
+  return data;
+}
+
+export async function fetchSafetyGeolocation(
+  schoolId?: string,
+  studentId?: string,
+): Promise<SafetyGeolocationPoint[]> {
+  const { data } = await api.get<SafetyGeolocationPoint[]>('/safety/geolocation', {
+    params: { school_id: schoolId || undefined, student_id: studentId || undefined },
+  });
+  return data;
+}
+
+export async function createSafetyGeolocationPoint(
+  payload: SafetyGeolocationCreatePayload,
+): Promise<SafetyGeolocationPoint> {
+  const { data } = await api.post<SafetyGeolocationPoint>(
+    '/safety/geolocation',
+    payload,
   );
   return data;
 }

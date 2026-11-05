@@ -481,6 +481,11 @@ SERVICES: tuple[ServiceManifest, ...] = (
             PermissionSpec("safety.incidents.manage", "Управление инцидентами", "write"),
             PermissionSpec("safety.geolocation.read", "Просмотр геолокации", "read"),
             PermissionSpec("safety.consents.manage", "Управление согласиями", "admin"),
+            PermissionSpec(
+                "safety.settings.manage",
+                "Настройка ограничений безопасности",
+                "admin",
+            ),
         ),
         depends_on=("system", "iam", "communication"),
     ),

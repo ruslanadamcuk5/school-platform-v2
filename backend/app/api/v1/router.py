@@ -16,6 +16,7 @@ from app.api.v1 import (
     me,
     onboarding,
     org,
+    safety,
     services,
     system,
 )
@@ -29,6 +30,7 @@ api_router.include_router(services.router)
 api_router.include_router(org.router)
 api_router.include_router(communication.router)
 api_router.include_router(documents.router)
+api_router.include_router(safety.router)
 api_router.include_router(education.primary_router)
 api_router.include_router(education.secondary_router)
 api_router.include_router(education.vocational_router)

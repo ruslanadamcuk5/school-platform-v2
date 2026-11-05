@@ -48,6 +48,7 @@ credentials/
 *.db
 *.sqlite
 *.sqlite3
+backups/
 data/uploads/
 data/private/
 media/

@@ -5,14 +5,53 @@
   "permission": {
     "bash": "ask",
     "edit": "ask",
-    "webfetch": "allow"
+    "webfetch": "allow",
+    "read": {
+      "*": "allow",
+      "docs/word/**": "deny",
+      "**/*.docx": "deny",
+      "**/node_modules/**": "deny",
+      "**/.venv/**": "deny",
+      "backups/**": "deny",
+      ".env": "deny",
+      "**/.env": "deny"
+    }
+  },
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
+  "watcher": {
+    "ignore": [
+      "docs/word/**",
+      "backups/**",
+      "**/*.docx",
+      "**/node_modules/**",
+      "**/.venv/**",
+      "frontend/dist/**",
+      "**/__pycache__/**"
+    ]
+  },
+  "lsp": true,
+  "tools": {
+    "postgres*": false
   },
   "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+      }
+    },
     "postgres": {
       "type": "local",
       "command": ["npx", "-y", "@microsoft/postgres-mcp", "run"],
       "environment": {
-        "DATABASE_URL": "postgresql://school_app:CHANGE_ME@localhost:5432/school_platform"
+        "DATABASE_URL": "{env:DATABASE_URL}"
       },
       "enabled": false
     }

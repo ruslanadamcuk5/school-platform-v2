@@ -28,8 +28,9 @@
 **Этапы 2.10–2.16 — профессиональные ступени, коммуникации и документы.**
 Учебные планы и кредиты, сессии и ведомости, зачётные книжки, перезачёт
 кредитов, компетенции и матрицы, предприятия, договоры, практиканты и дневники
-практики, защищённые уведомления communication, заявки документов. Версия API
-`0.8.3`.
+практики, защищённые уведомления communication, заявки документов,
+психологическая поддержка и безопасность. Версия API
+`0.9.0`.
 
 Реализован FastAPI-backend с health-check, OpenAPI, SQLAlchemy 2.0 async,
 Alembic, JWT, мультитенантностью по `school_id`, доменами LMS, assessment,
@@ -159,9 +160,21 @@ uvicorn app.service_app:create_service_app --factory --port 8101
 - [Отчёт о завершении этапа 1](docs/10-reporting/06-otchet-o-zavershenii-etapa-1.md)
 - [Отчёт о тестировании групп, прав и сервисов](docs/10-reporting/10-otchet-o-testirovanii-groups-services.md)
 
+## Инструменты разработки
+
+- `scripts/check.ps1` — ruff + pytest + typecheck с коротким выводом.
+- `docs/INDEX.md` — индекс документации; `docs/CODEMAP.md` — карта кода;
+  `docs/api/ENDPOINTS.md` — индекс OpenAPI.
+- `.opencode/skills/` — повторяемые сценарии; `.opencode/commands/` — команды
+  `/check`, `/test`, `/docs`, `/api`, `/release`, `/pilot-status`, `/db-schema`;
+  `.opencode/agents/` — `explorer`, `reviewer`, `test-runner`, `docs-writer`.
+- `docs/word/` — только готовые DOCX; агент их не читает.
+
 ## Правила работы
 
 Основные правила для разработчика и AI-агента — в [AGENTS.md](AGENTS.md).
-Перед каждой сессией OpenCode читает `.opencode/memory-bank/activeContext.md`.
+Перед каждой сессией OpenCode читает `.opencode/memory-bank/activeContext.md`
+и первые 80 строк `progress.md`; полная история —
+в `.opencode/memory-bank/archive/progress-2026.md`.
 Старый проект `C:\Users\adamrv\Documents\edu-math` не изменяется и не
 останавливается.

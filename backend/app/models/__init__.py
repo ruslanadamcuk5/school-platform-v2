@@ -18,6 +18,7 @@ from app.models.assessment import (
 from app.models.audit import AuditEvent
 from app.models.communication import Notification
 from app.models.documents import DocumentRequest
+from app.models.safety import Consent, GeolocationPoint, Incident, SupportAppeal
 from app.models.education import (
     AcademicSession,
     Competency,
@@ -96,6 +97,10 @@ __all__ = [
     "CurriculumComponent",
     "DailyAnswer",
     "DocumentRequest",
+    "Consent",
+    "GeolocationPoint",
+    "Incident",
+    "SupportAppeal",
     "EducationCurriculum",
     "EducationProgram",
     "FeatureFlag",

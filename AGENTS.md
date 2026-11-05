@@ -24,8 +24,10 @@ FastAPI + React + PostgreSQL + Android/iOS без потери функций и
 5. Все персональные данные детей — только в согласованных защищённых полях,
    с аудитом доступа и минимально необходимым сроком хранения.
 6. Любое изменение поведения API фиксируй в `docs/10-reporting/04-zhurnal-izmeneniy.md`.
-7. Перед началом задачи читай `.opencode/memory-bank/activeContext.md`.
-8. После завершения задачи обновляй `.opencode/memory-bank/progress.md`.
+7. Перед задачей читай `.opencode/memory-bank/activeContext.md` (≤ 4 КБ)
+   и первые 80 строк `progress.md`; полную историю — только по запросу.
+8. После задачи кратко обнови `activeContext.md` и допиши `progress.md`;
+   старую историю не читай — она в `archive/progress-2026.md`.
 
 ## 4. Архитектурные правила
 - API-first: web, Android и iOS используют один и тот же API.
@@ -70,3 +72,25 @@ FastAPI + React + PostgreSQL + Android/iOS без потери функций и
 - Если требование неоднозначно — задай вопрос, не выбирай юридически значимое
   поведение самостоятельно.
 - Не выполняй destructive-команды без явного подтверждения пользователя.
+
+## 9. Экономия токенов и порядок чтения
+- Сначала `docs/INDEX.md`, `docs/CODEMAP.md` или `docs/api/ENDPOINTS.md`,
+  затем 1–2 конкретных файла/раздела. Не читай документ целиком.
+- Поиск — `rg`/grep; чтение — не более 200 строк за раз. Не делай рекурсивный
+  список каталогов без исключений.
+- Запрещено читать: `docs/word/**`, `**/node_modules/**`, `**/.venv/**`,
+  `backups/**`, `*.docx`, `.env`, `package-lock.json`.
+- Перед чтением изменённых файлов: `git status --short` и `git diff --stat`.
+  Git: `C:\Users\adamrv\AppData\Local\MinGit\cmd\git.exe` (или `git` после
+  перезапуска терминала).
+- Повторяемые операции — через skills `.opencode/skills/*` и команды
+  `/check`, `/test`, `/docs`, `/api`, `/release`, `/pilot-status`, `/db-schema`.
+- Поиск по коду/докам — через subagent `explorer`; ревью — `reviewer`;
+  тесты — `test-runner`; документы — `docs-writer`.
+- Для документации библиотек (FastAPI, SQLAlchemy, Alembic, React, Vite)
+  используй Context7; не делай webfetch, если хватает Context7.
+- Проверка: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1`;
+  показывай только итог и последние 40 строк при падении. Не запускай генерацию
+  DOCX в основном контексте — только в фоне.
+- Не меняй `AGENTS.md` и skills посреди сессии без необходимости: это ломает
+  prompt-cache.

@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -80,6 +81,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(120), nullable=False, default="", server_default=""
     )
     middle_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     parent_code: Mapped[str | None] = mapped_column(
         String(16), nullable=True, unique=True, index=True

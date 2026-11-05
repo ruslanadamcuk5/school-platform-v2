@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.6 |
+| Версия | 0.7 |
 | Статус | Рабочий |
-| Дата | 04.11.2026 |
+| Дата | 05.11.2026 |
 
 ## 1. Общие принципы
 - СУБД: PostgreSQL 16+.
@@ -352,21 +352,66 @@
   status.
 
 ## 9. Safety
-### 9.1. `safety.psych_appeals`
-- id, anonymous_id, student_id null, psychologist_id null, category, status,
-  priority, created_at, closed_at.
+Реализованные таблицы миграции `0010_safety` (версия 0.9.0). Правовая основа —
+Закон Республики Беларусь от 07.05.2021 № 99-З «О защите персональных данных»
+с изменениями; специальные ПДн (здоровье, психологическое состояние)
+обрабатываются только с согласия субъекта или законного представителя.
 
-### 9.2. `safety.psych_messages`
-- id, appeal_id, sender_type (student/psychologist/specialist), payload,
-  created_at.
+### 9.1. `safety.support_appeals`
+- id, school_id null, student_id null, requester_id null, category
+  (`psychological`/`conflict`/`bullying`/`family`/`other`), priority
+  (`low`/`medium`/`high`/`urgent`), status
+  (`open`/`in_progress`/`responded`/`closed`), subject, message, response,
+  responded_by_id, responded_at, closed_at, is_anonymous, consent_required,
+  consent_given, deleted_at, created_at, updated_at.
+- Анонимное обращение не содержит `student_id` и `requester_id`; школа
+  сохраняется для маршрутизации.
+- Для несовершеннолетних моложе порога согласия (по умолчанию 16 лет) согласие
+  обязательно; отказ от согласия запрещён.
 
-### 9.3. `safety.geo_points`
-- id, student_id, device_id, latitude, longitude, accuracy_m, event_type
-  (location/enter_school/leave_school), recorded_at, consent_id.
+### 9.2. `safety.incidents`
+- id, school_id, category
+  (`bullying`/`violence`/`self_harm`/`health`/`facility`/`other`), severity
+  (`low`/`medium`/`high`/`critical`), title, description, reported_by_id,
+  status (`open`/`investigating`/`resolved`/`closed`), resolved_by_id,
+  resolved_at, actions_taken, deleted_at, created_at, updated_at.
 
-### 9.4. `safety.incidents`
-- id, school_id, category, severity, description, reported_by, status,
-  created_at, resolved_at.
+### 9.3. `safety.geolocation_points`
+- id, student_id, device_id null, latitude, longitude, accuracy_m null,
+  event_type (`location`/`enter_school`/`leave_school`), recorded_at,
+  consent_id, deleted_at.
+- Координаты проверяются по диапазонам; запись возможна только при активном
+  согласии `scope = geolocation`.
+
+### 9.4. `safety.consents`
+- id, student_id, legal_representative_id, scope
+  (`geolocation`/`psychological_support`/`incident_reporting`/`health_data`),
+  granted, granted_at, revoked_at, expires_at, source
+  (`written`/`electronic`/`verbal_recorded`), details jsonb, deleted_at,
+  created_at, updated_at.
+- Согласие можно отозвать в любой момент; обработка прекращается в течение
+  15 календарных дней (ст. 10 Закона № 99-З).
+
+### 9.5. `system.settings` — ограничения сервиса
+Ключ `safety.settings` (JSONB) задаёт глобальные значения по умолчанию,
+ключ `safety.settings:{school_id}` — переопределение для конкретной школы.
+Настраивается администратором школы; суперадминистратор может менять
+глобальные значения и переопределения любой школы:
+- `retention_days` — срок хранения обращений, согласий и геолокации
+  (по умолчанию 365 дней);
+- `incident_retention_days` — срок хранения инцидентов (по умолчанию 1095 дней);
+- `consent_age_threshold` — порог согласия (16–18, ниже 16 запрещено);
+- `allow_anonymous_appeals` — разрешать анонимные обращения;
+- `geolocation_enabled` — включать геолокацию.
+Очистка по срокам выполняется `POST /api/v1/safety/maintenance/purge`
+(суперадминистратор — по школе или глобально, администратор школы — только
+по своей школе).
+
+### 9.6. `iam.users.date_of_birth`
+- Необязательная дата рождения (`date`), добавлена миграцией `0010_safety`.
+- Нужна для проверки правила согласия несовершеннолетних (ст. 5(8) Закона
+  № 99-З). При отсутствии даты учётная запись трактуется как
+  несовершеннолетняя (строгий режим).
 
 ## 10. Documents
 ### 10.1. `documents.templates`

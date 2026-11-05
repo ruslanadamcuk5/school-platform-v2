@@ -18,8 +18,8 @@ DOCS = ROOT / "docs"
 OUT = DOCS / "word"
 
 PROJECT = "ЕОРП «ВЕКТОР»"
-VERSION = "0.8.3"
-DATE = "04.11.2026"
+VERSION = "0.9.0"
+DATE = "05.11.2026"
 
 
 def set_cell_shading(cell, color: str) -> None:
@@ -342,7 +342,16 @@ def build_doc(source: Path, output: Path) -> None:
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    sources = sorted(p for p in DOCS.rglob("*.md") if "word" not in p.parts)
+    excluded = {
+        DOCS / "INDEX.md",
+        DOCS / "CODEMAP.md",
+        DOCS / "api" / "ENDPOINTS.md",
+    }
+    sources = sorted(
+        p
+        for p in DOCS.rglob("*.md")
+        if "word" not in p.parts and p not in excluded
+    )
     if not sources:
         print("No Markdown documents found.")
         return 1
@@ -354,7 +363,7 @@ def main() -> int:
         generated.append(output)
         print(f"OK  {rel} -> {output.relative_to(ROOT)}")
 
-    combined = OUT / "ЕОРП_ВЕКТОР_Полный_пакет_документации_v0.8.3.docx"
+    combined = OUT / f"ЕОРП_ВЕКТОР_Полный_пакет_документации_v{VERSION}.docx"
     document = Document()
     style_document(document)
     add_title_page(document, "Полный пакет проектной документации", DOCS / "README.md")
