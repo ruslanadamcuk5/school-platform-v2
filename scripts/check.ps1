@@ -46,9 +46,15 @@ if (-not $SkipFrontend) {
         Push-Location (Join-Path $root 'frontend')
         $out = & $npm run typecheck 2>&1
         $code = $LASTEXITCODE
-        Pop-Location
         Show-Tail $out 20
         if ($code -ne 0) { $failed += 'typecheck' }
+
+        Write-Host '== frontend tests =='
+        $out = & $npm test 2>&1
+        $code = $LASTEXITCODE
+        Show-Tail $out 20
+        if ($code -ne 0) { $failed += 'frontend tests' }
+        Pop-Location
     }
     else {
         Write-Host "npm not found: $npm (skipped)" -ForegroundColor Yellow
@@ -60,5 +66,5 @@ if ($failed.Count -gt 0) {
     Write-Host ("FAILED ({0}s): {1}" -f $elapsed, ($failed -join ', ')) -ForegroundColor Red
     exit 1
 }
-$checks = if ($SkipFrontend) { 'ruff, pytest' } else { 'ruff, pytest, typecheck' }
+$checks = if ($SkipFrontend) { 'ruff, pytest' } else { 'ruff, pytest, typecheck, frontend tests' }
 Write-Host ("OK ({0}s): {1}" -f $elapsed, $checks) -ForegroundColor Green
