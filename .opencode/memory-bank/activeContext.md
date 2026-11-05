@@ -8,9 +8,13 @@
 ## Состояние
 - Пилот: `0.9.0`; `/health` — `ok`, `database=ok`, `jwt_ready=true`;
   head `0010_safety`; backup `20261105T080100Z`.
-- Safety UI развёрнут: `frontend/dist` с `index-CAJYbBBE.js` и
-  `index-CrDWvJ6z.css`; прежний dist —
-  `dist.pre-safety-ui-20261105T103431Z`.
+- Safety UI развёрнут: `frontend/dist` с `index-CAJYbBBE.js`,
+  `index-CrDWvJ6z.css` и `favicon.svg`; прежний dist —
+  `dist.pre-favicon-20261105T113013Z` (ранее
+  `dist.pre-safety-ui-20261105T103431Z`).
+- UI `/safety` проверен headless Edge под school_admin: сервис включён,
+  6 вкладок, геолокация off, анонимность on, консоль/сеть без ошибок;
+  `404 favicon.ico` устранён.
 - `safety` включён: country-активация уже была `enabled=true`; добавлена
   явная school-активация для `pilot-school` (`enabled=true`).
   `/me/services` — `enabled=true`, `source=activation`.
@@ -22,7 +26,7 @@
   архив прежнего dist, снимок активаций и настроек.
 - Локально: backend `184 passed`; Ruff чистый; frontend typecheck/build
   успешны; Vitest — 4 теста `/safety`; OpenAPI `172` пути / `232` операции.
-- Документы: v0.9.0; ШК-07-01 — 1.0; журнал — 1.8; ШК-10-19 — 1.2;
+- Документы: v0.9.0; ШК-07-01 — 1.1; журнал — 1.9; ШК-10-19 — 1.3;
   ШК-03-06 — 1.6; DOCX пересобран.
 - Аудит: 8 предупреждений (2 critical — dev Vitest/Vite); production —
   2 moderate в `react-router` 6.x. Мажорные обновления — отдельным циклом.
