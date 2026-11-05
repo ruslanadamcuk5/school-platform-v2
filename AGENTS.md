@@ -25,7 +25,7 @@
 9. Не меняй `AGENTS.md` и skills посреди сессии без необходимости: это ломает
    prompt-cache. Меняй их отдельным коммитом.
 10. `browser*` и `opencode*` инструменты выключены глобально. Для UI-проверок
-    используй `@browser`; worktree/session — через CLI.
+    используй `@browser`; worktree/session — через CLI после согласования версии.
 
 ## 4. Архитектура
 - API-first: web, Android и iOS используют один API.
