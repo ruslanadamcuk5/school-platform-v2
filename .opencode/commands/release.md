@@ -1,5 +1,7 @@
 ---
 description: Подготовить релиз версии без деплоя
+agent: build
+subtask: true
 ---
 
 Подготовь релиз версии `$ARGUMENTS`.

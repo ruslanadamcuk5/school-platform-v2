@@ -1,5 +1,7 @@
 ---
 description: Запустить точечные тесты pytest
+agent: test-runner
+subtask: true
 ---
 
 Запусти точечные тесты для `$ARGUMENTS`:

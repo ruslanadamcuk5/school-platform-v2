@@ -1,5 +1,7 @@
 ---
 description: Показать схему таблицы через read-only запрос
+agent: build
+subtask: true
 ---
 
 Покажи схему таблицы `$ARGUMENTS`:

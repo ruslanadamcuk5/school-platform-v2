@@ -1,6 +1,7 @@
 ---
 description: Быстрый read-only поиск по коду и документации; возвращает file:line и краткий вывод
 mode: subagent
+model: opencode/deepseek-v4.1-flash-free
 temperature: 0.1
 permission:
   edit: deny

@@ -1,5 +1,7 @@
 ---
 description: Запустить ruff, pytest и typecheck с коротким выводом
+agent: test-runner
+subtask: true
 ---
 
 Запусти `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1`.

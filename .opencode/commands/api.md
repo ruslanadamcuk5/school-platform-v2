@@ -1,5 +1,7 @@
 ---
 description: Перегенерировать индекс эндпоинтов из OpenAPI
+agent: build
+subtask: true
 ---
 
 Запусти:

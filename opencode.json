@@ -1,11 +1,37 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "local model",
+  "model": "opencode/deepseek-v4.1-flash-free",
   "small_model": "opencode/claude-haiku-5-5",
   "permission": {
-    "bash": "ask",
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git show*": "allow",
+      "rg *": "allow",
+      "Get-ChildItem*": "allow",
+      "Test-Path*": "allow",
+      "*pytest*": "allow",
+      "*ruff*": "allow",
+      "*tsc*": "allow",
+      "powershell * scripts/check.ps1": "allow",
+      "npm run build*": "allow",
+      "npm run typecheck*": "allow",
+      "npm run lint*": "allow",
+      "*gen_docs_index.py*": "allow",
+      "*gen_codemap.py*": "allow",
+      "*gen_api_index.py*": "allow",
+      "*secret*": "ask",
+      "*.env*": "ask",
+      "*.pem*": "ask",
+      "*.key*": "ask"
+    },
     "edit": "ask",
     "webfetch": "allow",
+    "browser*": "deny",
+    "opencode*": "deny",
+    "postgres*": "deny",
     "read": {
       "*": "allow",
       "docs/word/**": "deny",
@@ -14,7 +40,52 @@
       "**/.venv/**": "deny",
       "backups/**": "deny",
       ".env": "deny",
-      "**/.env": "deny"
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "**/.env.example": "allow",
+      "**/secrets/**": "deny",
+      "**/*.pem": "deny",
+      "**/*.key": "deny",
+      "**/pilot_demo_credentials.csv": "deny",
+      "**/package-lock.json": "deny"
+    },
+    "task": {
+      "*": "deny",
+      "explorer": "allow",
+      "reviewer": "allow",
+      "test-runner": "allow",
+      "docs-writer": "allow",
+      "browser": "allow",
+      "general": "ask"
+    }
+  },
+  "agent": {
+    "build": {
+      "steps": 50
+    },
+    "plan": {
+      "steps": 30
+    },
+    "explore": {
+      "disable": true
+    },
+    "general": {
+      "steps": 25
+    },
+    "explorer": {
+      "steps": 12
+    },
+    "reviewer": {
+      "steps": 15
+    },
+    "test-runner": {
+      "steps": 15
+    },
+    "docs-writer": {
+      "steps": 20
+    },
+    "browser": {
+      "steps": 10
     }
   },
   "compaction": {
@@ -24,19 +95,21 @@
   },
   "watcher": {
     "ignore": [
+      ".git/**",
       "docs/word/**",
       "backups/**",
       "**/*.docx",
       "**/node_modules/**",
       "**/.venv/**",
       "frontend/dist/**",
-      "**/__pycache__/**"
+      "**/__pycache__/**",
+      "**/.pytest_cache/**",
+      "**/.ruff_cache/**",
+      "**/secrets/**",
+      "**/.env*"
     ]
   },
   "lsp": true,
-  "tools": {
-    "postgres*": false
-  },
   "mcp": {
     "context7": {
       "type": "remote",

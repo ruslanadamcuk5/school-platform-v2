@@ -1,5 +1,7 @@
 ---
 description: Обновить документацию по теме с записью в журнал
+agent: build
+subtask: true
 ---
 
 Обнови документацию по теме: `$ARGUMENTS`.

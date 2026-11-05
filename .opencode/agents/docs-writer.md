@@ -1,6 +1,7 @@
 ---
 description: Пишет и обновляет документацию по шаблонам, без изменения кода
 mode: subagent
+model: opencode/deepseek-v4.1-flash-free
 temperature: 0.1
 permission:
   edit: allow

@@ -1,6 +1,7 @@
 ---
 description: Запускает точечные тесты, ruff и typecheck; возвращает только падения и итог
 mode: subagent
+model: opencode/deepseek-v4.1-flash-free
 temperature: 0.1
 permission:
   edit: deny

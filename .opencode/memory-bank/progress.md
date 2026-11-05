@@ -2,64 +2,60 @@
 
 > Только последние этапы. Полная история: `archive/progress-2026.md`.
 
-## Этап 2.17 — заявки документов и секретариат
-- [x] Добавлена миграция `0009_document_requests` и таблица `documents.document_requests`.
-- [x] API своих заявок, заявок школы, создания, обработки и отмены.
-- [x] Проверки активации `documents`, прав, связи родителя с ребёнком и принадлежности школе.
-- [x] Типы и функции веб-клиента для заявок документов.
-- [x] Backend `159 passed`, Ruff чистый; frontend typecheck и production build успешны.
-- [x] Alembic offline SQL `0009_document_requests` сгенерирован успешно.
-- [x] OpenAPI `0.8.3`: 161 путь и 216 операций.
-- [x] DOCX-пакет v0.8.3 пересобран; добавлен отчёт ШК-10-18.
-- [x] Коммит `1fc0049` отправлен в `origin/main`.
-
-## Пилот 0.8.3 — развёртывание
-- [x] Применены миграции `0006`–`0009`; head `0009_document_requests`.
-- [x] Выполнены `python -m app.db.seed` и `python -m app.db.pilot_data`.
-- [x] Обновлён `frontend/dist`; старый сохранён как `dist.pre-0.8.3-20261104T115718Z`.
-- [x] Backup `backups/school-platform-v2/20261104T115542Z/` (приложение и БД).
-- [x] `/health` — `200` и `0.8.3`; старая площадка `virusadk.alwaysdata.net/healthz` — `200`.
-- [x] `documents` остаётся отключённым и отдаёт `403` до активации.
+## Пилот 0.9.0 — развёртывание
+- [x] Backup `backups/school-platform-v2/20261105T080100Z/` (БД и приложение).
+- [x] Миграция `0009_document_requests` → `0010_safety`; `alembic current` = `0010_safety`.
+- [x] Backend и `frontend/dist` `0.9.0` загружены; старый dist сохранён как
+  `dist.pre-0.9.0-20261105T080100Z`.
+- [x] `seed` выполнен; `safety` — `default_enabled=false`, активаций нет;
+  `.env` и `secrets` не перезаписаны.
+- [x] `/health` — `0.9.0`, `status=ok`.
+- [ ] Запись деплоя в `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md`
+  и журнал; DOCX `v0.9.0` — отдельная задача.
 
 ## Этап 2.18 — безопасность и психологическая поддержка
-- [x] Добавлена миграция `0010_safety`: `safety.support_appeals`, `safety.incidents`, `safety.geolocation_points`, `safety.consents`, `iam.users.date_of_birth`.
-- [x] API обращений (включая анонимные), инцидентов, согласий, геолокации, настроек ограничений и очистки по срокам.
-- [x] Права `safety.*` и `safety.settings.manage`; проверка активации сервиса.
-- [x] Правила Закона № 99-З: порог согласия 16 лет, согласие законного представителя, запрет понижения порога, сроки хранения.
-- [x] Типы и функции веб-клиента для безопасности.
-- [x] Backend `184 passed`, Ruff чистый; frontend typecheck и production build успешны.
-- [x] Alembic offline SQL `0010_safety` сгенерирован успешно.
-- [x] OpenAPI `0.9.0`: 172 пути и 232 операции.
-- [x] Отчёт ШК-10-19; журнал изменений обновлён до 1.4.
-- [ ] Миграция `0010` и код `safety` на пилот не доставлялись — ждут отдельной команды.
+- [x] Миграция `0010_safety`: обращения, инциденты, геолокация, согласия,
+  `iam.users.date_of_birth`.
+- [x] API обращений (включая анонимные), инцидентов, согласий, геолокации,
+  настроек и очистки по срокам.
+- [x] Права `safety.*` и `safety.settings.manage`; проверка активации.
+- [x] Правила Закона № 99-З: порог 16 лет, согласие представителя, сроки хранения.
+- [x] Backend `184 passed`, Ruff чистый; frontend typecheck и production build.
+- [x] OpenAPI `0.9.0`: 172 пути / 232 операции.
+- [x] Отчёт ШК-10-19; журнал изменений 1.4.
 
-## Этап 2.19 — экономия токенов
-- [x] `AGENTS.md`: порядок чтения, запреты и бюджет контекста.
-- [x] Memory bank 2.0: `activeContext.md` ≤ 4 КБ, история — в `archive/progress-2026.md`.
+## Этап 2.19 — экономия токенов и OpenCode
+- [x] `AGENTS.md` сокращён с 8,3 КБ до 6,4 КБ; `progress.md` сжат, история
+  перенесена в `archive/progress-2026.md`.
 - [x] Индексы: `docs/INDEX.md`, `docs/CODEMAP.md`, `docs/api/ENDPOINTS.md`.
-- [x] Генераторы: `scripts/gen_docs_index.py`, `scripts/gen_codemap.py`, `scripts/gen_api_index.py`.
-- [x] Skills: `add-endpoint`, `add-migration`, `add-service`, `docs-sync`, `release`, `pilot-deploy`, `test-triage`.
-- [x] Commands: `/check`, `/test`, `/docs`, `/api`, `/release`, `/pilot-status`, `/db-schema`.
-- [x] Subagents: `explorer`, `reviewer`, `test-runner`, `docs-writer`.
-- [x] `scripts/check.ps1` — единая проверка ruff + pytest + typecheck.
-- [x] `opencode.json`: `compaction.prune`, `watcher.ignore`, запрет чтения `docs/word`, `node_modules`, `.venv`, `backups`, `.env`.
-- [x] MinGit 2.56 добавлен в пользовательский `PATH`.
-- [x] Context7 MCP подключён; ключ сохранён в User env и проверен (API 200).
+- [x] Skills, команды, подагенты и `scripts/check.ps1`.
+- [x] Агрессивный пакет OpenCode: `model=opencode/deepseek-v4.1-flash-free`;
+  `browser*`/`opencode*` выключены, добавлен `@browser`;
+  подагенты `explorer`/`test-runner`/`docs-writer` — на бесплатной модели;
+  команды `/check`, `/test`, `/docs`, `/api`, `/release`, `/db-schema`,
+  `/pilot-status` — `subtask`;
+  безопасный bash-allowlist; `task`-ограничения; лимиты `steps`;
+  read-deny для секретов; расширенный watcher.
+- [x] Глобальный `opencode.json` исправлен; зависавший plugin `opencode-puter-auth`
+  убран из автозагрузки.
+- [x] Диагностика БД: локальная `opencode.db` — V2 (`session_v2`, 50 миграций,
+  9 сессий), CLI `1.19.4` — V1, поэтому `opencode db/models` падают.
+  Backup БД сделан; destructive-действия не выполнялись.
+- [ ] Согласовать CLI с V2 (`opencode upgrade --major`) — отдельное решение.
 - [x] API не изменялся; версия остаётся `0.9.0`.
 
 ## Этап 3 — расширение
-- [~] Электронный журнал: базовое API расписания, оценок и посещаемости готово; UI и расширения — далее.
-- [ ] Ограничить сводку ступени для ученика/родителя своим классом/ребёнком (сейчас доступны агрегаты и список групп всей школы без ПДн обучающихся).
+- [~] Электронный журнал: API расписания, оценок и посещаемости; UI — далее.
+- [ ] Ограничить сводку ступени своим классом/ребёнком.
 - [ ] Родительский кабинет и GPS.
 - [ ] Мессенджер и видео.
-- [~] Документы и секретариат: API заявок и клиент готовы; UI, шаблоны и подпись — далее.
+- [~] Документы: API заявок и клиент готовы; UI и подпись — далее.
 - [ ] Методист и AI-валидация.
-- [~] Психолог и безопасность: API, согласия, инциденты и геолокация готовы; UI и чат — далее.
+- [~] Психолог и безопасность: API, согласия, инциденты, геолокация; UI и чат — далее.
 - [ ] Иерархия администраторов.
 
 ## Этап 4 — мобильные клиенты
-- [ ] Flutter Android.
-- [ ] Flutter iOS.
+- [ ] Flutter Android/iOS.
 - [ ] Offline sync.
 - [ ] Push, Force Update.
 - [ ] Публикация в сторах.
