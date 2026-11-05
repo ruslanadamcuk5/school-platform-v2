@@ -2,7 +2,7 @@
 
 > Сгенерировано `scripts/gen_codemap.py`. Не редактировать вручную.
 > Дата генерации: 05.11.2026.
-> Backend: 74 файлов; tests: 19; frontend: 28.
+> Backend: 74 файлов; tests: 19; frontend: 31.
 
 ## Как пользоваться
 1. Найдите домен в таблице.
@@ -91,9 +91,9 @@
 | Файл | Строк | Экспорты |
 |---|---:|---|
 | `frontend/src/access/AccessContext.tsx` | 149 | AccessProvider, useAccess |
-| `frontend/src/api/client.ts` | 1699 | API_BASE, API_ORIGIN, api, getAccessToken, getRefreshToken, getStoredUser, storeSession, storeUser, clearSession, apiErrorMessage (+103) |
-| `frontend/src/api/types.ts` | 1151 | Role, ScopeType, User, TokenPair, Service, EffectiveService, MyServices, Permission, PermissionList, EffectivePermission (+96) |
-| `frontend/src/App.tsx` | 216 | App, UnauthorizedPage |
+| `frontend/src/api/client.ts` | 1732 | API_BASE, API_ORIGIN, api, getAccessToken, getRefreshToken, getStoredUser, storeSession, storeUser, clearSession, apiErrorMessage (+106) |
+| `frontend/src/api/types.ts` | 1172 | Role, ScopeType, User, TokenPair, Service, EffectiveService, MyServices, Permission, PermissionList, EffectivePermission (+99) |
+| `frontend/src/App.tsx` | 231 | App, UnauthorizedPage |
 | `frontend/src/auth/AuthContext.tsx` | 109 | AuthProvider, useAuth |
 | `frontend/src/auth/ProtectedRoute.tsx` | 26 | ProtectedRoute |
 | `frontend/src/components/ui.tsx` | 370 | Button, IconButton, Card, Badge, Spinner, EmptyState, ErrorAlert, Toggle, PageHeader, StatCard (+2) |
@@ -116,8 +116,11 @@
 | `frontend/src/pages/OnboardingPage.tsx` | 434 | OnboardingPage |
 | `frontend/src/pages/OnboardingReportsPage.tsx` | 546 | OnboardingReportsPage |
 | `frontend/src/pages/ProfilePage.tsx` | 419 | ProfilePage |
+| `frontend/src/pages/SafetyPage.test.tsx` | 174 | — |
+| `frontend/src/pages/SafetyPage.tsx` | 2122 | SafetyPage |
 | `frontend/src/pages/ServicePlaceholderPage.tsx` | 439 | ServicePlaceholderPage |
 | `frontend/src/pages/ServicesPage.tsx` | 552 | ServicesPage |
+| `frontend/src/test/setup.ts` | 6 | — |
 
 ## Tests
 | Файл | Строк | Тестов |

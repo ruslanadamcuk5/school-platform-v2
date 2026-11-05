@@ -36,9 +36,21 @@
 - [x] UI `/safety` проверен headless Edge под school_admin: вход, 6 вкладок,
   геолокация off, анонимность on, консоль/сеть без ошибок; `404 favicon.ico`
   устранён.
-- [x] Документы: ШК-07-01 — 1.1, журнал — 1.9, ШК-10-19 — 1.3;
-  ШК-03-06 — 1.6; DOCX `v0.9.0` пересобран (47 + combined).
-- [x] Коммиты `b288138`, `0dfc629`, `165cf70`, `385045f`; push в `origin/main`.
+- [x] Документы: ШК-07-01 — 1.2, журнал — 2.0, ШК-10-19 — 1.4;
+  ШК-03-06 — 1.7; DOCX `v0.9.0` пересобран (47 + combined).
+- [x] Коммиты `b288138`, `0dfc629`, `165cf70`, `385045f`, `c46bed1`,
+  `3478d3a`, `95c6bca`; push в `origin/main`.
+
+## Стабилизация 0.9.0 (05.11.2026)
+- [x] Playwright E2E: `frontend/e2e`, env-логин, storage state gitignored;
+  4 read-only сценария на пилоте — passed.
+- [x] React Router `7.18.5`; удалены `future`-флаги; typecheck, Vitest, build
+  и E2E зелёные; production-аудит — 0.
+- [x] Деплой router-сборки: `index-BkTs77yj.js`, backup
+  `dist.pre-router7-20261105T124346Z`.
+- [x] Restore-drill: временный PostgreSQL 17.11, `RESTORE_EXIT=0` за 6,1 с;
+  78 таблиц / 14 схем; `alembic=0010_safety`; users=217, audit=99.
+- [x] `opencode.json`: build steps увеличены с 50 до 200.
 
 ## Этап 2.18 — безопасность и психологическая поддержка
 - [x] Миграция `0010_safety`: обращения, инциденты, геолокация, согласия,

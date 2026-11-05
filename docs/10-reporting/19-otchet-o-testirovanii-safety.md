@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-10-19 |
-| Версия | 1.3 |
+| Версия | 1.4 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 | Проект | ЕОРП «ВЕКТОР» |
@@ -76,6 +76,9 @@
 | 33 | Пилот | Новый `frontend/dist` доставлен, `/safety` и JS/CSS отдают `200`; read-only маршруты `safety` — `200` | Smoke-проверка |
 | 34 | Пилот, UI | Вход school_admin, `/safety` показывает «сервис включён», доступны все 6 вкладок, геолокация off, анонимные обращения on; ошибок консоли, page errors и неуспешных ответов нет | UI-smoke, headless Edge |
 | 35 | Пилот, favicon | `/favicon.svg` отдаёт `200 image/svg+xml`; ошибка `404 favicon.ico` устранена | Smoke-проверка |
+| 36 | E2E | Playwright: вход, `/safety`, 6 вкладок, настройки и клиентская навигация | 4 passed |
+| 37 | React Router 7 | `react-router-dom` 7.18.5; typecheck, Vitest, build и E2E после обновления | Проверки зелёные |
+| 38 | Backup | Дамп восстановлен во временный PostgreSQL 17.11; схема, `alembic_version` и ключевые таблицы проверены | `RESTORE_EXIT=0`, 6,1 с |
 
 ## 4. Автоматические проверки
 
@@ -88,6 +91,9 @@ frontend: npm run build — успешно
 alembic offline SQL: 0009_document_requests -> 0010_safety — успешно
 OpenAPI: 172 пути, 232 операции
 UI smoke: headless Edge — вход, /safety, 6 вкладок, настройки; 0 ошибок
+Playwright E2E: 4 passed (пилот, read-only)
+npm audit --omit=dev: 0 vulnerabilities
+restore-drill: RESTORE_EXIT=0, 6.1 s, 78 tables / 14 schemas
 ```
 
 Новые и расширенные тесты:
@@ -117,6 +123,9 @@ UI smoke: headless Edge — вход, /safety, 6 вкладок, настрой�
    подключены.
 7. Очистка по срокам вызывается вручную или планировщиком; фоновое задание
    пока не настроено.
+8. Restore-drill выполнен во временном PostgreSQL без `pgvector`:
+   `CREATE EXTENSION vector` исключён, таблицы и данные восстановлены без
+   ошибок. Полная проверка с расширением — на контуре с `pgvector`.
 
 ## 6. Вывод
 
@@ -129,3 +138,5 @@ production build. Миграция `0010_safety` применена на пил�
 сервис активирован для `pilot-school`, глобальная геолокация выключена до
 отдельного решения. UI `/safety` проверен под school_admin: все вкладки
 доступны, консоль и сеть без ошибок; favicon отдаётся корректно.
+Playwright E2E — 4 passed; React Router обновлён до 7.18.5 с чистым
+production-аудитом; backup восстановлен во временном PostgreSQL за 6,1 с.

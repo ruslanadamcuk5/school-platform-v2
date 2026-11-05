@@ -23,23 +23,23 @@
 | ШК-03-03 | API пилотного контура | 0.15 | 05.11.2026 | 40.6 | `docs/03-architecture/03-api.md` |
 | ШК-03-04 | Микросервисная архитектура платформы | 1.1 | 03.11.2026 | 16.0 | `docs/03-architecture/04-mikroservisy.md` |
 | ШК-03-05 | Группы пользователей и иерархические права | 1.1 | 03.11.2026 | 13.0 | `docs/03-architecture/05-gruppy-i-prava.md` |
-| ШК-03-06 | Веб-клиент и личный кабинет | 1.6 | 05.11.2026 | 20.8 | `docs/03-architecture/06-web-client.md` |
+| ШК-03-06 | Веб-клиент и личный кабинет | 1.7 | 05.11.2026 | 21.0 | `docs/03-architecture/06-web-client.md` |
 | ШК-03-07 | Обучение работе в платформе | 1.1 | 03.11.2026 | 13.0 | `docs/03-architecture/07-obuchenie-rabote-v-platforme.md` |
 | ШК-03-08 | Аналитика школы | 1.0 | 03.11.2026 | 4.4 | `docs/03-architecture/08-analitika-shkoly.md` |
 | ШК-03-09 | Ступени образования | 1.4 | 04.11.2026 | 32.0 | `docs/03-architecture/09-stupeni-obrazovaniya.md` |
 | ШК-04-01 | Модель данных | 0.7 | 05.11.2026 | 27.3 | `docs/04-data/01-model-dannyh.md` |
 | ШК-04-02 | Модель данных: группы, права и реестр сервисов | 1.0 | 30.10.2026 | 9.6 | `docs/04-data/02-model-grupp-prav-i-servisov.md` |
 | ШК-05-01 | Концепция информационной безопасности | 0.3 | 05.11.2026 | 12.4 | `docs/05-security/01-koncepciya-ib.md` |
-| ШК-06-01 | Стратегия тестирования | 0.1 | 27.10.2026 | 7.3 | `docs/06-testing/01-strategiya-testirovaniya.md` |
+| ШК-06-01 | Стратегия тестирования | 0.2 | 05.11.2026 | 7.6 | `docs/06-testing/01-strategiya-testirovaniya.md` |
 | ШК-06-02 | Программа и методика испытаний | 0.6 | 04.11.2026 | 12.4 | `docs/06-testing/02-programma-i-metodika-ispytaniy.md` |
-| ШК-07-01 | Развёртывание и эксплуатация | 1.1 | 05.11.2026 | 21.4 | `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md` |
+| ШК-07-01 | Развёртывание и эксплуатация | 1.2 | 05.11.2026 | 25.0 | `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md` |
 | ШК-08-01 | План разработки | 0.4 | 04.11.2026 | 12.7 | `docs/08-roadmap/01-plan-razrabotki.md` |
 | ШК-08-02 | Детальный план работ | 0.4 | 04.11.2026 | 11.3 | `docs/08-roadmap/02-detalnyy-plan-rabot.md` |
 | ШК-09-01 | Реестр нормативных документов | 0.1 | 27.10.2026 | 8.8 | `docs/09-normative/01-reestr-normativnyh-dokumentov.md` |
 | ШК-10-01 | Шаблон отчёта о разработке | 0.1 | 27.10.2026 | 2.2 | `docs/10-reporting/01-shablon-otcheta-o-razrabotke.md` |
 | ШК-10-02 | Шаблон отчёта о тестировании | 0.1 | 27.10.2026 | 2.5 | `docs/10-reporting/02-shablon-otcheta-o-testirovanii.md` |
 | ШК-10-03 | Журнал рисков | 0.1 | 27.10.2026 | 2.3 | `docs/10-reporting/03-zhurnal-riskov.md` |
-| ШК-10-04 | Журнал изменений | 1.9 | 05.11.2026 | 37.6 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
+| ШК-10-04 | Журнал изменений | 2.0 | 05.11.2026 | 40.3 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
 | ШК-10-06 | Отчёт о завершении этапа 1 | 0.1 | 27.10.2026 | 5.7 | `docs/10-reporting/06-otchet-o-zavershenii-etapa-1.md` |
 | ШК-10-07 | Отчёт о тестировании API учебного контента (LMS) | 0.1 | 29.10.2026 | 3.9 | `docs/10-reporting/07-otchet-o-testirovanii-lms-api.md` |
 | ШК-10-08 | Отчёт о тестировании API тестов и работ (assessment) | 0.1 | 29.10.2026 | 5.0 | `docs/10-reporting/08-otchet-o-testirovanii-assessment-api.md` |
@@ -53,7 +53,7 @@
 | ШК-10-16 | Отчёт о тестировании практики и договоров с предприятиями | 1.0 | 04.11.2026 | 7.4 | `docs/10-reporting/16-otchet-o-testirovanii-praktiki-i-dogovorov.md` |
 | ШК-10-17 | Отчёт о тестировании уведомлений communication | 1.0 | 04.11.2026 | 5.5 | `docs/10-reporting/17-otchet-o-testirovanii-uvedomleniy.md` |
 | ШК-10-18 | Отчёт о тестировании запросов документов | 1.0 | 04.11.2026 | 6.2 | `docs/10-reporting/18-otchet-o-testirovanii-zaprosov-dokumentov.md` |
-| ШК-10-19 | Отчёт о тестировании сервиса безопасности и психологической поддержки | 1.3 | 05.11.2026 | 10.4 | `docs/10-reporting/19-otchet-o-testirovanii-safety.md` |
+| ШК-10-19 | Отчёт о тестировании сервиса безопасности и психологической поддержки | 1.4 | 05.11.2026 | 12.4 | `docs/10-reporting/19-otchet-o-testirovanii-safety.md` |
 | ШК-10-20 | Отчёт об оптимизации OpenCode: экономия токенов и ускорение | 1.0 | 05.11.2026 | 11.0 | `docs/10-reporting/20-otchet-ob-optimizacii-opencode.md` |
 | ШК-11-01 | Правила OpenCode и пошаговые промпты | 0.3 | 05.11.2026 | 13.2 | `docs/11-opencode/01-pravila-i-prompty.md` |
 |  | Отчёт о завершении этапа 0 |  | 27.10.2026 | 8.5 | `docs/10-reporting/05-otchet-o-zavershenii-etapa-0.md` |

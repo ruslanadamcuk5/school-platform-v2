@@ -1,35 +1,27 @@
 # Active Context
 
 ## Текущий этап
-**2.18. Безопасность и психологическая поддержка — завершён.
-2.19. Экономия токенов и OpenCode — завершён.**
-Дата: 2026-11-05. Версия API/frontend: `0.9.0`.
+**2.18 safety — завершён; 2.19 OpenCode — завершён; стабилизация 0.9.0.**
+Дата: 2026-11-05. API/frontend: `0.9.0`.
 
 ## Состояние
-- Пилот: `0.9.0`; `/health` — `ok`, `database=ok`, `jwt_ready=true`;
-  head `0010_safety`; backup `20261105T080100Z`.
-- Safety UI: `dist` с `index-CAJYbBBE.js`, `index-CrDWvJ6z.css`,
-  `favicon.svg`; прежний — `dist.pre-favicon-20261105T113013Z`; UI под
-  school_admin проверен (6 вкладок, геолокация off, консоль/сеть чисто).
-- `safety` включён: country-активация уже была `enabled=true`; добавлена
-  school-активация `pilot-school`; `/me/services` — `enabled=true`,
-  `source=activation`.
-- Настройки safety: 365/1095 дней, порог 16 лет, анонимность разрешена,
+- Пилот: `/health` — `ok`, `database=ok`, `jwt_ready=true`; head `0010_safety`.
+- Safety UI: `dist` с `index-BkTs77yj.js`, `index-CrDWvJ6z.css`, `favicon.svg`;
+  прежний — `dist.pre-router7-20261105T124346Z`; UI под school_admin: 6 вкладок,
+  геолокация off, консоль/сеть чисто.
+- `safety` включён: school-активация `pilot-school`; `/me/services` —
+  `enabled=true`, `source=activation`; 365/1095 дней, порог 16, анонимность on,
   `geolocation_enabled=false` до юррешения и mobile consent-flow.
-- Backup активации:
-  `backups/school-platform-v2/20261105T103431Z-safety-activation/` — дамп БД,
-  архив прежнего dist, снимок активаций и настроек.
-- Локально: backend `184 passed`; Ruff чистый; frontend typecheck/build
-  успешны; Vitest — 4 теста `/safety`; OpenAPI `172` пути / `232` операции.
-- Документы: v0.9.0; ШК-07-01 — 1.1; журнал — 1.9; ШК-10-19 — 1.3;
-  ШК-03-06 — 1.6; DOCX пересобран.
-- Аудит: 8 предупреждений (2 critical — dev Vitest/Vite); production —
-  2 moderate в `react-router` 6.x. Мажорные обновления — отдельным циклом.
-- OpenCode: профиль `deepseek-v4.1-flash-free`; `browser*`/`opencode*`
-  выключены, для UI есть `@browser`; подагенты на бесплатной модели; команды
-  через `subtask`; bash-allowlist; лимиты шагов; read-deny секретов.
-- `AGENTS.md` — 6,4 КБ; `progress.md` сжат, история в `archive/progress-2026.md`.
-- OpenCode DB: V2 против CLI `1.19.4` (V1); backup есть, destructive не было.
+- Backup активации: `20261105T103431Z-safety-activation` (дамп, dist, настройки).
+- Restore-drill: временный PG 17.11, `RESTORE_EXIT=0` за 6,1 с; 78 таблиц /
+  14 схем; `alembic=0010_safety`; users=217, audit=99; без `pgvector`.
+- Frontend: React Router `7.18.5`; Playwright E2E 4 passed; Vitest 4; typecheck и
+  build ok; `npm audit --omit=dev` — 0; dev Vitest/Vite — отдельным циклом.
+- Backend: 184 passed; Ruff чистый; OpenAPI 172 пути / 232 операции.
+- Документы: ШК-03-06 1.7, ШК-06-01 0.2, ШК-07-01 1.2, журнал 2.0,
+  ШК-10-19 1.4; DOCX пересобран.
+- OpenCode: build steps 200; `browser*`/`opencode*` выключены; `@browser`;
+  секреты read-deny; `AGENTS.md` 6,4 КБ.
 
 ## Инварианты
 - Не трогать `C:\Users\adamrv\Documents\edu-math`, его БД и процессы.
@@ -43,11 +35,11 @@
 - Любое изменение API — в `docs/10-reporting/04-zhurnal-izmeneniy.md`.
 
 ## Следующие задачи
-1. E2E Playwright, i18n, Redis-кеш прав, RLS; затем UI уведомлений/документов.
-2. Мобильный consent-flow и отдельное юридическое решение по геолокации.
-3. Регрессионный цикл для мажорных `react-router-dom` 7, `vitest` 5,
-   `vite` 8; `audit fix --force` не применять.
-4. При необходимости согласовать OpenCode CLI с V2 (`opencode upgrade --major`).
+1. Redis-кеш прав/активаций и RLS/изоляция по `school_id`.
+2. i18n, UI уведомлений и заявок документов.
+3. Мобильный consent-flow и отдельное юридическое решение по геолокации.
+4. Мажорные `vitest` 5 / `vite` 8 — отдельным регрессионным циклом.
+5. При необходимости согласовать OpenCode CLI с V2.
 
 ## Навигация
 - `docs/INDEX.md` — документация; `docs/CODEMAP.md` — код;

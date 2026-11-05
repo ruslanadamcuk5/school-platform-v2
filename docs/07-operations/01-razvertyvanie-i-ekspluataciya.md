@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 1.1 |
+| Версия | 1.2 |
 | Статус | Рабочий |
 | Дата | 05.11.2026 |
 
@@ -271,6 +271,38 @@ npm run dev
 - Откат: вернуть `dist.pre-favicon-20261105T113013Z` или распаковать архив;
   backend и миграции не затрагивались.
 
+### 3.4.7. React Router 7.18.5 и E2E (05.11.2026)
+- `react-router-dom` обновлён с 6.x до `7.18.5`; удалены устаревшие
+  `future`-флаги `BrowserRouter`/`MemoryRouter`.
+- Проверки: `tsc --noEmit`, Vitest — 4 passed, production build; новый JS —
+  `index-BkTs77yj.js`.
+- `npm audit --omit=dev` — 0 уязвимостей; dev-предупреждения Vitest/Vite
+  остаются и требуют отдельного мажорного цикла.
+- Добавлен Playwright-smoke: `frontend/e2e`, `npm run test:e2e`; вход через
+  `PILOT_LOGIN`/`PILOT_PASSWORD`, storage state в gitignored
+  `frontend/e2e/.auth/user.json`.
+- E2E на пилоте: 4 passed — вход, `/safety`, 6 вкладок, настройки
+  (геолокация off, анонимность on), клиентская навигация.
+- Прежний dist: `dist.pre-router7-20261105T124346Z`; архив —
+  `backups/school-platform-v2/dist-pre-router7-20261105T124346Z.tgz`.
+- Откат: вернуть прежний dist или распаковать архив; backend и миграции
+  не затрагивались.
+
+### 3.4.8. Проверка восстановления backup (05.11.2026)
+- Использован дамп
+  `backups/school-platform-v2/20261105T103431Z-safety-activation/db-pre-safety-activation-20261105T103431Z.dump`.
+- Локально развёрнут временный PostgreSQL 17.11 (переносимые бинарники,
+  без службы и без production), восстановление — `pg_restore --no-owner
+  --no-privileges --exit-on-error`.
+- Результат: `RESTORE_EXIT=0`, время — 6,1 с; 78 таблиц в 14 схемах;
+  `alembic_version` — `0010_safety`; `iam.users` — 217, `audit.events` — 99,
+  `org.schools` — 3, `system.services` — 19; размер БД — 17 МБ.
+- Ограничение: локальный PostgreSQL не содержит расширение `pgvector`,
+  поэтому `CREATE EXTENSION vector` исключён из тестового TOC; таблицы и
+  данные restored без ошибок. Полная проверка с `pgvector` — в контуре,
+  где расширение установлено.
+- Временный кластер остановлен и удалён; production не затрагивался.
+
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет
 аттестованный ЦОД для промышленной эксплуатации. Для промышленного контура
@@ -278,13 +310,11 @@ Alwaysdata подходит для пилота и демонстрации, н�
 В пилоте нет Redis, фоновых задач, rate limiting и WAF уровня приложения;
 внешние AI-сервисы выключены. Пароль супер-администратора хранится в
 `backend/.env` и должен быть сменён после передачи заказчику.
-- `npm audit` на 05.11.2026: всего 8 предупреждений (2 critical, 1 high,
-  5 moderate), из них production-зависимости — 2 moderate в
-  `react-router`/`react-router-dom` 6.x; critical/high относятся к dev-цепочке
-  Vitest/Vite и не попадают в production bundle. Исправление требует
-  мажорных обновлений (`react-router-dom` 7.18.5, `vitest` 5.1.0,
-  `vite` 8.3.6); `npm audit fix --force` не применять без отдельного
-  регрессионного цикла.
+- `npm audit --omit=dev` на 05.11.2026 после React Router 7.18.5 — 0
+  уязвимостей. Остаются dev-предупреждения Vitest/Vite (3 moderate, 1 high,
+  2 critical); они не попадают в production bundle, исправление требует
+  мажорных обновлений `vitest` 5.x / `vite` 8.x отдельным циклом.
+  `npm audit fix --force` не применять.
 
 ## 4. Промышленная инфраструктура
 - Kubernetes или отказоустойчивый кластер ВМ.
