@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -68,6 +70,23 @@ class Settings(BaseSettings):
     seed_school_name: str = "Пилотная школа «ВЕКТОР»"
     seed_school_city: str = "Минск"
     seed_academic_year: str = "2026/2027"
+
+    @model_validator(mode="after")
+    def validate_redis_tls(self) -> Settings:
+        """Remote Redis in pilot/production must use TLS.
+
+        Loopback is allowed for local development even when the local ``.env``
+        carries the pilot environment name.
+        """
+        if self.app_env.lower() in {"pilot", "production"} and self.redis_url:
+            if not self.redis_url.startswith("rediss://"):
+                host = (urlparse(self.redis_url).hostname or "").lower()
+                if host not in {"localhost", "127.0.0.1", "::1"}:
+                    raise ValueError(
+                        "REDIS_URL must use rediss:// for remote hosts when "
+                        "APP_ENV is pilot or production"
+                    )
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -5,6 +5,7 @@ import uuid
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 from redis.exceptions import RedisError
 
 from app.core import cache as cache_module
@@ -16,6 +17,7 @@ from app.core.cache import (
     reset_cache_for_tests,
     set_json,
 )
+from app.core.config import Settings
 from app.services import access as access_module
 from app.services.access import (
     EffectivePermissions,
@@ -82,6 +84,26 @@ async def test_cache_is_disabled_without_url(monkeypatch) -> None:
     assert await access_version() is None
     await set_json("key", {"value": 1})
     assert await get_json("key") is None
+
+
+def test_pilot_rejects_remote_plain_redis(monkeypatch) -> None:
+    monkeypatch.setenv("APP_ENV", "pilot")
+    monkeypatch.setenv("REDIS_URL", "redis://redis.example:6379/0")
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_pilot_accepts_loopback_and_tls_redis(monkeypatch) -> None:
+    monkeypatch.setenv("APP_ENV", "pilot")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    assert Settings().redis_url is not None
+
+    monkeypatch.setenv("REDIS_URL", "rediss://user:secret@redis.example:6380/0")
+    assert Settings().redis_url is not None
+
+    monkeypatch.setenv("REDIS_URL", "")
+    assert Settings().redis_url == ""
 
 
 @pytest.mark.asyncio

@@ -36,7 +36,7 @@
 | `backend/app/api/v1/system.py` | 59 | — | build_health:19, health:39, meta:47 |
 | `backend/app/core/__init__.py` | 1 | — | — |
 | `backend/app/core/cache.py` | 230 | CacheClient:32, NullCache:46, RedisCache:65 | _prefix:90, _version_key:94, _available:98, _mark_failure:102, _mark_success:110, get_cache:116, close_cache:134, reset_cache_for_tests:145, access_cache_key:152, access_version:156 (+4) |
-| `backend/app/core/config.py` | 101 | Settings:18 | get_settings:97 |
+| `backend/app/core/config.py` | 120 | Settings:20 | get_settings:116 |
 | `backend/app/core/education.py` | 226 | EducationLevelInfo:102 | normalize_level:206, level_for_grade:214, default_levels_for_institution:219, level_info:225 |
 | `backend/app/core/scopes.py` | 51 | — | — |
 | `backend/app/core/security.py` | 166 | TokenError:20 | hash_password:24, _verify_legacy_pbkdf2:30, verify_password:51, needs_rehash:62, _read_key:74, _private_key:82, _public_key:89, create_access_token:95, decode_access_token:125, new_refresh_token:141 (+4) |
@@ -130,7 +130,7 @@
 | `backend/tests/test_access_resolution.py` | 166 | 13 |
 | `backend/tests/test_analytics.py` | 64 | 4 |
 | `backend/tests/test_assessment_api.py` | 366 | 9 |
-| `backend/tests/test_cache.py` | 182 | 7 |
+| `backend/tests/test_cache.py` | 204 | 9 |
 | `backend/tests/test_communication.py` | 73 | 7 |
 | `backend/tests/test_documents.py` | 71 | 7 |
 | `backend/tests/test_education_levels.py` | 348 | 16 |

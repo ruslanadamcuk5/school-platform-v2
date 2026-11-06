@@ -56,10 +56,17 @@
 - [x] `opencode.json`: build steps увеличены с 50 до 200.
 - [x] Redis-кеш прав/активаций: `REDIS_URL`, TTL 60 с, версионная
   инвалидация, fail-open, circuit breaker; локальный Redis 8.10.3,
-  `scripts/redis-local.ps1`, 7 тестов кеша, реальный smoke.
-- [x] Backend `191 passed`, Ruff чистый; OpenAPI без изменений.
+  `scripts/redis-local.ps1`, 9 тестов кеша, реальный smoke.
+- [x] В pilot/production удалённый Redis обязан быть `rediss://`; plaintext
+  loopback разрешён только для локальной разработки.
+- [x] Backend `193 passed`, Ruff чистый; OpenAPI без изменений.
+- [x] План: обязательное администрирование кеша и эксплуатационных настроек
+  республиканским администратором (ШК-08-01 0.6, ШК-08-02 0.5).
+- [x] Backend с кешем загружен на пилот; backup
+  `20261106T053548Z-redis-cache`; `REDIS_URL` временно пуст.
+- [ ] Managed Redis TLS: нужен внешний endpoint/ACL; до него кеш выключен.
+- [ ] Restart пилота: нет API-токена Alwaysdata и подключённого браузера.
 - [ ] RLS по `school_id`: отдельный цикл, контекст транзакций и 78 таблиц.
-- [ ] Redis на пилоте/production: нужен managed-инстанс с TLS и ACL.
 - [ ] Мобильный consent-flow и геолокация: ждут юридического решения.
 
 ## Этап 2.18 — безопасность и психологическая поддержка
