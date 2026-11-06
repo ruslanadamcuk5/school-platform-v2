@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-10-04 |
-| Версия | 2.5 |
+| Версия | 2.6 |
 | Статус | Рабочий |
 | Дата | 06.11.2026 |
 
@@ -92,6 +92,7 @@
 | 73 | 06.11.2026 | Разработчик | Backend/Инфраструктура | Добавлен опциональный Redis-кеш эффективных прав и активаций: `REDIS_URL`, TTL 60 с, версионная инвалидация, таймаут 1 с и fallback в PostgreSQL; локальный Redis 8.10.3, `scripts/redis-local.ps1`, тесты кеша | Снизить нагрузку на PostgreSQL и подготовить инфраструктуру к республиканскому масштабу | `pytest tests/test_cache.py` — 7 passed; реальный Redis — `PING`, запись/чтение, bump версии; `REDIS_URL` пуст — кеш выключен; пилот не переключён, миграций нет | Утверждено |
 | 74 | 06.11.2026 | Разработчик | План/Инфраструктура | Зафиксировано обязательное требование: управление кешем (режимы, TLS, TTL, префикс, таймауты, fail-open, статус) и другими эксплуатационными настройками — в админ-консоли `superadmin` с аудитом и маскированием секретов; backend с кешем развёрнут на пилоте, managed Upstash Redis подключён по `rediss://`, `.env` с правами 600; backup `20261106T053548Z-redis-cache` и `20261106T062733Z-upstash-redis`; TLS-проверка запрещает plaintext для удалённого Redis в pilot/production | Подготовить управляемое включение кеша без SSH и исключить случайный plaintext | План ШК-08-01 0.7, ШК-08-02 0.5; 193 backend-теста, 9 тестов кеша; restart master 2931184; `cache_ping=true`, `connected_clients=2`, ключ версии создан; `/health` 200, `/docs` 200, старый сайт 200 | Утверждено |
 | 75 | 06.11.2026 | Разработчик | Админ-консоль | Реализован MVP эксплуатационных настроек кеша: `system.settings/cache.runtime`, API `GET/PATCH /api/v1/admin/settings/cache` и `POST /cache/test` только для `superadmin` (`system.settings.read/write`), аудит `platform.cache.settings.update`, маскирование `REDIS_URL`, валидация TTL/префикса/таймаутов, hot-reload безопасных параметров и экран `/admin/settings` | Требование управлять кешем без SSH и правки `.env` | `REDIS_URL` остаётся в env и не передаётся в браузер; endpoint меняется перезапуском; backend — 199 тестов, Ruff чистый; frontend typecheck, build и 7 тестов; пилот не перезапускался | Утверждено |
+| 76 | 06.11.2026 | DevOps | Пилот | Админ-консоль кеша развёрнута на `school-platform-v2.alwaysdata.net`: backup `20261106T124815Z-admin-cache-console` (дамп БД 583 КБ, архивы backend и dist, `MANIFEST.txt`), backend и новый `dist` (`index-CHCHwh94.js`, `index-BQb1wEQh.css`) доставлены, uWSGI перезапущен (master 3943074, worker 3970310), миграций нет — head `0010_safety` | Требование включить управление кешем в админ-консоли на пилоте | Smoke: `/health` 200/0.9.0, `/openapi.json` 174 пути/235 операций, `/admin/settings` 200, старый сайт 200; под `superadmin` GET `mode=managed-redis-tls`, `status=connected`, POST test `ok=true` (19,6 мс), секрет в ответах отсутствует, без токена — 401; откат — backup и `dist.pre-admin-cache-console-20261106T124815Z` | Утверждено |
 
 ## Шаблон записи
 | Поле | Значение |

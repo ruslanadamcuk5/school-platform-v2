@@ -15,10 +15,18 @@
 - [x] Тесты: `tests/test_platform_settings.py`, `test_cache.py`;
   `PlatformSettingsPage.test.tsx`; backend 199 passed, Ruff чистый;
   frontend typecheck, build и 7 тестов.
-- [x] Документы: ШК-03-03 0.16, ШК-07-01 1.7, ШК-08-01 0.8, ШК-08-02 0.6,
-  журнал 2.5; индексы пересобраны.
-- [ ] Доставить на пилот и проверить экран под `superadmin`; write-only
-  endpoint/секрет, MFA и подтверждение опасных изменений — далее.
+- [x] Документы: ШК-03-03 0.16, ШК-07-01 1.8, ШК-08-01 0.8, ШК-08-02 0.6,
+  журнал 2.6; индексы пересобраны.
+- [x] Доставлено на пилот: backup `20261106T124815Z-admin-cache-console`
+  (дамп 583 КБ, архивы backend/dist, `pg_restore -l` — 912 записей), новый
+  dist `index-CHCHwh94.js` / `index-BQb1wEQh.css`; прежний —
+  `dist.pre-admin-cache-console-20261106T124815Z`.
+- [x] uWSGI перезапущен (master 3943074, worker 3970310); `/health` 200/0.9.0,
+  `/openapi.json` 174 пути/235 операций, `/admin/settings` 200, старый сайт 200.
+- [x] Под `superadmin`: GET настроек кеша — `managed-redis-tls` / `connected`,
+  POST test — `ok=true` (19,6 мс), секрет в ответах отсутствует, без токена 401.
+- [ ] Далее: write-only endpoint/секрет, MFA, подтверждение опасных изменений,
+  история версий и остальные параметры плана 11.3.1.
 
 ## Пилот 0.9.0 — развёртывание
 - [x] Backup `backups/school-platform-v2/20261105T080100Z/` (БД и приложение).

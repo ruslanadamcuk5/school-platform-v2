@@ -11,7 +11,7 @@
 
 | Код | Документ | Версия | Дата | КБ | Путь |
 |---|---|---|---|---:|---|
-| ШК-00-01 | Реестр проектной документации | 0.9.1 | 06.11.2026 | 7.3 | `docs/00-register/01-register-dokumentacii.md` |
+| ШК-00-01 | Реестр проектной документации | 0.9.2 | 06.11.2026 | 7.3 | `docs/00-register/01-register-dokumentacii.md` |
 | ШК-01-01 | Концепция Единой образовательной республиканской платформы «ВЕКТОР» | 0.2 | 03.11.2026 | 7.6 | `docs/01-concept/01-koncepciya.md` |
 | ШК-02-01 | Техническое задание на создание ЕОРП «ВЕКТОР» | 0.3 | 03.11.2026 | 19.3 | `docs/02-tz/01-tehnicheskoe-zadanie.md` |
 | ШК-02-02 | Функциональные требования по ролям | 0.3 | 03.11.2026 | 25.8 | `docs/02-tz/02-funkcionalnye-trebovaniya-po-rolyam.md` |
@@ -32,14 +32,14 @@
 | ШК-05-01 | Концепция информационной безопасности | 0.4 | 06.11.2026 | 12.6 | `docs/05-security/01-koncepciya-ib.md` |
 | ШК-06-01 | Стратегия тестирования | 0.3 | 05.11.2026 | 7.7 | `docs/06-testing/01-strategiya-testirovaniya.md` |
 | ШК-06-02 | Программа и методика испытаний | 0.6 | 04.11.2026 | 12.4 | `docs/06-testing/02-programma-i-metodika-ispytaniy.md` |
-| ШК-07-01 | Развёртывание и эксплуатация | 1.7 | 06.11.2026 | 33.4 | `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md` |
+| ШК-07-01 | Развёртывание и эксплуатация | 1.8 | 06.11.2026 | 35.4 | `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md` |
 | ШК-08-01 | План разработки | 0.8 | 06.11.2026 | 15.5 | `docs/08-roadmap/01-plan-razrabotki.md` |
 | ШК-08-02 | Детальный план работ | 0.6 | 06.11.2026 | 12.9 | `docs/08-roadmap/02-detalnyy-plan-rabot.md` |
 | ШК-09-01 | Реестр нормативных документов | 0.1 | 27.10.2026 | 8.8 | `docs/09-normative/01-reestr-normativnyh-dokumentov.md` |
 | ШК-10-01 | Шаблон отчёта о разработке | 0.1 | 27.10.2026 | 2.2 | `docs/10-reporting/01-shablon-otcheta-o-razrabotke.md` |
 | ШК-10-02 | Шаблон отчёта о тестировании | 0.1 | 27.10.2026 | 2.5 | `docs/10-reporting/02-shablon-otcheta-o-testirovanii.md` |
 | ШК-10-03 | Журнал рисков | 0.1 | 27.10.2026 | 2.3 | `docs/10-reporting/03-zhurnal-riskov.md` |
-| ШК-10-04 | Журнал изменений | 2.5 | 06.11.2026 | 43.8 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
+| ШК-10-04 | Журнал изменений | 2.6 | 06.11.2026 | 44.7 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
 | ШК-10-06 | Отчёт о завершении этапа 1 | 0.1 | 27.10.2026 | 5.7 | `docs/10-reporting/06-otchet-o-zavershenii-etapa-1.md` |
 | ШК-10-07 | Отчёт о тестировании API учебного контента (LMS) | 0.1 | 29.10.2026 | 3.9 | `docs/10-reporting/07-otchet-o-testirovanii-lms-api.md` |
 | ШК-10-08 | Отчёт о тестировании API тестов и работ (assessment) | 0.1 | 29.10.2026 | 5.0 | `docs/10-reporting/08-otchet-o-testirovanii-assessment-api.md` |

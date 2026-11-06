@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 1.7 |
+| Версия | 1.8 |
 | Статус | Рабочий |
 | Дата | 06.11.2026 |
 
@@ -418,6 +418,33 @@ PostgreSQL; при сбое Redis действует fail-open и настраи
 Проверка: `pytest tests/test_platform_settings.py tests/test_cache.py -q`,
 `vitest run src/pages/PlatformSettingsPage.test.tsx`, затем открыть экран под
 `superadmin`, изменить TTL и нажать «Проверить подключение».
+
+### 3.4.12. Развёрнуто 06.11.2026 (админ-консоль кеша)
+- Создан backup
+  `/home/school-platform-v2/school-platform-v2/backups/school-platform-v2/20261106T124815Z-admin-cache-console/`:
+  дамп БД `db-pre-admin-cache-console-20261106T124815Z.dump` — 583 КБ,
+  архив прежнего backend — 211 КБ, архив прежнего `dist` — 172 КБ,
+  `MANIFEST.txt` с SHA-256. `pg_restore -l` читает 912 записей;
+  head — `0010_safety`, миграций в этом изменении нет.
+- Доставлены backend и `frontend/dist`; новый JS —
+  `index-CHCHwh94.js` (SHA-256
+  `235637198326d1c6d2a0bfc33d3ea7ce000c9468ba4506cf097dbdf07a1009e5`),
+  CSS — `index-BQb1wEQh.css`; прежний `dist` сохранён как
+  `frontend/dist.pre-admin-cache-console-20261106T124815Z`.
+- Сайт перезапущен graceful-перезагрузкой uWSGI: master `3943074`,
+  worker `3970310`. `.env`, `secrets/` и WSGI-адаптер не перезаписывались.
+- Smoke: `/health` — `200`, `version=0.9.0`, `database=ok`,
+  `jwt_ready=true`; `/openapi.json` — 174 пути и 235 операций, маршруты
+  `/api/v1/admin/settings/cache` и `/cache/test` присутствуют; `/`, `/docs`,
+  `/admin/settings`, `/robots.txt` — `200`; старый сайт
+  `virusadk.alwaysdata.net/healthz` — `200`.
+- Под `superadmin`: `GET /api/v1/admin/settings/cache` — `200`,
+  `mode=managed-redis-tls`, `status=connected`, `effective_enabled=true`,
+  TTL 60 с, cooldown 30 с; `POST /cache/test` — `200`, `ok=true`, задержка
+  19,6 мс. В ответах нет `redis://`/`rediss://`; без токена API отдаёт `401`.
+- Откат: остановить сайт, восстановить дамп БД, вернуть backend из архива и
+  `dist.pre-admin-cache-console-20261106T124815Z`, перезапустить сайт.
+  Откат миграций не требуется.
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет
