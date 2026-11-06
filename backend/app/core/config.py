@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     redis_cache_ttl_seconds: int = 60
     redis_key_prefix: str = "school-platform"
     redis_socket_timeout_seconds: float = 1.0
+    redis_failure_cooldown_seconds: float = 30.0
 
     # Initial seed. ADMIN_PASSWORD must be set before running the seed script.
     admin_login: str = "admin"

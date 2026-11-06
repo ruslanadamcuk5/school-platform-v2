@@ -6,6 +6,9 @@ import type {
   AnalyticsOverview,
   AppNotification,
   AssessmentType,
+  CacheSettings,
+  CacheSettingsUpdate,
+  CacheTestResult,
   City,
   Competency,
   CompetencyMatrix,
@@ -1728,5 +1731,25 @@ export async function purgeSafetyData(
     null,
     { params: { school_id: schoolId || undefined } },
   );
+  return data;
+}
+
+export async function fetchCacheSettings(): Promise<CacheSettings> {
+  const { data } = await api.get<CacheSettings>('/admin/settings/cache');
+  return data;
+}
+
+export async function updateCacheSettings(
+  payload: CacheSettingsUpdate,
+): Promise<CacheSettings> {
+  const { data } = await api.patch<CacheSettings>(
+    '/admin/settings/cache',
+    payload,
+  );
+  return data;
+}
+
+export async function testCacheSettings(): Promise<CacheTestResult> {
+  const { data } = await api.post<CacheTestResult>('/admin/settings/cache/test');
   return data;
 }

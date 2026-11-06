@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Search,
+  Settings2,
   UserCircle,
   Users,
   X,
@@ -117,6 +118,7 @@ function pageTitle(pathname: string, services: EffectiveService[]): string {
     '/safety': 'Безопасность',
     '/ai': 'AI-помощник',
     '/admin': 'Администрирование',
+    '/admin/settings': 'Эксплуатационные настройки',
   };
   if (map[pathname]) return map[pathname];
   if (pathname.startsWith('/onboarding/')) return 'Обучение работе';
@@ -252,7 +254,9 @@ export function AppLayout() {
             </>
           ) : null}
 
-          {can('iam.groups.read') || can('system.services.read') ? (
+          {can('iam.groups.read') ||
+          can('system.services.read') ||
+          can('system.settings.read') ? (
             <>
               <SectionLabel>Администрирование</SectionLabel>
               {can('iam.groups.read') ? (
@@ -271,6 +275,14 @@ export function AppLayout() {
                   icon={<Boxes className="h-4 w-4" />}
                   onNavigate={closeMobile}
                   onboardingNav="services"
+                />
+              ) : null}
+              {can('system.settings.read') ? (
+                <NavItem
+                  to="/admin/settings"
+                  label="Эксплуатационные настройки"
+                  icon={<Settings2 className="h-4 w-4" />}
+                  onNavigate={closeMobile}
                 />
               ) : null}
             </>

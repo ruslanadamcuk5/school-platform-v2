@@ -2,7 +2,7 @@
 
 > Сгенерировано `scripts/gen_codemap.py`. Не редактировать вручную.
 > Дата генерации: 06.11.2026.
-> Backend: 75 файлов; tests: 21; frontend: 31.
+> Backend: 78 файлов; tests: 22; frontend: 33.
 
 ## Как пользоваться
 1. Найдите домен в таблице.
@@ -17,6 +17,7 @@
 | `backend/app/api/deps.py` | 182 | — | get_current_user:27, require_roles:60, ensure_school_access:91, tenant_school_id:114, require_permission:127, require_service:152, ensure_scope_access:168 |
 | `backend/app/api/v1/__init__.py` | 1 | — | — |
 | `backend/app/api/v1/admin.py` | 215 | — | stats:27, list_users:86, create_user:140, audit_events:198 |
+| `backend/app/api/v1/admin_settings.py` | 161 | — | _probe:40, _as_out:49, get_cache_settings:80, update_cache_settings:95, test_cache_connection:142 |
 | `backend/app/api/v1/analytics.py` | 410 | — | _percent:50, _average:56, _csv_cell:62, build_class_csv:69, _build_overview:96, overview:363, export_csv:380 |
 | `backend/app/api/v1/assessment.py` | 1165 | — | _ensure_role:75, _now:83, _as_utc:87, _quiz_scope_ok:95, _ensure_quiz_scope:99, _ensure_assignment_owner:107, _load_quiz:117, _load_assignment:126, _quiz_out:141, _quiz_detail:147 (+24) |
 | `backend/app/api/v1/auth.py` | 134 | — | _client_ip:28, _user_agent:35, login:44, refresh:85, logout:117, me:133 |
@@ -30,13 +31,13 @@
 | `backend/app/api/v1/me.py` | 130 | — | _options:30, my_permissions:45, my_services:113 |
 | `backend/app/api/v1/onboarding.py` | 701 | — | _now:57, _step_out:61, _module_out:75, _progress_out:116, my_onboarding:138, my_module:197, start_my_module:216, complete_my_step:237, _managed_school_ids:254, _teacher_student_ids:298 (+7) |
 | `backend/app/api/v1/org.py` | 261 | — | list_regions:37, list_cities:47, list_schools:64, _validate_levels:74, create_school:100, update_school:162, get_school:210, list_classes:227, get_class:252 |
-| `backend/app/api/v1/router.py` | 44 | — | — |
+| `backend/app/api/v1/router.py` | 46 | — | — |
 | `backend/app/api/v1/safety.py` | 1074 | — | _now:82, _age_on:86, _is_minor:92, _load_safety_settings:104, _settings_scope:123, _get_school:133, _resolve_school_id:141, _assert_student_in_school:165, _assert_parent_link:184, _user_requester_role:202 (+19) |
 | `backend/app/api/v1/services.py` | 298 | — | _now:41, _resolve_scope:45, _fallback_services:60, _all_services:79, list_services:86, effective_services:99, get_service:156, get_activation:174, set_activation:202, delete_activation:276 |
 | `backend/app/api/v1/system.py` | 59 | — | build_health:19, health:39, meta:47 |
 | `backend/app/core/__init__.py` | 1 | — | — |
-| `backend/app/core/cache.py` | 230 | CacheClient:32, NullCache:46, RedisCache:65 | _prefix:90, _version_key:94, _available:98, _mark_failure:102, _mark_success:110, get_cache:116, close_cache:134, reset_cache_for_tests:145, access_cache_key:152, access_version:156 (+4) |
-| `backend/app/core/config.py` | 120 | Settings:20 | get_settings:116 |
+| `backend/app/core/cache.py` | 274 | CacheClient:37, NullCache:51, RedisCache:70 | _prefix:96, _version_key:100, _available:104, _mark_failure:108, _mark_success:118, get_cache:124, _close_cache_client:143, ensure_cache_runtime:155, apply_cache_runtime_settings:168, close_cache:175 (+7) |
+| `backend/app/core/config.py` | 121 | Settings:20 | get_settings:117 |
 | `backend/app/core/education.py` | 226 | EducationLevelInfo:102 | normalize_level:206, level_for_grade:214, default_levels_for_institution:219, level_info:225 |
 | `backend/app/core/scopes.py` | 51 | — | — |
 | `backend/app/core/security.py` | 166 | TokenError:20 | hash_password:24, _verify_legacy_pbkdf2:30, verify_password:51, needs_rehash:62, _read_key:74, _private_key:82, _public_key:89, create_access_token:95, decode_access_token:125, new_refresh_token:141 (+4) |
@@ -46,7 +47,7 @@
 | `backend/app/db/pilot_data.py` | 3563 | Person:630 | _person:640, _login_slug:689, _demo_password:696, _repair_demo_logins:711, _get_or_create_school:734, _get_or_create_user:802, _get_or_create_class:841, _get_or_create_program:907, _ensure_groups:946, _attach:1007 (+25) |
 | `backend/app/db/seed.py` | 569 | — | _upsert_geography:140, _upsert_permissions:175, _upsert_services:201, _upsert_country_activations:232, _get_or_create_group:265, _grant_permissions:305, _add_membership:344, seed:368 |
 | `backend/app/db/session.py` | 38 | — | get_session:31 |
-| `backend/app/main.py` | 161 | — | lifespan:31, request_headers_middleware:91, robots:110, root:115, root_health:130 |
+| `backend/app/main.py` | 165 | — | lifespan:32, request_headers_middleware:95, robots:114, root:119, root_health:134 |
 | `backend/app/models/__init__.py` | 157 | — | — |
 | `backend/app/models/ai.py` | 112 | AISetting:29, AIRequest:62, AIExplanation:90 | — |
 | `backend/app/models/analytics.py` | 183 | Attempt:30, TopicProgress:74, MethodProgress:122, DailyAnswer:164 | — |
@@ -76,9 +77,10 @@
 | `backend/app/schemas/lms.py` | 158 | SubjectOut:10, MethodOut:24, LessonOut:37, TopicOut:47, TextbookLinkOut:69, TopicDetailOut:79, TopicList:85, TextbookOut:92, TextbookTopicOut:109, TextbookDetailOut:117 (+5) | — |
 | `backend/app/schemas/onboarding.py` | 117 | OnboardingStepOut:10, OnboardingModuleOut:22, OnboardingStageOut:45, OnboardingOverviewOut:55, OnboardingProgressOut:71, OnboardingReportSummaryOut:83, OnboardingReportUserOut:96, OnboardingReportUsersOut:112 | — |
 | `backend/app/schemas/org.py` | 102 | SchoolCreate:14, SchoolUpdate:33, SchoolOut:48, RegionOut:66, CityOut:75, ClassOut:86 | — |
+| `backend/app/schemas/platform_settings.py` | 55 | CacheSettingsOut:13, CacheSettingsUpdate:33, CacheTestOut:50 | — |
 | `backend/app/schemas/safety.py` | 248 | SupportAppealCreate:11, SupportAppealRespond:42, SupportAppealOut:55, IncidentCreate:78, IncidentResolve:104, IncidentOut:117, GeolocationPointCreate:135, GeolocationPointOut:160, ConsentCreate:174, ConsentRevoke:190 (+4) | — |
 | `backend/app/schemas/services.py` | 77 | ServicePermissionOut:17, ServiceOut:23, ServiceListOut:39, ServiceActivationOut:44, ServiceActivationSet:57, EffectiveServiceOut:62, MyServicesOut:75 | — |
-| `backend/app/service_app.py` | 187 | — | _middleware:67, create_service_app:94 |
+| `backend/app/service_app.py` | 192 | — | _middleware:69, create_service_app:96 |
 | `backend/app/services/__init__.py` | 1 | — | — |
 | `backend/app/services/access.py` | 790 | PermissionGrant:54, EffectivePermissions:65, ServiceState:227 | now_utc:48, legacy_allows:201, resolve_permissions:210, _cache_subject:237, _permissions_to_cache:243, _permissions_from_cache:262, _service_states_to_cache:284, _service_states_from_cache:298, pick_service_state:316, scope_within:341 (+17) |
 | `backend/app/services/audit.py` | 35 | — | add_audit_event:12 |
@@ -86,19 +88,20 @@
 | `backend/app/services/grading.py` | 287 | — | _clean:28, normalize_text:33, normalize_number:42, normalize_time:75, normalize:100, _given_values:110, _payload_answer:117, _answer_type:122, _read_task:136, _correct_choices:143 (+9) |
 | `backend/app/services/onboarding.py` | 301 | CurriculumContext:59, PersonalizedModule:151 | now_utc:28, _allowed:32, module_is_eligible:40, curriculum_context:64, personalized_modules:73, _stage_order:95, ensure_profile:106, progress_by_module:137, personalized_state:157, next_step:180 (+5) |
 | `backend/app/services/onboarding_catalog.py` | 861 | OnboardingStep:51, OnboardingModule:63 | _service_steps:80, get_module:854, modules_for_service:858 |
+| `backend/app/services/platform_settings.py` | 269 | CacheRuntimeSettings:61 | _normalise_prefix:33, _number_in_range:41, _env_defaults:103, _coerce:119, current_cache_settings:181, get_cache_runtime:188, save_cache_settings:238, reset_cache_runtime_for_tests:265 |
 | `backend/app/services/registry.py` | 553 | PermissionSpec:25, ServiceManifest:34 | get_service:544, core_service_codes:548 |
 
 ## Frontend
 | Файл | Строк | Экспорты |
 |---|---:|---|
 | `frontend/src/access/AccessContext.tsx` | 149 | AccessProvider, useAccess |
-| `frontend/src/api/client.ts` | 1732 | API_BASE, API_ORIGIN, api, getAccessToken, getRefreshToken, getStoredUser, storeSession, storeUser, clearSession, apiErrorMessage (+106) |
-| `frontend/src/api/types.ts` | 1172 | Role, ScopeType, User, TokenPair, Service, EffectiveService, MyServices, Permission, PermissionList, EffectivePermission (+99) |
-| `frontend/src/App.tsx` | 231 | App, UnauthorizedPage |
+| `frontend/src/api/client.ts` | 1755 | API_BASE, API_ORIGIN, api, getAccessToken, getRefreshToken, getStoredUser, storeSession, storeUser, clearSession, apiErrorMessage (+109) |
+| `frontend/src/api/types.ts` | 1211 | Role, ScopeType, User, TokenPair, Service, EffectiveService, MyServices, Permission, PermissionList, EffectivePermission (+104) |
+| `frontend/src/App.tsx` | 240 | App, UnauthorizedPage |
 | `frontend/src/auth/AuthContext.tsx` | 109 | AuthProvider, useAuth |
 | `frontend/src/auth/ProtectedRoute.tsx` | 26 | ProtectedRoute |
 | `frontend/src/components/ui.tsx` | 370 | Button, IconButton, Card, Badge, Spinner, EmptyState, ErrorAlert, Toggle, PageHeader, StatCard (+2) |
-| `frontend/src/layout/AppLayout.tsx` | 392 | AppLayout |
+| `frontend/src/layout/AppLayout.tsx` | 404 | AppLayout |
 | `frontend/src/lib/cn.ts` | 5 | cn |
 | `frontend/src/lib/labels.ts` | 178 | roleLabels, roleLabel, categoryLabels, categoryColors, scopeLabels, scopeShortLabels, scopeColors, serviceCategoryLabels, serviceCategoryColors, initials (+6) |
 | `frontend/src/main.tsx` | 11 | — |
@@ -116,6 +119,8 @@
 | `frontend/src/pages/OnboardingModulePage.tsx` | 368 | OnboardingModulePage |
 | `frontend/src/pages/OnboardingPage.tsx` | 434 | OnboardingPage |
 | `frontend/src/pages/OnboardingReportsPage.tsx` | 546 | OnboardingReportsPage |
+| `frontend/src/pages/PlatformSettingsPage.test.tsx` | 120 | — |
+| `frontend/src/pages/PlatformSettingsPage.tsx` | 436 | PlatformSettingsPage |
 | `frontend/src/pages/ProfilePage.tsx` | 419 | ProfilePage |
 | `frontend/src/pages/SafetyPage.test.tsx` | 174 | — |
 | `frontend/src/pages/SafetyPage.tsx` | 2122 | SafetyPage |
@@ -143,6 +148,7 @@
 | `backend/tests/test_onboarding.py` | 104 | 8 |
 | `backend/tests/test_openapi.py` | 41 | 2 |
 | `backend/tests/test_pilot_data.py` | 20 | 2 |
+| `backend/tests/test_platform_settings.py` | 241 | 6 |
 | `backend/tests/test_safety.py` | 228 | 23 |
 | `backend/tests/test_security.py` | 59 | 5 |
 | `backend/tests/test_service_app.py` | 52 | 6 |

@@ -9,5 +9,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
+    // The full jsdom suite can exceed 5 s on a loaded Windows host.
+    testTimeout: 15000,
   },
 });

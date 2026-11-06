@@ -23,6 +23,7 @@ from sqlalchemy import text
 
 from app.api.v1 import (
     admin,
+    admin_settings,
     analytics,
     assessment,
     auth,
@@ -41,6 +42,7 @@ from app.api.v1.system import build_health
 from app.core.cache import cache_ping, close_cache
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal, engine
+from app.services.platform_settings import get_cache_runtime
 from app.services.registry import SERVICE_BY_CODE
 
 log = logging.getLogger("school-platform.service")
@@ -53,8 +55,8 @@ ROUTER_MAP = {
     "secondary_education": (education.secondary_router,),
     "vocational_education": (education.vocational_router,),
     "higher_education": (education.higher_router,),
-    "audit": (admin.router,),
-    "admin": (admin.router,),
+    "audit": (admin.router, admin_settings.router),
+    "admin": (admin.router, admin_settings.router),
     "lms": (lms.router,),
     "assessment": (assessment.router,),
     "journal": (journal.router,),
@@ -111,7 +113,8 @@ def create_service_app(service_code: str | None = None) -> FastAPI:
             log.info("Service %s: database connection verified", code)
         except Exception as exc:  # health endpoint reports the detail
             log.warning("Service %s: database is not available: %s", code, exc)
-        if settings.redis_url:
+        runtime = await get_cache_runtime(force=True)
+        if runtime.effective_enabled:
             if await cache_ping():
                 log.info("Service %s: Redis cache connected", code)
             else:
@@ -119,6 +122,8 @@ def create_service_app(service_code: str | None = None) -> FastAPI:
                     "Service %s: Redis cache is unavailable; continuing without cache",
                     code,
                 )
+        else:
+            log.info("Service %s: Redis cache is disabled", code)
         yield
         await close_cache()
         await engine.dispose()

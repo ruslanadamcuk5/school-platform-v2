@@ -19,12 +19,17 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
+from app.services.platform_settings import (
+    CacheRuntimeSettings,
+    current_cache_settings,
+    get_cache_runtime,
+    reset_cache_runtime_for_tests,
+)
 
 log = logging.getLogger("school-platform.cache")
 
 # A short circuit breaker avoids a one-second Redis timeout on every request
-# while the cache is down.  After the cooldown the next request tries again.
-_FAILURE_COOLDOWN_SECONDS = 30.0
+# while the cache is down.  The cooldown is configurable at runtime.
 _failure_until = 0.0
 _warned = False
 
@@ -85,10 +90,11 @@ class RedisCache:
 
 
 _cache: CacheClient | None = None
+_applied_timeout: float | None = None
 
 
 def _prefix() -> str:
-    return settings.redis_key_prefix.strip() or "school-platform"
+    return current_cache_settings().key_prefix
 
 
 def _version_key() -> str:
@@ -101,7 +107,9 @@ def _available() -> bool:
 
 def _mark_failure() -> None:
     global _failure_until, _warned
-    _failure_until = time.monotonic() + _FAILURE_COOLDOWN_SECONDS
+    _failure_until = (
+        time.monotonic() + current_cache_settings().failure_cooldown_seconds
+    )
     if not _warned:
         log.warning("Redis cache unavailable; falling back to PostgreSQL")
         _warned = True
@@ -115,37 +123,66 @@ def _mark_success() -> None:
 
 def get_cache() -> CacheClient:
     """Return the process-wide cache client, creating it lazily."""
-    global _cache
+    global _cache, _applied_timeout
     if _cache is None:
-        if not settings.redis_url:
-            _cache = NullCache()
-        else:
-            client = Redis.from_url(
-                settings.redis_url,
-                decode_responses=True,
-                socket_connect_timeout=settings.redis_socket_timeout_seconds,
-                socket_timeout=settings.redis_socket_timeout_seconds,
-                health_check_interval=30,
-            )
-            _cache = RedisCache(client)
+        runtime = current_cache_settings()
+        if not runtime.effective_enabled:
+            return NullCache()
+        client = Redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=runtime.socket_timeout_seconds,
+            socket_timeout=runtime.socket_timeout_seconds,
+            health_check_interval=30,
+        )
+        _cache = RedisCache(client)
+        _applied_timeout = runtime.socket_timeout_seconds
     return _cache
 
 
+async def _close_cache_client() -> None:
+    global _cache, _applied_timeout
+    if _cache is None:
+        return
+    try:
+        await _cache.aclose()
+    except Exception:  # noqa: BLE001 - close must not raise
+        log.debug("Redis cache close failed", exc_info=True)
+    _cache = None
+    _applied_timeout = None
+
+
+async def ensure_cache_runtime() -> CacheRuntimeSettings:
+    """Refresh runtime settings and apply connection-affecting changes."""
+    if not settings.redis_url:
+        return current_cache_settings()
+    runtime = await get_cache_runtime()
+    if _cache is not None and (
+        not runtime.effective_enabled
+        or _applied_timeout != runtime.socket_timeout_seconds
+    ):
+        await _close_cache_client()
+    return runtime
+
+
+async def apply_cache_runtime_settings() -> CacheRuntimeSettings:
+    """Force a refresh and recreate the client after an admin change."""
+    runtime = await get_cache_runtime(force=True)
+    await _close_cache_client()
+    return runtime
+
+
 async def close_cache() -> None:
-    global _cache
-    if _cache is not None:
-        try:
-            await _cache.aclose()
-        except Exception:  # noqa: BLE001 - shutdown must not raise
-            log.debug("Redis cache close failed", exc_info=True)
-        _cache = None
+    await _close_cache_client()
     _mark_success()
 
 
 def reset_cache_for_tests() -> None:
     """Reset module state in unit tests without touching a real Redis."""
-    global _cache
+    global _cache, _applied_timeout
     _cache = None
+    _applied_timeout = None
+    reset_cache_runtime_for_tests()
     _mark_success()
 
 
@@ -155,6 +192,7 @@ def access_cache_key(kind: str, subject: str, version: int) -> str:
 
 async def access_version() -> int | None:
     """Return the cache generation, or ``None`` when the cache is disabled."""
+    await ensure_cache_runtime()
     cache = get_cache()
     if not cache.enabled or not _available():
         return None
@@ -174,6 +212,7 @@ async def access_version() -> int | None:
 
 async def bump_access_version() -> int | None:
     """Invalidate every access cache entry after a permission change."""
+    await ensure_cache_runtime()
     cache = get_cache()
     if not cache.enabled or not _available():
         return None
@@ -187,6 +226,7 @@ async def bump_access_version() -> int | None:
 
 
 async def get_json(key: str) -> Any | None:
+    await ensure_cache_runtime()
     cache = get_cache()
     if not cache.enabled or not _available():
         return None
@@ -202,12 +242,15 @@ async def get_json(key: str) -> Any | None:
 
 
 async def set_json(key: str, value: Any, ttl: int | None = None) -> None:
+    await ensure_cache_runtime()
     cache = get_cache()
     if not cache.enabled or not _available():
         return
     try:
         payload = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-        ttl_seconds = ttl if ttl is not None else settings.redis_cache_ttl_seconds
+        ttl_seconds = (
+            ttl if ttl is not None else current_cache_settings().ttl_seconds
+        )
         await cache.set(key, payload, max(1, int(ttl_seconds)))
         _mark_success()
     except (RedisError, OSError, TypeError, ValueError):
@@ -215,6 +258,7 @@ async def set_json(key: str, value: Any, ttl: int | None = None) -> None:
 
 
 async def cache_ping() -> bool:
+    await ensure_cache_runtime()
     cache = get_cache()
     if not cache.enabled:
         return False

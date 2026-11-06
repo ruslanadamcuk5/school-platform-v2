@@ -1170,3 +1170,42 @@ export interface SafetyPurgeResult {
   cutoff: string;
   incident_cutoff: string;
 }
+
+export type CacheMode = 'disabled' | 'redis' | 'managed-redis-tls';
+export type CacheStatus = 'disabled' | 'connected' | 'unavailable';
+
+export interface CacheSettings {
+  enabled: boolean;
+  effective_enabled: boolean;
+  mode: CacheMode;
+  endpoint_configured: boolean;
+  tls_enabled: boolean;
+  ttl_seconds: number;
+  key_prefix: string;
+  socket_timeout_seconds: number;
+  failure_cooldown_seconds: number;
+  fail_open: boolean;
+  invalidation: 'version';
+  source: 'env' | 'database';
+  status: CacheStatus;
+  latency_ms: number | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  requires_restart: boolean;
+}
+
+export interface CacheSettingsUpdate {
+  enabled?: boolean;
+  ttl_seconds?: number;
+  key_prefix?: string;
+  socket_timeout_seconds?: number;
+  failure_cooldown_seconds?: number;
+}
+
+export interface CacheTestResult {
+  ok: boolean;
+  status: CacheStatus;
+  mode: CacheMode;
+  latency_ms: number | null;
+  message: string;
+}

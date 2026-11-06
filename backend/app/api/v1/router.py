@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    admin_settings,
     analytics,
     assessment,
     auth,
@@ -36,6 +37,7 @@ api_router.include_router(education.secondary_router)
 api_router.include_router(education.vocational_router)
 api_router.include_router(education.higher_router)
 api_router.include_router(admin.router)
+api_router.include_router(admin_settings.router)
 api_router.include_router(lms.router)
 api_router.include_router(assessment.router)
 api_router.include_router(journal.router)

@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.15 |
+| Версия | 0.16 |
 | Статус | Рабочий |
-| Дата | 05.11.2026 |
+| Дата | 06.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
 | OpenAPI | `/openapi.json`, `/docs`, `/redoc` |
 
@@ -104,6 +104,18 @@
 | GET | `/api/v1/admin/users?school_id=&role=&search=&limit=&offset=` | `superadmin`, `admin` |
 | POST | `/api/v1/admin/users?school_id=` | `superadmin`, `admin` |
 | GET | `/api/v1/admin/audit?school_id=&limit=&offset=` | `superadmin`, `admin` |
+| GET | `/api/v1/admin/settings/cache` | только `superadmin`, право `system.settings.read` |
+| PATCH | `/api/v1/admin/settings/cache` | только `superadmin`, право `system.settings.write` |
+| POST | `/api/v1/admin/settings/cache/test` | только `superadmin`, право `system.settings.write` |
+
+Эксплуатационные настройки кеша хранятся в `system.settings` под ключом
+`cache.runtime` и содержат только несекретные параметры: `enabled`,
+`ttl_seconds`, `key_prefix`, `socket_timeout_seconds`,
+`failure_cooldown_seconds`. `REDIS_URL` остаётся в `.env`/секрет-хранилище:
+API возвращает только `endpoint_configured`, `tls_enabled` и `mode`, а не сам
+URL. Изменения доступны только `superadmin`, фиксируются в `audit.events`
+действием `platform.cache.settings.update`; опасные значения валидируются,
+GET не содержит секретов.
 
 Создание пользователя:
 

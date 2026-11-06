@@ -2,6 +2,24 @@
 
 > Только последние этапы. Полная история: `archive/progress-2026.md`.
 
+## Админ-консоль кеша — MVP (06.11.2026)
+- [x] `app/services/platform_settings.py`: типизированный snapshot
+  `cache.runtime`, TTL 15 с, fallback на env, валидация TTL/префикса/таймаутов.
+- [x] `app/core/cache.py`: runtime TTL, prefix, timeout и cooldown; hot-reload
+  безопасных параметров; закрытие/пересоздание клиента при изменении.
+- [x] API `/api/v1/admin/settings/cache` (GET/PATCH) и `/cache/test`; только
+  `superadmin` + `system.settings.read/write`; аудит
+  `platform.cache.settings.update`; `REDIS_URL` маскируется.
+- [x] Экран `/admin/settings` и пункт меню «Эксплуатационные настройки»;
+  read-only без `system.settings.write`.
+- [x] Тесты: `tests/test_platform_settings.py`, `test_cache.py`;
+  `PlatformSettingsPage.test.tsx`; backend 199 passed, Ruff чистый;
+  frontend typecheck, build и 7 тестов.
+- [x] Документы: ШК-03-03 0.16, ШК-07-01 1.7, ШК-08-01 0.8, ШК-08-02 0.6,
+  журнал 2.5; индексы пересобраны.
+- [ ] Доставить на пилот и проверить экран под `superadmin`; write-only
+  endpoint/секрет, MFA и подтверждение опасных изменений — далее.
+
 ## Пилот 0.9.0 — развёртывание
 - [x] Backup `backups/school-platform-v2/20261105T080100Z/` (БД и приложение).
 - [x] Миграция `0009_document_requests` → `0010_safety`; `alembic current` = `0010_safety`.

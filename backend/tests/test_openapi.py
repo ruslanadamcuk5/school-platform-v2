@@ -14,6 +14,8 @@ def test_openapi_contains_pilot_endpoints() -> None:
     assert "/api/v1/org/cities" in paths
     assert "/api/v1/org/schools" in paths
     assert "/api/v1/admin/stats" in paths
+    assert "/api/v1/admin/settings/cache" in paths
+    assert "/api/v1/admin/settings/cache/test" in paths
     assert "/api/v1/me/permissions" in paths
     assert "/api/v1/me/services" in paths
     assert "/api/v1/groups" in paths

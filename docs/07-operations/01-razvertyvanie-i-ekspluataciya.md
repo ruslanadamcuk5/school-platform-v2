@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 1.6 |
+| Версия | 1.7 |
 | Статус | Рабочий |
 | Дата | 06.11.2026 |
 
@@ -340,6 +340,7 @@ REDIS_URL=redis://127.0.0.1:6379/0
 REDIS_CACHE_TTL_SECONDS=60
 REDIS_KEY_PREFIX=school-platform
 REDIS_SOCKET_TIMEOUT_SECONDS=1.0
+REDIS_FAILURE_COOLDOWN_SECONDS=30.0
 ```
 
 После перезапуска backend в логе появляется `Redis cache connected`.
@@ -353,8 +354,8 @@ REDIS_SOCKET_TIMEOUT_SECONDS=1.0
   `<prefix>:access:<version>:services:<user>`.
 - TTL — 60 секунд; при изменении групп, членства, прав или активаций
   версия увеличивается, и старые ключи перестают использоваться.
-- Ошибка Redis не прерывает запрос: после сбоя кеш отключается на 30 секунд
-  и запросы идут в PostgreSQL.
+- Ошибка Redis не прерывает запрос: после сбоя кеш отключается на
+  настраиваемый cooldown (по умолчанию 30 секунд), запросы идут в PostgreSQL.
 
 **Production**
 1. Использовать managed Redis или отдельную ВМ в приватной сети; не
@@ -394,6 +395,29 @@ REDIS_SOCKET_TIMEOUT_SECONDS=1.0
 13. При компрометации или передаче `REDIS_URL` в незащищённом канале сменить
     пароль в панели провайдера, обновить `backend/.env` и перезапустить
     backend; старый пароль считать отозванным.
+
+### 3.4.11. Админ-консоль кеша (06.11.2026)
+Кеш можно включать, выключать и настраивать без SSH и правки `.env`.
+Экран доступен только республиканскому администратору:
+`/admin/settings` → «Эксплуатационные настройки». API:
+
+- `GET /api/v1/admin/settings/cache` — эффективные настройки, маскированный
+  endpoint, TLS, режим и live-статус;
+- `PATCH /api/v1/admin/settings/cache` — `enabled`, `ttl_seconds`,
+  `key_prefix`, `socket_timeout_seconds`, `failure_cooldown_seconds`;
+- `POST /api/v1/admin/settings/cache/test` — проверка соединения.
+
+Безопасные параметры применяются без перезапуска: snapshot обновляется в
+текущем worker и перечитывается остальными в течение 15 секунд. `REDIS_URL`
+остаётся в серверном `.env`/секрет-хранилище и в браузер не передаётся; для
+смены endpoint нужен перезапуск backend. Изменения пишутся в
+`audit.events` (`platform.cache.settings.update`), значения валидируются,
+секрет в GET/логах отсутствует. При выключении кеша запросы сразу идут в
+PostgreSQL; при сбое Redis действует fail-open и настраиваемый cooldown.
+
+Проверка: `pytest tests/test_platform_settings.py tests/test_cache.py -q`,
+`vitest run src/pages/PlatformSettingsPage.test.tsx`, затем открыть экран под
+`superadmin`, изменить TTL и нажать «Проверить подключение».
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет

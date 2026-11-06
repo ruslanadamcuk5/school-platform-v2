@@ -18,6 +18,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { OnboardingModulePage } from './pages/OnboardingModulePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { OnboardingReportsPage } from './pages/OnboardingReportsPage';
+import { PlatformSettingsPage } from './pages/PlatformSettingsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SafetyPage } from './pages/SafetyPage';
 import { ServicePlaceholderPage } from './pages/ServicePlaceholderPage';
@@ -170,6 +171,14 @@ export function App() {
                 element={
                   <PermissionGate permission="system.services.read">
                     <ServicesPage />
+                  </PermissionGate>
+                }
+              />
+              <Route
+                path="admin/settings"
+                element={
+                  <PermissionGate permission="system.settings.read">
+                    <PlatformSettingsPage />
                   </PermissionGate>
                 }
               />

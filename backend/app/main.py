@@ -18,6 +18,7 @@ from app.api.v1.system import build_health
 from app.core.cache import cache_ping, close_cache
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal, engine
+from app.services.platform_settings import get_cache_runtime
 
 logging.basicConfig(
     level=logging.DEBUG if settings.app_debug else logging.INFO,
@@ -35,11 +36,14 @@ async def lifespan(_app: FastAPI):
         log.info("Database connection verified")
     except Exception as exc:  # health endpoint reports the detail
         log.warning("Database is not available at startup: %s", exc)
-    if settings.redis_url:
+    runtime = await get_cache_runtime(force=True)
+    if runtime.effective_enabled:
         if await cache_ping():
             log.info("Redis cache connected")
         else:
             log.warning("Redis cache is unavailable; continuing without cache")
+    else:
+        log.info("Redis cache is disabled; using PostgreSQL only")
     yield
     await close_cache()
     await engine.dispose()
