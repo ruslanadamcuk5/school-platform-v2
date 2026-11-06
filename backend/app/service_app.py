@@ -38,6 +38,7 @@ from app.api.v1 import (
     system,
 )
 from app.api.v1.system import build_health
+from app.core.cache import cache_ping, close_cache
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal, engine
 from app.services.registry import SERVICE_BY_CODE
@@ -110,7 +111,16 @@ def create_service_app(service_code: str | None = None) -> FastAPI:
             log.info("Service %s: database connection verified", code)
         except Exception as exc:  # health endpoint reports the detail
             log.warning("Service %s: database is not available: %s", code, exc)
+        if settings.redis_url:
+            if await cache_ping():
+                log.info("Service %s: Redis cache connected", code)
+            else:
+                log.warning(
+                    "Service %s: Redis cache is unavailable; continuing without cache",
+                    code,
+                )
         yield
+        await close_cache()
         await engine.dispose()
 
     app = FastAPI(

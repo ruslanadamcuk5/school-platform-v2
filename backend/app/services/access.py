@@ -31,6 +31,7 @@ from typing import Iterable, Sequence
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import access_cache_key, access_version, get_json, set_json
 from app.core.scopes import COUNTRY_SCOPE_ID, SCOPE_DEPTH
 from app.models.iam import (
     GroupMembership,
@@ -231,6 +232,85 @@ class ServiceState:
     scope_type: str | None = None
     scope_id: uuid.UUID | None = None
     config: dict = field(default_factory=dict)
+
+
+def _cache_subject(user: User) -> str:
+    """Include role and tenant so a stale key cannot survive a scope change."""
+    school = str(user.school_id) if user.school_id else "none"
+    return f"{user.id}:{user.role}:{school}"
+
+
+def _permissions_to_cache(access: EffectivePermissions) -> dict:
+    return {
+        "allowed": dict(access.allowed),
+        "group_count": access.group_count,
+        "grants": {
+            code: {
+                "code": grant.code,
+                "effect": grant.effect,
+                "depth": grant.depth,
+                "scope_type": grant.scope_type,
+                "group_id": str(grant.group_id),
+                "group_code": grant.group_code,
+                "group_name": grant.group_name,
+            }
+            for code, grant in access.grants.items()
+        },
+    }
+
+
+def _permissions_from_cache(payload: dict) -> EffectivePermissions:
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid permissions cache payload")
+    grants = {
+        code: PermissionGrant(
+            code=item["code"],
+            effect=item["effect"],
+            depth=int(item["depth"]),
+            scope_type=item["scope_type"],
+            group_id=uuid.UUID(item["group_id"]),
+            group_code=item["group_code"],
+            group_name=item["group_name"],
+        )
+        for code, item in payload.get("grants", {}).items()
+    }
+    return EffectivePermissions(
+        allowed={code: bool(value) for code, value in payload.get("allowed", {}).items()},
+        grants=grants,
+        group_count=int(payload.get("group_count", 0)),
+    )
+
+
+def _service_states_to_cache(states: dict[str, ServiceState]) -> dict:
+    return {
+        code: {
+            "enabled": state.enabled,
+            "source": state.source,
+            "depth": state.depth,
+            "scope_type": state.scope_type,
+            "scope_id": str(state.scope_id) if state.scope_id else None,
+            "config": dict(state.config or {}),
+        }
+        for code, state in states.items()
+    }
+
+
+def _service_states_from_cache(payload: dict) -> dict[str, ServiceState]:
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid service cache payload")
+    states: dict[str, ServiceState] = {}
+    for code, item in payload.items():
+        scope_id = item.get("scope_id")
+        states[code] = ServiceState(
+            code=code,
+            enabled=bool(item["enabled"]),
+            source=item["source"],
+            depth=item.get("depth"),
+            scope_type=item.get("scope_type"),
+            scope_id=uuid.UUID(scope_id) if scope_id else None,
+            config=dict(item.get("config") or {}),
+        )
+    return states
 
 
 def pick_service_state(
@@ -445,9 +525,26 @@ async def load_user_groups(
 async def effective_permissions(
     session: AsyncSession, user: User
 ) -> EffectivePermissions:
+    version = await access_version()
+    cache_key = (
+        access_cache_key("permissions", _cache_subject(user), version)
+        if version is not None
+        else None
+    )
+    if cache_key is not None:
+        cached = await get_json(cache_key)
+        if cached is not None:
+            try:
+                return _permissions_from_cache(cached)
+            except (AttributeError, KeyError, TypeError, ValueError):
+                pass
+
     groups = await load_user_groups(session, user)
     if not groups:
-        return EffectivePermissions()
+        empty = EffectivePermissions()
+        if cache_key is not None:
+            await set_json(cache_key, _permissions_to_cache(empty))
+        return empty
 
     stamp = now_utc()
     rows = (
@@ -484,6 +581,8 @@ async def effective_permissions(
         )
     resolved = resolve_permissions(grants)
     resolved.group_count = len(groups)
+    if cache_key is not None:
+        await set_json(cache_key, _permissions_to_cache(resolved))
     return resolved
 
 
@@ -564,6 +663,20 @@ async def user_service_states(
     session: AsyncSession, user: User
 ) -> dict[str, ServiceState]:
     """Resolve every catalogued service for the user's scope tree."""
+    version = await access_version()
+    cache_key = (
+        access_cache_key("services", _cache_subject(user), version)
+        if version is not None
+        else None
+    )
+    if cache_key is not None:
+        cached = await get_json(cache_key)
+        if cached is not None:
+            try:
+                return _service_states_from_cache(cached)
+            except (AttributeError, KeyError, TypeError, ValueError):
+                pass
+
     scopes = await user_service_scope_keys(session, user)
     services = list(
         (await session.execute(select(Service))).scalars().all()
@@ -611,6 +724,8 @@ async def user_service_states(
             is_core=service.is_core,
             activations=by_service.get(service.code, []),
         )
+    if cache_key is not None:
+        await set_json(cache_key, _service_states_to_cache(states))
     return states
 
 

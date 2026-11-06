@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.api.v1.system import build_health
+from app.core.cache import cache_ping, close_cache
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal, engine
 
@@ -34,7 +35,13 @@ async def lifespan(_app: FastAPI):
         log.info("Database connection verified")
     except Exception as exc:  # health endpoint reports the detail
         log.warning("Database is not available at startup: %s", exc)
+    if settings.redis_url:
+        if await cache_ping():
+            log.info("Redis cache connected")
+        else:
+            log.warning("Redis cache is unavailable; continuing without cache")
     yield
+    await close_cache()
     await engine.dispose()
     log.info("Database engine disposed")
 

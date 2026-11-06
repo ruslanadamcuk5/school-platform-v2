@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     audit_log_enabled: bool = True
 
+    # Optional Redis cache. Empty REDIS_URL disables caching completely.
+    redis_url: str | None = None
+    redis_cache_ttl_seconds: int = 60
+    redis_key_prefix: str = "school-platform"
+    redis_socket_timeout_seconds: float = 1.0
+
     # Initial seed. ADMIN_PASSWORD must be set before running the seed script.
     admin_login: str = "admin"
     admin_email: str = ""

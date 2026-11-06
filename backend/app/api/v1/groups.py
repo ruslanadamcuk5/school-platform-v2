@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import SessionDep, ensure_scope_access, require_permission
+from app.core.cache import bump_access_version
 from app.core.scopes import COUNTRY_SCOPE_ID, SCOPE_DEPTH
 from app.models.iam import (
     GroupMembership,
@@ -325,6 +326,7 @@ async def create_group(
             detail="A group with this code already exists in the scope",
         ) from exc
     await session.commit()
+    await bump_access_version()
     return _group_detail(await _load_group(session, group.id))
 
 
@@ -358,6 +360,7 @@ async def update_group(
         if field in updates:
             setattr(group, field, updates[field])
     await session.commit()
+    await bump_access_version()
     return _group_detail(await _load_group(session, group.id))
 
 
@@ -377,6 +380,7 @@ async def deactivate_group(
         raise HTTPException(status_code=409, detail="System groups cannot be disabled")
     group.is_active = False
     await session.commit()
+    await bump_access_version()
     return GroupStatusOut(message="Group disabled")
 
 
@@ -461,6 +465,7 @@ async def add_members(
             )
         )
     await session.commit()
+    await bump_access_version()
     return _group_detail(await _load_group(session, group.id))
 
 
@@ -489,6 +494,7 @@ async def remove_member(
         raise HTTPException(status_code=404, detail="Membership not found")
     await session.delete(membership)
     await session.commit()
+    await bump_access_version()
     return GroupStatusOut(message="User removed from the group")
 
 
@@ -542,6 +548,7 @@ async def set_group_permission(
         link.granted_by = current_user.id
         link.granted_at = granted_at
     await session.commit()
+    await bump_access_version()
     return GroupPermissionOut(
         permission_code=permission.code,
         permission_name=permission.name,
@@ -578,4 +585,5 @@ async def remove_group_permission(
         raise HTTPException(status_code=404, detail="Permission assignment not found")
     await session.delete(link)
     await session.commit()
+    await bump_access_version()
     return GroupStatusOut(message="Permission removed")

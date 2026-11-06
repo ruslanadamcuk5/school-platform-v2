@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, ensure_scope_access, require_permission
+from app.core.cache import bump_access_version
 from app.core.scopes import COUNTRY_SCOPE_ID, SCOPE_DEPTH
 from app.models.iam import User
 from app.models.system import Service, ServiceActivation
@@ -263,6 +264,7 @@ async def set_activation(
         raise HTTPException(
             status_code=409, detail="Activation already exists"
         ) from exc
+    await bump_access_version()
     return ServiceActivationOut.model_validate(activation)
 
 
@@ -293,3 +295,4 @@ async def delete_activation(
         raise HTTPException(status_code=404, detail="Activation not found")
     await session.delete(activation)
     await session.commit()
+    await bump_access_version()
