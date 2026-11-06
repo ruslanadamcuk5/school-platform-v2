@@ -54,8 +54,12 @@
   build `index-BaAbEN3E.js`, backup `dist.pre-vite8-20261105T133933Z`;
   E2E 4 passed, `npm audit` — 0.
 - [x] `opencode.json`: build steps увеличены с 50 до 200.
-- [ ] Redis-кеш прав/активаций и RLS: отдельный инфраструктурный цикл;
-  на пилоте Redis нет, RLS затрагивает контекст транзакций и 78 таблиц.
+- [x] Redis-кеш прав/активаций: `REDIS_URL`, TTL 60 с, версионная
+  инвалидация, fail-open, circuit breaker; локальный Redis 8.10.3,
+  `scripts/redis-local.ps1`, 7 тестов кеша, реальный smoke.
+- [x] Backend `191 passed`, Ruff чистый; OpenAPI без изменений.
+- [ ] RLS по `school_id`: отдельный цикл, контекст транзакций и 78 таблиц.
+- [ ] Redis на пилоте/production: нужен managed-инстанс с TLS и ACL.
 - [ ] Мобильный consent-flow и геолокация: ждут юридического решения.
 
 ## Этап 2.18 — безопасность и психологическая поддержка

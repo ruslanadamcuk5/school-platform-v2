@@ -2,7 +2,7 @@
 
 ## Текущий этап
 **2.18 safety — завершён; 2.19 OpenCode — завершён; стабилизация 0.9.0.**
-Дата: 2026-11-05. API/frontend: `0.9.0`.
+Дата: 2026-11-06. API/frontend: `0.9.0`.
 
 ## Состояние
 - Пилот: `/health` — `ok`, `database=ok`, `jwt_ready=true`; head `0010_safety`.
@@ -17,9 +17,12 @@
   14 схем; `alembic=0010_safety`; users=217, audit=99; без `pgvector`.
 - Frontend: React Router `7.18.5`, Vite `8.3.6`, Vitest `5.1.0`; Playwright E2E
   4 passed; Vitest 4; typecheck и build ok; `npm audit` — 0 (prod + dev).
-- Backend: 184 passed; Ruff чистый; OpenAPI 172 пути / 232 операции.
-- Документы: ШК-03-06 1.8, ШК-06-01 0.3, ШК-07-01 1.3, журнал 2.1,
-  ШК-10-19 1.5; DOCX пересобран.
+- Backend: 191 passed; Ruff чистый; OpenAPI 172 пути / 232 операции.
+- Redis-кеш: локальный `8.10.3` в `.tools`, `scripts/redis-local.ps1`;
+  `REDIS_URL` опционален, TTL 60 с, версионная инвалидация, fail-open.
+  Пилот пока без Redis; реальный smoke и 7 тестов кеша пройдены.
+- Документы: ШК-03-01 0.4, ШК-03-06 1.8, ШК-05-01 0.4, ШК-06-01 0.3,
+  ШК-07-01 1.4, ШК-08-01 0.5, журнал 2.2, ШК-10-19 1.5; DOCX пересобран.
 - OpenCode: build steps 200; `browser*`/`opencode*` выключены; `@browser`;
   секреты read-deny; `AGENTS.md` 6,4 КБ.
 
@@ -35,7 +38,8 @@
 - Любое изменение API — в `docs/10-reporting/04-zhurnal-izmeneniy.md`.
 
 ## Следующие задачи
-1. Redis-кеш прав/активаций: нужен Redis-инстанс и политика инвалидации.
+1. Подключить Redis в production/staging: `rediss://`, ACL, приватная сеть,
+   отдельный cache-инстанс; затем включить `REDIS_URL` на пилоте.
 2. RLS по `school_id`: проектирование контекста транзакции и политик для 78
    таблиц; без отдельного цикла и тестовой PostgreSQL не внедрять.
 3. i18n, UI уведомлений и заявок документов.

@@ -1,8 +1,8 @@
 # Карта кода
 
 > Сгенерировано `scripts/gen_codemap.py`. Не редактировать вручную.
-> Дата генерации: 05.11.2026.
-> Backend: 74 файлов; tests: 19; frontend: 31.
+> Дата генерации: 06.11.2026.
+> Backend: 75 файлов; tests: 21; frontend: 31.
 
 ## Как пользоваться
 1. Найдите домен в таблице.
@@ -23,7 +23,7 @@
 | `backend/app/api/v1/communication.py` | 128 | — | _now:31, list_notifications:36, mark_notification_read:56, create_notification:81 |
 | `backend/app/api/v1/documents.py` | 290 | — | _now:47, _ensure_school:51, _ensure_student_access:59, list_my_document_requests:98, list_school_document_requests:120, create_document_request:146, process_document_request:210, cancel_document_request:260 |
 | `backend/app/api/v1/education.py` | 4449 | — | _level_or_404:116, _level_out:123, _school_for_level:127, _available_years:148, _group_query:166, _students_by_group:188, _group_out:207, _program_map:232, _overview:249, _program_for_institution:371 (+35) |
-| `backend/app/api/v1/groups.py` | 581 | — | _now:56, _group_out:60, _group_detail:83, _options:118, _load_group:130, _assert_scope_visible:141, _resolve_scope:154, list_permissions:171, list_groups:201, get_group:268 (+7) |
+| `backend/app/api/v1/groups.py` | 589 | — | _now:57, _group_out:61, _group_detail:84, _options:119, _load_group:131, _assert_scope_visible:142, _resolve_scope:155, list_permissions:172, list_groups:202, get_group:269 (+7) |
 | `backend/app/api/v1/journal.py` | 1076 | — | _ensure_role:77, _now:85, _today:89, _schedule_stmt:93, _entry_stmt:102, _schedule_out:111, _entry_out:136, _class_scope:158, _subject_or_404:169, _student_class_ids:176 (+18) |
 | `backend/app/api/v1/library.py` | 1352 | — | _now:70, _ensure_role:74, _book_options:82, _book_stmt:95, _rec_options:99, _rec_stmt:111, _topics_out:115, _book_out:138, _book_detail_out:163, _rec_out:177 (+28) |
 | `backend/app/api/v1/lms.py` | 362 | — | list_subjects:58, get_subject:72, list_topics:84, get_topic_by_code:135, get_topic:153, _topic_detail:164, list_textbooks:207, get_textbook:258, list_courses:289, get_course:318 |
@@ -32,10 +32,11 @@
 | `backend/app/api/v1/org.py` | 261 | — | list_regions:37, list_cities:47, list_schools:64, _validate_levels:74, create_school:100, update_school:162, get_school:210, list_classes:227, get_class:252 |
 | `backend/app/api/v1/router.py` | 44 | — | — |
 | `backend/app/api/v1/safety.py` | 1074 | — | _now:82, _age_on:86, _is_minor:92, _load_safety_settings:104, _settings_scope:123, _get_school:133, _resolve_school_id:141, _assert_student_in_school:165, _assert_parent_link:184, _user_requester_role:202 (+19) |
-| `backend/app/api/v1/services.py` | 295 | — | _now:40, _resolve_scope:44, _fallback_services:59, _all_services:78, list_services:85, effective_services:98, get_service:155, get_activation:173, set_activation:201, delete_activation:274 |
+| `backend/app/api/v1/services.py` | 298 | — | _now:41, _resolve_scope:45, _fallback_services:60, _all_services:79, list_services:86, effective_services:99, get_service:156, get_activation:174, set_activation:202, delete_activation:276 |
 | `backend/app/api/v1/system.py` | 59 | — | build_health:19, health:39, meta:47 |
 | `backend/app/core/__init__.py` | 1 | — | — |
-| `backend/app/core/config.py` | 95 | Settings:18 | get_settings:91 |
+| `backend/app/core/cache.py` | 230 | CacheClient:32, NullCache:46, RedisCache:65 | _prefix:90, _version_key:94, _available:98, _mark_failure:102, _mark_success:110, get_cache:116, close_cache:134, reset_cache_for_tests:145, access_cache_key:152, access_version:156 (+4) |
+| `backend/app/core/config.py` | 101 | Settings:18 | get_settings:97 |
 | `backend/app/core/education.py` | 226 | EducationLevelInfo:102 | normalize_level:206, level_for_grade:214, default_levels_for_institution:219, level_info:225 |
 | `backend/app/core/scopes.py` | 51 | — | — |
 | `backend/app/core/security.py` | 166 | TokenError:20 | hash_password:24, _verify_legacy_pbkdf2:30, verify_password:51, needs_rehash:62, _read_key:74, _private_key:82, _public_key:89, create_access_token:95, decode_access_token:125, new_refresh_token:141 (+4) |
@@ -45,7 +46,7 @@
 | `backend/app/db/pilot_data.py` | 3563 | Person:630 | _person:640, _login_slug:689, _demo_password:696, _repair_demo_logins:711, _get_or_create_school:734, _get_or_create_user:802, _get_or_create_class:841, _get_or_create_program:907, _ensure_groups:946, _attach:1007 (+25) |
 | `backend/app/db/seed.py` | 569 | — | _upsert_geography:140, _upsert_permissions:175, _upsert_services:201, _upsert_country_activations:232, _get_or_create_group:265, _grant_permissions:305, _add_membership:344, seed:368 |
 | `backend/app/db/session.py` | 38 | — | get_session:31 |
-| `backend/app/main.py` | 154 | — | lifespan:30, request_headers_middleware:84, robots:103, root:108, root_health:123 |
+| `backend/app/main.py` | 161 | — | lifespan:31, request_headers_middleware:91, robots:110, root:115, root_health:130 |
 | `backend/app/models/__init__.py` | 157 | — | — |
 | `backend/app/models/ai.py` | 112 | AISetting:29, AIRequest:62, AIExplanation:90 | — |
 | `backend/app/models/analytics.py` | 183 | Attempt:30, TopicProgress:74, MethodProgress:122, DailyAnswer:164 | — |
@@ -77,9 +78,9 @@
 | `backend/app/schemas/org.py` | 102 | SchoolCreate:14, SchoolUpdate:33, SchoolOut:48, RegionOut:66, CityOut:75, ClassOut:86 | — |
 | `backend/app/schemas/safety.py` | 248 | SupportAppealCreate:11, SupportAppealRespond:42, SupportAppealOut:55, IncidentCreate:78, IncidentResolve:104, IncidentOut:117, GeolocationPointCreate:135, GeolocationPointOut:160, ConsentCreate:174, ConsentRevoke:190 (+4) | — |
 | `backend/app/schemas/services.py` | 77 | ServicePermissionOut:17, ServiceOut:23, ServiceListOut:39, ServiceActivationOut:44, ServiceActivationSet:57, EffectiveServiceOut:62, MyServicesOut:75 | — |
-| `backend/app/service_app.py` | 177 | — | _middleware:66, create_service_app:93 |
+| `backend/app/service_app.py` | 187 | — | _middleware:67, create_service_app:94 |
 | `backend/app/services/__init__.py` | 1 | — | — |
-| `backend/app/services/access.py` | 675 | PermissionGrant:53, EffectivePermissions:64, ServiceState:226 | now_utc:47, legacy_allows:200, resolve_permissions:209, pick_service_state:236, scope_within:261, parent_inherits:268, inherits_across_scopes:279, _scope_ancestors:291, scope_ancestors:332, user_scope_keys:339 (+12) |
+| `backend/app/services/access.py` | 790 | PermissionGrant:54, EffectivePermissions:65, ServiceState:227 | now_utc:48, legacy_allows:201, resolve_permissions:210, _cache_subject:237, _permissions_to_cache:243, _permissions_from_cache:262, _service_states_to_cache:284, _service_states_from_cache:298, pick_service_state:316, scope_within:341 (+17) |
 | `backend/app/services/audit.py` | 35 | — | add_audit_event:12 |
 | `backend/app/services/auth.py` | 181 | AuthError:22 | _client_info:26, authenticate:35, issue_refresh_token:96, rotate_refresh_token:115, revoke_refresh_token:156 |
 | `backend/app/services/grading.py` | 287 | — | _clean:28, normalize_text:33, normalize_number:42, normalize_time:75, normalize:100, _given_values:110, _payload_answer:117, _answer_type:122, _read_task:136, _correct_choices:143 (+9) |
@@ -125,9 +126,11 @@
 ## Tests
 | Файл | Строк | Тестов |
 |---|---:|---:|
+| `backend/tests/conftest.py` | 19 | 0 |
 | `backend/tests/test_access_resolution.py` | 166 | 13 |
 | `backend/tests/test_analytics.py` | 64 | 4 |
 | `backend/tests/test_assessment_api.py` | 366 | 9 |
+| `backend/tests/test_cache.py` | 182 | 7 |
 | `backend/tests/test_communication.py` | 73 | 7 |
 | `backend/tests/test_documents.py` | 71 | 7 |
 | `backend/tests/test_education_levels.py` | 348 | 16 |
