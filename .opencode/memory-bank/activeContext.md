@@ -18,11 +18,12 @@
 - Frontend: React Router `7.18.5`, Vite `8.3.6`, Vitest `5.1.0`; Playwright E2E
   4 passed; Vitest 4; typecheck и build ok; `npm audit` — 0 (prod + dev).
 - Backend: 193 passed; Ruff чистый; OpenAPI 172 пути / 232 операции.
-- Redis: код кеша загружен на пилот, `REDIS_URL` пуст, backup
-  `20261106T053548Z-redis-cache`; managed TLS endpoint и restart uWSGI
-  ожидают внешний URL/API-токен. Локально 8.10.3, 9 тестов кеша.
+- Redis: managed Upstash TLS подключён на пилоте; `REDIS_URL` в `.env` (600),
+  backup `20261106T062733Z-upstash-redis`; restart master 2931184;
+  `cache_ping=true`, `connected_clients=2`, версия ключа создана.
+  Локально 8.10.3, 9 тестов кеша.
 - Документы: ШК-03-01 0.4, ШК-03-06 1.8, ШК-05-01 0.4, ШК-06-01 0.3,
-  ШК-07-01 1.5, ШК-08-01 0.6, ШК-08-02 0.5, журнал 2.3, ШК-10-19 1.5.
+  ШК-07-01 1.6, ШК-08-01 0.7, ШК-08-02 0.5, журнал 2.4, ШК-10-19 1.5.
 - OpenCode: build steps 200; `browser*`/`opencode*` выключены; `@browser`;
   секреты read-deny; `AGENTS.md` 6,4 КБ.
 
@@ -38,14 +39,13 @@
 - Любое изменение API — в `docs/10-reporting/04-zhurnal-izmeneniy.md`.
 
 ## Следующие задачи
-1. Получить managed Redis TLS URL/ACL и API-токен/панель для restart; записать
-   `REDIS_URL` в `backend/.env`, перезапустить, проверить `Redis cache connected`.
+1. Сменить пароль Upstash (был передан в чате), обновить `.env` и перезапустить.
 2. Реализовать админ-консоль эксплуатационных настроек (план 11.3.1): кеш,
    лимиты, режим обслуживания, интеграции, health-пороги, аудит и маскирование.
-3. RLS по `school_id`: контекст транзакции и политики для 78 таблиц; только
+3. Production Redis: отдельный ACL, приватная сеть, резервирование и алерты.
+4. RLS по `school_id`: контекст транзакции и политики для 78 таблиц; только
    с тестовой PostgreSQL.
-4. i18n, UI уведомлений и заявок документов.
-5. Мобильный consent-flow и отдельное юридическое решение по геолокации.
+5. i18n, UI уведомлений и заявок документов; mobile consent-flow и геолокация.
 
 ## Навигация
 - `docs/INDEX.md` — документация; `docs/CODEMAP.md` — код;

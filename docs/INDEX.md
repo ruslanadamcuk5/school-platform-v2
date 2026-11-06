@@ -32,14 +32,14 @@
 | ШК-05-01 | Концепция информационной безопасности | 0.4 | 06.11.2026 | 12.6 | `docs/05-security/01-koncepciya-ib.md` |
 | ШК-06-01 | Стратегия тестирования | 0.3 | 05.11.2026 | 7.7 | `docs/06-testing/01-strategiya-testirovaniya.md` |
 | ШК-06-02 | Программа и методика испытаний | 0.6 | 04.11.2026 | 12.4 | `docs/06-testing/02-programma-i-metodika-ispytaniy.md` |
-| ШК-07-01 | Развёртывание и эксплуатация | 1.5 | 06.11.2026 | 31.0 | `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md` |
-| ШК-08-01 | План разработки | 0.6 | 06.11.2026 | 15.1 | `docs/08-roadmap/01-plan-razrabotki.md` |
+| ШК-07-01 | Развёртывание и эксплуатация | 1.6 | 06.11.2026 | 31.6 | `docs/07-operations/01-razvertyvanie-i-ekspluataciya.md` |
+| ШК-08-01 | План разработки | 0.7 | 06.11.2026 | 15.3 | `docs/08-roadmap/01-plan-razrabotki.md` |
 | ШК-08-02 | Детальный план работ | 0.5 | 06.11.2026 | 12.6 | `docs/08-roadmap/02-detalnyy-plan-rabot.md` |
 | ШК-09-01 | Реестр нормативных документов | 0.1 | 27.10.2026 | 8.8 | `docs/09-normative/01-reestr-normativnyh-dokumentov.md` |
 | ШК-10-01 | Шаблон отчёта о разработке | 0.1 | 27.10.2026 | 2.2 | `docs/10-reporting/01-shablon-otcheta-o-razrabotke.md` |
 | ШК-10-02 | Шаблон отчёта о тестировании | 0.1 | 27.10.2026 | 2.5 | `docs/10-reporting/02-shablon-otcheta-o-testirovanii.md` |
 | ШК-10-03 | Журнал рисков | 0.1 | 27.10.2026 | 2.3 | `docs/10-reporting/03-zhurnal-riskov.md` |
-| ШК-10-04 | Журнал изменений | 2.3 | 06.11.2026 | 42.8 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
+| ШК-10-04 | Журнал изменений | 2.4 | 06.11.2026 | 42.9 | `docs/10-reporting/04-zhurnal-izmeneniy.md` |
 | ШК-10-06 | Отчёт о завершении этапа 1 | 0.1 | 27.10.2026 | 5.7 | `docs/10-reporting/06-otchet-o-zavershenii-etapa-1.md` |
 | ШК-10-07 | Отчёт о тестировании API учебного контента (LMS) | 0.1 | 29.10.2026 | 3.9 | `docs/10-reporting/07-otchet-o-testirovanii-lms-api.md` |
 | ШК-10-08 | Отчёт о тестировании API тестов и работ (assessment) | 0.1 | 29.10.2026 | 5.0 | `docs/10-reporting/08-otchet-o-testirovanii-assessment-api.md` |
