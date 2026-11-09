@@ -1200,6 +1200,32 @@ export interface CacheSettingsUpdate {
   key_prefix?: string;
   socket_timeout_seconds?: number;
   failure_cooldown_seconds?: number;
+  confirm?: boolean;
+  reason?: string;
+}
+
+export interface CacheSettingsHistoryDetails {
+  updated?: string[];
+  values?: Record<string, unknown>;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  reason?: string | null;
+  confirmed_dangerous?: boolean;
+}
+
+export interface CacheSettingsHistoryItem {
+  id: string;
+  created_at: string;
+  user_id: string | null;
+  user_login: string | null;
+  action: string;
+  details: CacheSettingsHistoryDetails;
+}
+
+export interface CacheSettingsHistory {
+  items: CacheSettingsHistoryItem[];
+  limit: number;
+  offset: number;
 }
 
 export interface CacheTestResult {

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 
 from app.api.deps import SessionDep, require_permission, require_roles
 from app.core.cache import (
@@ -16,8 +17,11 @@ from app.core.cache import (
     cache_ping,
 )
 from app.core.config import settings
+from app.models.audit import AuditEvent
 from app.models.iam import User
 from app.schemas.platform_settings import (
+    CacheSettingsHistory,
+    CacheSettingsHistoryItem,
     CacheSettingsOut,
     CacheSettingsUpdate,
     CacheTestOut,
@@ -30,11 +34,34 @@ from app.services.platform_settings import (
     save_cache_settings,
 )
 
+CACHE_AUDIT_ACTION = "platform.cache.settings.update"
+CACHE_ENTITY_TYPE = "platform.cache"
+
 router = APIRouter(prefix="/admin/settings", tags=["admin"])
 
 SETTINGS_READ = require_permission("system.settings.read")
 SETTINGS_WRITE = require_permission("system.settings.write")
 SUPERADMIN = require_roles("superadmin")
+
+
+def _dangerous_changes(
+    runtime: CacheRuntimeSettings,
+    updates: dict[str, object],
+) -> list[str]:
+    """Return a human-readable list of availability/invalidation risks."""
+    changes: list[str] = []
+    if updates.get("enabled") is False and runtime.enabled:
+        changes.append("отключение кеша")
+    if "key_prefix" in updates and updates["key_prefix"] != runtime.key_prefix:
+        changes.append("смена префикса ключей и полная инвалидация")
+    return changes
+
+
+def _values_for(
+    runtime: CacheRuntimeSettings,
+    keys: list[str],
+) -> dict[str, object]:
+    return {key: getattr(runtime, key) for key in keys}
 
 
 async def _probe(runtime: CacheRuntimeSettings) -> tuple[str, float | None]:
@@ -99,7 +126,10 @@ async def update_cache_settings(
     _permission: User = Depends(SETTINGS_WRITE),
 ) -> CacheSettingsOut:
     """Persist non-secret cache settings and invalidate the local snapshot."""
-    updates = payload.model_dump(exclude_none=True)
+    updates = payload.model_dump(
+        exclude_none=True,
+        exclude={"confirm", "reason"},
+    )
     if not updates:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -114,16 +144,41 @@ async def update_cache_settings(
             ),
         )
 
+    runtime_before = await get_cache_runtime(
+        force=True,
+        include_disabled=True,
+    )
+    dangerous = _dangerous_changes(runtime_before, updates)
+    if dangerous and not payload.confirm:
+        raise HTTPException(
+            status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+            detail=(
+                "Confirmation required: "
+                + "; ".join(dangerous)
+                + ". Repeat the request with confirm=true."
+            ),
+        )
+
+    reason = (payload.reason or "").strip() or None
+    if dangerous and reason is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A reason is required for a dangerous cache change",
+        )
+
     await save_cache_settings(session, updates, current_user.id)
     add_audit_event(
         session,
-        action="platform.cache.settings.update",
-        entity_type="platform.cache",
+        action=CACHE_AUDIT_ACTION,
+        entity_type=CACHE_ENTITY_TYPE,
         entity_id=CACHE_SETTINGS_KEY,
         user_id=current_user.id,
         details={
             "updated": sorted(updates),
-            "values": {key: updates[key] for key in sorted(updates)},
+            "before": _values_for(runtime_before, sorted(updates)),
+            "after": {key: updates[key] for key in sorted(updates)},
+            "reason": reason,
+            "confirmed_dangerous": bool(dangerous),
         },
     )
     await session.commit()
@@ -132,6 +187,50 @@ async def update_cache_settings(
     runtime = await get_cache_runtime(force=True, include_disabled=True)
     cache_status, latency_ms = await _probe(runtime)
     return _as_out(runtime, cache_status, latency_ms)
+
+
+@router.get(
+    "/cache/history",
+    response_model=CacheSettingsHistory,
+    summary="История изменений настроек кеша",
+)
+async def cache_settings_history(
+    session: SessionDep,
+    _current_user: User = Depends(SUPERADMIN),
+    _permission: User = Depends(SETTINGS_READ),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> CacheSettingsHistory:
+    """Return the immutable audit trail for non-secret cache settings."""
+    rows = (
+        await session.execute(
+            select(AuditEvent, User.login)
+            .outerjoin(User, AuditEvent.user_id == User.id)
+            .where(
+                AuditEvent.action == CACHE_AUDIT_ACTION,
+                AuditEvent.entity_type == CACHE_ENTITY_TYPE,
+                AuditEvent.entity_id == CACHE_SETTINGS_KEY,
+            )
+            .order_by(AuditEvent.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    return CacheSettingsHistory(
+        items=[
+            CacheSettingsHistoryItem(
+                id=event.id,
+                created_at=event.created_at,
+                user_id=event.user_id,
+                user_login=user_login,
+                action=event.action,
+                details=event.details or {},
+            )
+            for event, user_login in rows
+        ],
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post(

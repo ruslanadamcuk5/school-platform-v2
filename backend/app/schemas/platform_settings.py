@@ -1,8 +1,9 @@
 """Schemas for operational platform settings."""
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -45,6 +46,23 @@ class CacheSettingsUpdate(BaseModel):
     failure_cooldown_seconds: float | None = Field(
         default=None, ge=1.0, le=300.0
     )
+    confirm: bool = False
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class CacheSettingsHistoryItem(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    user_id: uuid.UUID | None = None
+    user_login: str | None = None
+    action: str
+    details: dict[str, Any]
+
+
+class CacheSettingsHistory(BaseModel):
+    items: list[CacheSettingsHistoryItem]
+    limit: int
+    offset: int
 
 
 class CacheTestOut(BaseModel):

@@ -7,6 +7,7 @@ import type {
   AppNotification,
   AssessmentType,
   CacheSettings,
+  CacheSettingsHistory,
   CacheSettingsUpdate,
   CacheTestResult,
   City,
@@ -1736,6 +1737,16 @@ export async function purgeSafetyData(
 
 export async function fetchCacheSettings(): Promise<CacheSettings> {
   const { data } = await api.get<CacheSettings>('/admin/settings/cache');
+  return data;
+}
+
+export async function fetchCacheSettingsHistory(
+  limit = 20,
+): Promise<CacheSettingsHistory> {
+  const { data } = await api.get<CacheSettingsHistory>(
+    '/admin/settings/cache/history',
+    { params: { limit } },
+  );
   return data;
 }
 
