@@ -2,6 +2,20 @@
 
 > Только последние этапы. Полная история: `archive/progress-2026.md`.
 
+## MFA deploy на пилот (10.11.2026)
+- [x] Backup `20261110T071428Z-mfa`: дамп БД 523 КБ, архивы backend и dist,
+  `MANIFEST.txt`, 665 записей TOC; head до обновления — `0010_safety`.
+- [x] В `backend/.env` добавлен `MFA_ENCRYPTION_KEY` (права `600`); применена
+  миграция `0011_mfa`; backend и `frontend/dist` доставлены, прежний dist —
+  `frontend/dist.pre-mfa-20261110T060017Z`.
+- [x] Smoke: `/health` 200/0.9.0, OpenAPI 179/240, JS/CSS-хеши совпадают с
+  локальной сборкой, `/`, `/docs`, `/admin/settings`, `/robots.txt` — 200,
+  старый сайт — 200; вход `superadmin` — `mfa_enrollment_required` без
+  токенов, `enroll/start` — 200.
+- [x] Документы: ШК-07-01 1.11, журнал 2.9, реестр 0.9.6.
+- [ ] Enrollment `superadmin` в TOTP-приложении и сохранение 10 резервных
+  кодов; reset/regeneration MFA остаётся (R-11).
+
 ## MFA для superadmin (10.11.2026)
 - [x] TOTP RFC 6238: 30 секунд, окно ±1; секрет Fernet, ключ
   `MFA_ENCRYPTION_KEY` (fallback от `SECRET_KEY` только для разработки).
@@ -21,8 +35,8 @@
   `OK (155s)`, Ruff/typecheck чистые; `npm run build` — ok.
 - [x] Документы: ШК-03-03 0.18, ШК-03-06 1.9, ШК-04-01 0.8, ШК-05-01 0.5, ШК-07-01 1.10,
   ШК-08-01 1.0, ШК-08-02 0.8, журнал 2.8, реестр 0.9.4.
-- [ ] На пилот не развёрнуто; деплой — только по отдельной команде с backup,
-  `MFA_ENCRYPTION_KEY` и enrollment `superadmin`.
+- [x] На пилот развёрнуто 10.11.2026 (см. раздел выше); enrollment
+  `superadmin` и reset/regeneration остаются.
 
 ## Админ-консоль кеша — подтверждение и история (09.11.2026)
 - [x] PATCH требует `confirm=true` и непустую `reason` для отключения кеша и

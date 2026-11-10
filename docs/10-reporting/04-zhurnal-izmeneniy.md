@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-10-04 |
-| Версия | 2.8 |
+| Версия | 2.9 |
 | Статус | Рабочий |
 | Дата | 10.11.2026 |
 
@@ -95,6 +95,7 @@
 | 76 | 06.11.2026 | DevOps | Пилот | Админ-консоль кеша развёрнута на `school-platform-v2.alwaysdata.net`: backup `20261106T124815Z-admin-cache-console` (дамп БД 583 КБ, архивы backend и dist, `MANIFEST.txt`), backend и новый `dist` (`index-CHCHwh94.js`, `index-BQb1wEQh.css`) доставлены, uWSGI перезапущен (master 3943074, worker 3970310), миграций нет — head `0010_safety` | Требование включить управление кешем в админ-консоли на пилоте | Smoke: `/health` 200/0.9.0, `/openapi.json` 174 пути/235 операций, `/admin/settings` 200, старый сайт 200; под `superadmin` GET `mode=managed-redis-tls`, `status=connected`, POST test `ok=true` (19,6 мс), секрет в ответах отсутствует, без токена — 401; откат — backup и `dist.pre-admin-cache-console-20261106T124815Z` | Утверждено |
 | 77 | 09.11.2026 | Разработчик | API/UI/Аудит | Добавлены подтверждение опасных изменений кеша (`confirm=true` + обязательная `reason` для отключения и смены `key_prefix`), снимки `before`/`after` в `audit.events` и `GET /api/v1/admin/settings/cache/history`; на `/admin/settings` добавлены блок подтверждения и история изменений | Закрыть остаток требования 11.3.1 по подтверждению опасных изменений и истории версий | Ответы `428` без подтверждения и `400` без причины; история читается из неизменяемого аудита без миграции; backend — 204 теста, frontend — 9 тестов, Ruff/typecheck чистые; на пилот не развёрнуто | Утверждено |
 | 78 | 10.11.2026 | Разработчик | ИБ/API/БД/UI | Реализована MFA для `superadmin`: TOTP RFC 6238, обязательная настройка при первом входе, 10 одноразовых резервных кодов, шифрование секрета Fernet (`MFA_ENCRYPTION_KEY`), блокировка после 5 неудачных попыток, аудит `mfa_*`, challenge-токены вместо access до второго фактора; миграция `0011_mfa`; `refresh_tokens.mfa_verified` запрещает обход MFA через старую refresh-сессию; экран входа обновлён | Закрыть требование MFA для привилегированной роли и устранить обход MFA через refresh | Backend — 216 тестов, frontend — 11 тестов, Ruff/typecheck чистые; миграция проверена offline SQL; на пилот не развёрнуто; резервные коды показываются один раз | Утверждено |
+| 79 | 10.11.2026 | DevOps | Пилот | MFA для `superadmin` развёрнута на `school-platform-v2.alwaysdata.net`: backup `20261110T071428Z-mfa` (дамп 523 КБ, архивы backend/dist, `MANIFEST.txt`, 665 записей TOC), в `backend/.env` добавлен `MFA_ENCRYPTION_KEY` с правами `600`, применена миграция `0011_mfa`, доставлены backend и `frontend/dist`, прежний dist сохранён как `frontend/dist.pre-mfa-20261110T060017Z` | Явная команда «Выполни Deploy» | `/health` — `200`/`0.9.0`; OpenAPI — 179 путей/240 операций; JS/CSS-хеши совпадают с локальной сборкой; вход `superadmin` — `mfa_enrollment_required` без токенов, `enroll/start` — `200`; `/`, `/docs`, `/admin/settings`, `/robots.txt` и старый сайт — `200`; enrollment `superadmin` и сохранение резервных кодов ожидают выполнения; откат — backup, `alembic downgrade 0010_safety`, старый dist | Утверждено |
 
 ## Шаблон записи
 | Поле | Значение |

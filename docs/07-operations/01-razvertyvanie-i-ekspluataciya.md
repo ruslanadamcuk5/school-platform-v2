@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 1.10 |
+| Версия | 1.11 |
 | Статус | Рабочий |
 | Дата | 10.11.2026 |
 
@@ -96,7 +96,7 @@ npm run dev
   `system`.
 - Подключены расширения: `citext`, `pgcrypto`, `pg_trgm`, `vector`,
   `unaccent`, `uuid-ossp`.
-- Миграция: `0005_curricula (head)`.
+- Миграция: `0011_mfa (head)`.
 - Доступ только с IP/хостов приложения, если возможно.
 - Ежедневный дамп и проверка восстановления.
 
@@ -454,7 +454,7 @@ cooldown.
   `dist.pre-admin-cache-console-20261106T124815Z`, перезапустить сайт.
   Откат миграций не требуется.
 
-### 3.4.13. Подготовлено 10.11.2026 (MFA для `superadmin`, не развёрнуто)
+### 3.4.13. Подготовлено 10.11.2026 (MFA для `superadmin`; развёрнуто — см. 3.4.14)
 - Добавлена миграция `0011_mfa`: поля MFA в `iam.users`, таблица
   `iam.mfa_recovery_codes` и признак `iam.refresh_tokens.mfa_verified`.
   Секрет TOTP хранится в зашифрованном виде, резервные коды — только хеши.
@@ -481,6 +481,35 @@ cooldown.
 - Откат: вернуть прежний backend и `dist`; при необходимости
   `alembic downgrade 0010_safety` (удалит MFA-поля и таблицу). Перед downgrade
   сохранить backup: резервные коды и секреты будут потеряны.
+
+### 3.4.14. Развёрнуто 10.11.2026 (MFA для `superadmin`)
+- Backup: `/home/school-platform-v2/school-platform-v2/backups/school-platform-v2/20261110T071428Z-mfa/`.
+  Дамп БД — 523 КБ, архив прежнего backend — 191 КБ, архив прежнего `dist` —
+  174 КБ, `MANIFEST.txt` с SHA-256; `pg_restore -l` читает 665 записей;
+  head до обновления — `0010_safety`.
+- В `backend/.env` добавлен отдельный `MFA_ENCRYPTION_KEY` (Fernet), права
+  файла `600`; значение не выводилось в логи и не попало в документацию.
+  Остальные переменные, `secrets/` и WSGI-адаптер не перезаписывались.
+- Применена миграция `0011_mfa`; `alembic current` — `0011_mfa (head)`.
+  Доставлены backend и `frontend/dist`; прежний `dist` сохранён как
+  `frontend/dist.pre-mfa-20261110T060017Z`.
+- Живой JS — `index-B0rJqfB4.js` (SHA-256
+  `e9996055f40d514fa937b6e271fa747b1c3297983451e3d1ba9ed78979d39b97`),
+  CSS — `index-Bl5SyjTG.css` (SHA-256
+  `5965918a941bafce2dff4b9efd64cf1bbb10ee84330de9953ad494d908bb0af6`);
+  хеши совпадают с локальной production-сборкой.
+- Smoke: `/health` — `200`, `version=0.9.0`, `database=ok`,
+  `jwt_ready=true`; `/openapi.json` — 179 путей и 240 операций, MFA-маршруты
+  присутствуют; `/`, `/docs`, `/admin/settings`, `/robots.txt` — `200`;
+  старый сайт `virusadk.alwaysdata.net` — `200`.
+- Вход `superadmin` возвращает `mfa_enrollment_required` без access/refresh;
+  `POST /api/v1/auth/mfa/enroll/start` — `200`, `otpauth://totp/...`.
+  Enrollment пользователя ожидает выполнения: нужно добавить секрет в
+  TOTP-приложение, подтвердить код и сохранить 10 резервных кодов.
+- Откат: восстановить дамп БД, выполнить `alembic downgrade 0010_safety`,
+  вернуть backend из архива и `dist.pre-mfa-20261110T060017Z`, перезапустить
+  сайт. Перед downgrade сохранить backup: MFA-секреты и резервные коды будут
+  потеряны. Отдельный reset-эндпоинт пока отсутствует (риск R-11).
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет
