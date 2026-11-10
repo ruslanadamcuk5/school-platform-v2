@@ -2,7 +2,7 @@
 
 > Сгенерировано `scripts/gen_codemap.py`. Не редактировать вручную.
 > Дата генерации: 10.11.2026.
-> Backend: 79 файлов; tests: 23; frontend: 34.
+> Backend: 80 файлов; tests: 24; frontend: 34.
 
 ## Как пользоваться
 1. Найдите домен в таблице.
@@ -44,6 +44,7 @@
 | `backend/app/db/__init__.py` | 1 | — | — |
 | `backend/app/db/base.py` | 44 | Base:20, UUIDPrimaryKeyMixin:24, TimestampMixin:33 | — |
 | `backend/app/db/import_legacy.py` | 1420 | Importer:200 | legacy_uuid:101, sha256_file:106, parse_dt:114, parse_date:136, parse_time:141, parse_json:153, clean_text:164, slug_code:171, old_rows:175, source_counts:182 (+2) |
+| `backend/app/db/mfa_admin.py` | 198 | — | _find_user:27, _active_refresh_tokens:38, _status:56, _reset:79, build_parser:135, _run:176, main:185 |
 | `backend/app/db/pilot_data.py` | 3563 | Person:630 | _person:640, _login_slug:689, _demo_password:696, _repair_demo_logins:711, _get_or_create_school:734, _get_or_create_user:802, _get_or_create_class:841, _get_or_create_program:907, _ensure_groups:946, _attach:1007 (+25) |
 | `backend/app/db/seed.py` | 569 | — | _upsert_geography:140, _upsert_permissions:175, _upsert_services:201, _upsert_country_activations:232, _get_or_create_group:265, _grant_permissions:305, _add_membership:344, seed:368 |
 | `backend/app/db/session.py` | 38 | — | get_session:31 |
@@ -86,7 +87,7 @@
 | `backend/app/services/audit.py` | 35 | — | add_audit_event:12 |
 | `backend/app/services/auth.py` | 203 | AuthError:22 | _client_info:26, authenticate:35, record_login_success:85, issue_refresh_token:111, rotate_refresh_token:132, revoke_refresh_token:178 |
 | `backend/app/services/grading.py` | 287 | — | _clean:28, normalize_text:33, normalize_number:42, normalize_time:75, normalize:100, _given_values:110, _payload_answer:117, _answer_type:122, _read_task:136, _correct_choices:143 (+9) |
-| `backend/app/services/mfa.py` | 346 | MfaError:33, MfaNotConfiguredError:37, MfaLockedError:41 | _now:45, _fernet:49, encrypt_secret:64, decrypt_secret:68, generate_totp_secret:77, build_otpauth_uri:81, _hotp:95, totp_code:106, verify_totp:116, normalize_recovery_code:140 (+10) |
+| `backend/app/services/mfa.py` | 449 | MfaError:34, MfaNotConfiguredError:38, MfaLockedError:42, MfaResetResult:351 | _now:46, _fernet:50, encrypt_secret:65, decrypt_secret:69, generate_totp_secret:78, build_otpauth_uri:82, _hotp:96, totp_code:107, verify_totp:117, normalize_recovery_code:141 (+11) |
 | `backend/app/services/onboarding.py` | 301 | CurriculumContext:59, PersonalizedModule:151 | now_utc:28, _allowed:32, module_is_eligible:40, curriculum_context:64, personalized_modules:73, _stage_order:95, ensure_profile:106, progress_by_module:137, personalized_state:157, next_step:180 (+5) |
 | `backend/app/services/onboarding_catalog.py` | 861 | OnboardingStep:51, OnboardingModule:63 | _service_steps:80, get_module:854, modules_for_service:858 |
 | `backend/app/services/platform_settings.py` | 269 | CacheRuntimeSettings:61 | _normalise_prefix:33, _number_in_range:41, _env_defaults:103, _coerce:119, current_cache_settings:181, get_cache_runtime:188, save_cache_settings:238, reset_cache_runtime_for_tests:265 |
@@ -147,6 +148,7 @@
 | `backend/tests/test_library_api.py` | 699 | 17 |
 | `backend/tests/test_lms_api.py` | 226 | 6 |
 | `backend/tests/test_mfa.py` | 388 | 12 |
+| `backend/tests/test_mfa_admin.py` | 165 | 3 |
 | `backend/tests/test_module_access.py` | 129 | 3 |
 | `backend/tests/test_onboarding.py` | 104 | 8 |
 | `backend/tests/test_openapi.py` | 43 | 2 |

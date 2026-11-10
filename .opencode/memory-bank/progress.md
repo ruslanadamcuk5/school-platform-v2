@@ -2,6 +2,16 @@
 
 > Только последние этапы. Полная история: `archive/progress-2026.md`.
 
+## MFA emergency reset CLI (10.11.2026)
+- [x] `app/db/mfa_admin.py`: `status` и `reset`; reset требует `--confirm`,
+  `--reason` не короче 10 символов, поддерживает `--dry-run` и
+  `--allow-any-role`.
+- [x] Reset очищает MFA-поля, удаляет резервные коды, отзывает refresh-сессии
+  и пишет `mfa_reset` в аудит; access-токены действуют до TTL.
+- [x] Тесты: backend 219 passed, Ruff чистый; миграция не требуется.
+- [x] Документы: ШК-07-01 1.12, журнал 3.0, риски 0.3, реестр 0.9.7.
+- [ ] На пилот не развёрнуто; enrollment `superadmin` ожидает.
+
 ## MFA deploy на пилот (10.11.2026)
 - [x] Backup `20261110T071428Z-mfa`: дамп БД 523 КБ, архивы backend и dist,
   `MANIFEST.txt`, 665 записей TOC; head до обновления — `0010_safety`.
@@ -14,7 +24,7 @@
   токенов, `enroll/start` — 200.
 - [x] Документы: ШК-07-01 1.11, журнал 2.9, реестр 0.9.6.
 - [ ] Enrollment `superadmin` в TOTP-приложении и сохранение 10 резервных
-  кодов; reset/regeneration MFA остаётся (R-11).
+  кодов; reset CLI реализован, но на пилот не развёрнут (R-11).
 
 ## MFA для superadmin (10.11.2026)
 - [x] TOTP RFC 6238: 30 секунд, окно ±1; секрет Fernet, ключ

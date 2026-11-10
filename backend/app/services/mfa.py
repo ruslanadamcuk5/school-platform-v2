@@ -13,15 +13,16 @@ import hmac
 import secrets
 import struct
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote, urlencode
 
 from cryptography.fernet import Fernet, InvalidToken
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models.iam import MfaRecoveryCode, User
+from app.models.iam import MfaRecoveryCode, RefreshToken, User
 from app.services.audit import add_audit_event
 
 MFA_PURPOSE_VERIFY = "verify"
@@ -343,4 +344,106 @@ async def recovery_codes_remaining(
                 )
             )
         ).scalar_one()
+    )
+
+
+@dataclass(frozen=True)
+class MfaResetResult:
+    """Summary of an emergency MFA reset; never contains secrets."""
+
+    login: str
+    was_enabled: bool
+    recovery_codes_deleted: int
+    refresh_tokens_revoked: int
+    actor: str
+
+
+async def reset_mfa(
+    session: AsyncSession,
+    *,
+    user: User,
+    reason: str,
+    actor: str = "cli",
+) -> MfaResetResult:
+    """Reset MFA, revoke refresh sessions and delete recovery codes.
+
+    The caller must commit the session.  Access tokens already issued remain
+    valid until their short TTL expires, so this is an emergency procedure.
+    """
+    normalized_reason = reason.strip()
+    if not normalized_reason:
+        raise MfaError("Reason is required")
+    if len(normalized_reason) > 500:
+        raise MfaError("Reason is too long")
+
+    recovery_codes_deleted = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(MfaRecoveryCode)
+                .where(MfaRecoveryCode.user_id == user.id)
+            )
+        ).scalar_one()
+    )
+    refresh_tokens_revoked = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(RefreshToken)
+                .where(
+                    RefreshToken.user_id == user.id,
+                    RefreshToken.revoked_at.is_(None),
+                )
+            )
+        ).scalar_one()
+    )
+
+    now = _now()
+    await session.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.user_id == user.id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    await session.execute(
+        delete(MfaRecoveryCode)
+        .where(MfaRecoveryCode.user_id == user.id)
+        .execution_options(synchronize_session=False)
+    )
+
+    was_enabled = bool(user.mfa_enabled)
+    user.mfa_enabled = False
+    user.mfa_secret_encrypted = None
+    user.mfa_pending_secret_encrypted = None
+    user.mfa_enrolled_at = None
+    user.mfa_last_used_counter = None
+    user.mfa_failed_attempts = 0
+    user.mfa_locked_until = None
+
+    add_audit_event(
+        session,
+        action="mfa_reset",
+        entity_type="user",
+        entity_id=user.id,
+        school_id=user.school_id,
+        user_id=None,
+        details={
+            "source": actor,
+            "target_login": user.login,
+            "target_role": user.role,
+            "reason": normalized_reason,
+            "was_enabled": was_enabled,
+            "recovery_codes_deleted": recovery_codes_deleted,
+            "refresh_tokens_revoked": refresh_tokens_revoked,
+        },
+    )
+    return MfaResetResult(
+        login=user.login,
+        was_enabled=was_enabled,
+        recovery_codes_deleted=recovery_codes_deleted,
+        refresh_tokens_revoked=refresh_tokens_revoked,
+        actor=actor,
     )
