@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-10-04 |
-| Версия | 3.0 |
+| Версия | 3.1 |
 | Статус | Рабочий |
 | Дата | 10.11.2026 |
 
@@ -97,6 +97,7 @@
 | 78 | 10.11.2026 | Разработчик | ИБ/API/БД/UI | Реализована MFA для `superadmin`: TOTP RFC 6238, обязательная настройка при первом входе, 10 одноразовых резервных кодов, шифрование секрета Fernet (`MFA_ENCRYPTION_KEY`), блокировка после 5 неудачных попыток, аудит `mfa_*`, challenge-токены вместо access до второго фактора; миграция `0011_mfa`; `refresh_tokens.mfa_verified` запрещает обход MFA через старую refresh-сессию; экран входа обновлён | Закрыть требование MFA для привилегированной роли и устранить обход MFA через refresh | Backend — 216 тестов, frontend — 11 тестов, Ruff/typecheck чистые; миграция проверена offline SQL; на пилот не развёрнуто; резервные коды показываются один раз | Утверждено |
 | 79 | 10.11.2026 | DevOps | Пилот | MFA для `superadmin` развёрнута на `school-platform-v2.alwaysdata.net`: backup `20261110T071428Z-mfa` (дамп 523 КБ, архивы backend/dist, `MANIFEST.txt`, 665 записей TOC), в `backend/.env` добавлен `MFA_ENCRYPTION_KEY` с правами `600`, применена миграция `0011_mfa`, доставлены backend и `frontend/dist`, прежний dist сохранён как `frontend/dist.pre-mfa-20261110T060017Z` | Явная команда «Выполни Deploy» | `/health` — `200`/`0.9.0`; OpenAPI — 179 путей/240 операций; JS/CSS-хеши совпадают с локальной сборкой; вход `superadmin` — `mfa_enrollment_required` без токенов, `enroll/start` — `200`; `/`, `/docs`, `/admin/settings`, `/robots.txt` и старый сайт — `200`; enrollment `superadmin` и сохранение резервных кодов ожидают выполнения; откат — backup, `alembic downgrade 0010_safety`, старый dist | Утверждено |
 | 80 | 10.11.2026 | Разработчик | ИБ/Эксплуатация | Добавлена emergency-процедура MFA: CLI `python -m app.db.mfa_admin` с командами `status` и `reset`; reset требует точного `--confirm`, причины не короче 10 символов, поддерживает `--dry-run` и `--allow-any-role`; удаляет резервные коды, отзывает refresh-сессии, очищает MFA-поля и пишет `mfa_reset` в аудит | Закрыть риск R-11 при потере TOTP-устройства и резервных кодов | Backend — 219 тестов, Ruff чистый; reset не требует миграции; на пилот не развёрнуто; access-токены действуют до TTL, после reset требуется повторный enrollment | Утверждено |
+| 81 | 10.11.2026 | DevOps | Пилот | Emergency reset MFA развёрнут на `school-platform-v2.alwaysdata.net`: backup `20261110T092052Z-mfa-reset-cli` (дамп 527 КБ, архивы backend/dist, `MANIFEST.txt`, 671 запись TOC), доставлены `mfa.py` и `mfa_admin.py` с совпадающими SHA-256, миграций нет; CLI `status` показывает `mfa_enabled=True`, 10 резервных кодов и 44 активных refresh-сессии, `reset --dry-run` проходит | Явная команда «разворачивай на пилот» | Вход `superadmin` — `mfa_required` без access-токена; `/health` — `200`/`0.9.0`, OpenAPI — 179/240, старый сайт — `200`; фактический reset не выполнялся; откат — два файла из архива backend без отката БД | Утверждено |
 
 ## Шаблон записи
 | Поле | Значение |

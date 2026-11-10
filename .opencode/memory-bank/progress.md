@@ -9,8 +9,12 @@
 - [x] Reset очищает MFA-поля, удаляет резервные коды, отзывает refresh-сессии
   и пишет `mfa_reset` в аудит; access-токены действуют до TTL.
 - [x] Тесты: backend 219 passed, Ruff чистый; миграция не требуется.
-- [x] Документы: ШК-07-01 1.12, журнал 3.0, риски 0.3, реестр 0.9.7.
-- [ ] На пилот не развёрнуто; enrollment `superadmin` ожидает.
+- [x] Документы: ШК-07-01 1.13, журнал 3.1, риски 0.4, реестр 0.9.8.
+- [x] На пилот развёрнуты `mfa.py` и `mfa_admin.py`; backup
+  `20261110T092052Z-mfa-reset-cli`, SHA-256 совпадают; `status` и
+  `reset --dry-run` проверены, фактический reset не выполнялся.
+- [x] Enrollment `superadmin` выполнен: `mfa_enabled=True`, 10 резервных
+  кодов, вход возвращает `mfa_required` без access-токена.
 
 ## MFA deploy на пилот (10.11.2026)
 - [x] Backup `20261110T071428Z-mfa`: дамп БД 523 КБ, архивы backend и dist,
@@ -23,8 +27,8 @@
   старый сайт — 200; вход `superadmin` — `mfa_enrollment_required` без
   токенов, `enroll/start` — 200.
 - [x] Документы: ШК-07-01 1.11, журнал 2.9, реестр 0.9.6.
-- [ ] Enrollment `superadmin` в TOTP-приложении и сохранение 10 резервных
-  кодов; reset CLI реализован, но на пилот не развёрнут (R-11).
+- [x] Enrollment `superadmin` выполнен; сохранены 10 резервных кодов, вход
+  возвращает `mfa_required`; reset CLI развёрнут и проверен dry-run (R-11).
 
 ## MFA для superadmin (10.11.2026)
 - [x] TOTP RFC 6238: 30 секунд, окно ±1; секрет Fernet, ключ

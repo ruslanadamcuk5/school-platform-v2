@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 1.12 |
+| Версия | 1.13 |
 | Статус | Рабочий |
 | Дата | 10.11.2026 |
 
@@ -511,12 +511,30 @@ cooldown.
   старый сайт `virusadk.alwaysdata.net` — `200`.
 - Вход `superadmin` возвращает `mfa_enrollment_required` без access/refresh;
   `POST /api/v1/auth/mfa/enroll/start` — `200`, `otpauth://totp/...`.
-  Enrollment пользователя ожидает выполнения: нужно добавить секрет в
-  TOTP-приложение, подтвердить код и сохранить 10 резервных кодов.
+  Enrollment выполнен 10.11.2026 (см. 3.4.15): `superadmin` имеет
+  `mfa_enabled=True` и 10 резервных кодов; вход требует `mfa_required`.
 - Откат: восстановить дамп БД, выполнить `alembic downgrade 0010_safety`,
   вернуть backend из архива и `dist.pre-mfa-20261110T060017Z`, перезапустить
   сайт. Перед downgrade сохранить backup: MFA-секреты и резервные коды будут
   потеряны. Отдельный reset-эндпоинт пока отсутствует (риск R-11).
+
+### 3.4.15. Развёрнуто 10.11.2026 (emergency reset MFA)
+- Backup: `/home/school-platform-v2/school-platform-v2/backups/school-platform-v2/20261110T092052Z-mfa-reset-cli/`.
+  Дамп БД — 527 КБ, архив прежнего backend — 196 КБ, архив `dist` — 178 КБ,
+  `MANIFEST.txt` с SHA-256; `pg_restore -l` читает 671 запись; head —
+  `0011_mfa`.
+- Доставлены только `backend/app/services/mfa.py` и
+  `backend/app/db/mfa_admin.py`; SHA-256 совпадают с локальными файлами,
+  права `660`. Миграций нет; `.env`, `secrets/`, WSGI-адаптер и `dist` не
+  изменялись.
+- CLI `status`: `mfa_enabled=True`, `recovery_codes_remaining=10`,
+  `refresh_tokens_active=44`, `locked_until=none`. `reset --dry-run` проходит;
+  фактический reset не выполнялся, чтобы не отзывать действующие сессии.
+- Вход `superadmin` — `mfa_required`, access-токен не выдаётся; `/health` —
+  `200`/`0.9.0`, OpenAPI — 179 путей/240 операций; старый сайт — `200`.
+- Откат: вернуть два файла из архива backend и перезапустить сайт; откат БД
+  не требуется. Reset остаётся destructive-процедурой и выполняется только
+  по подтверждённому обращению с указанием причины.
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет
