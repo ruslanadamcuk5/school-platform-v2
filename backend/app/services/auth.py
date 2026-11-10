@@ -79,6 +79,18 @@ async def authenticate(
     if needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
 
+    return user
+
+
+def record_login_success(
+    session: AsyncSession,
+    *,
+    user: User,
+    mfa_used: bool = False,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Record a completed login only after all required factors passed."""
     user.last_login_at = datetime.now(timezone.utc)
     add_audit_event(
         session,
@@ -87,16 +99,20 @@ async def authenticate(
         entity_id=user.id,
         school_id=user.school_id,
         user_id=user.id,
-        details={"login": user.login, "role": user.role},
+        details={
+            "login": user.login,
+            "role": user.role,
+            "mfa": mfa_used,
+        },
         **_client_info(ip_address, user_agent),
     )
-    return user
 
 
 async def issue_refresh_token(
     session: AsyncSession,
     *,
     user: User,
+    mfa_verified: bool = False,
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> tuple[str, RefreshToken]:
@@ -105,6 +121,7 @@ async def issue_refresh_token(
         user_id=user.id,
         token_hash=token_hash,
         expires_at=refresh_expires_at(),
+        mfa_verified=mfa_verified,
         user_agent=user_agent[:512] if user_agent else None,
         ip_address=ip_address[:64] if ip_address else None,
     )
@@ -132,11 +149,16 @@ async def rotate_refresh_token(
     if user is None or not user.is_active or user.deleted_at is not None:
         token.revoked_at = datetime.now(timezone.utc)
         raise AuthError("User is not active")
+    if user.mfa_enabled and not token.mfa_verified:
+        raise AuthError("MFA verification is required")
+    if user.role == "superadmin" and not user.mfa_enabled:
+        raise AuthError("MFA enrollment is required")
 
     token.revoked_at = datetime.now(timezone.utc)
     raw_new, new_model = await issue_refresh_token(
         session,
         user=user,
+        mfa_verified=token.mfa_verified,
         ip_address=ip_address,
         user_agent=user_agent,
     )

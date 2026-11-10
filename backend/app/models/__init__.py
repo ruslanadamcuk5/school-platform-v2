@@ -40,6 +40,7 @@ from app.models.education import (
 from app.models.iam import (
     GroupMembership,
     GroupPermission,
+    MfaRecoveryCode,
     Permission,
     RefreshToken,
     User,
@@ -131,6 +132,7 @@ __all__ = [
     "PracticePlacement",
     "Question",
     "Quiz",
+    "MfaRecoveryCode",
     "RefreshToken",
     "Region",
     "School",

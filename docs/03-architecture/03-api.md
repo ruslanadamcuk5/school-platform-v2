@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-03-03 |
-| Версия | 0.17 |
+| Версия | 0.18 |
 | Статус | Рабочий |
-| Дата | 09.11.2026 |
+| Дата | 10.11.2026 |
 | Базовый URL (пилот) | `https://school-platform-v2.alwaysdata.net` |
 | OpenAPI | `/openapi.json`, `/docs`, `/redoc` |
 
@@ -58,6 +58,27 @@
 }
 ```
 
+Если у пользователя включена MFA, а также при первом входе `superadmin`
+access/refresh-токены не выдаются. Вместо пары возвращается challenge:
+
+```json
+{
+  "status": "mfa_required",
+  "mfa_token": "eyJ...",
+  "expires_in": 300,
+  "user": {
+    "id": "uuid",
+    "login": "admin",
+    "role": "superadmin",
+    "mfa_enabled": true
+  }
+}
+```
+
+`mfa_token` — не access-токен: он принимается только MFA-эндпоинтами и имеет
+ограниченный срок. Для `superadmin` без MFA возвращается
+`status=mfa_enrollment_required` и `expires_in=600`.
+
 ### 2.2. Обновление
 
 `POST /api/v1/auth/refresh`
@@ -76,6 +97,30 @@
 ### 2.4. Текущий пользователь
 
 `GET /api/v1/auth/me` с access-токеном.
+
+### 2.5. Настройка MFA
+
+`POST /api/v1/auth/mfa/enroll/start` с `mfa_token` (purpose `enroll`)
+возвращает `secret` и `otpauth_uri`. Секрет хранится только в зашифрованном
+виде; в ответе и логах не появляется после завершения настройки.
+
+`POST /api/v1/auth/mfa/enroll/verify` с `mfa_token` и первым 6-значным кодом
+включает MFA, возвращает пару токенов и 10 одноразовых резервных кодов.
+Повторно коды не показываются.
+
+### 2.6. Подтверждение входа
+
+`POST /api/v1/auth/mfa/verify` с `mfa_token` (purpose `verify`) и кодом TOTP
+или резервным кодом. Возвращает обычную пару токенов. После 5 неудачных
+попыток действует блокировка на 15 минут.
+
+### 2.7. Статус MFA
+
+`GET /api/v1/auth/mfa/status` с access-токеном возвращает `enabled`,
+`recovery_codes_remaining` и `enrolled_at`.
+
+Refresh-токены, выданные до включения MFA или без пройденной MFA, отклоняются:
+для `superadmin` без MFA обновление сессии невозможно до настройки TOTP.
 
 ## 3. Организация и тенантность
 

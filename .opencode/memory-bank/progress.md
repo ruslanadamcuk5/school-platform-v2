@@ -2,6 +2,28 @@
 
 > Только последние этапы. Полная история: `archive/progress-2026.md`.
 
+## MFA для superadmin (10.11.2026)
+- [x] TOTP RFC 6238: 30 секунд, окно ±1; секрет Fernet, ключ
+  `MFA_ENCRYPTION_KEY` (fallback от `SECRET_KEY` только для разработки).
+- [x] Обязательная настройка при первом входе `superadmin`; access/refresh
+  выдаются только после подтверждения кода. Добавлены challenge-токены
+  `mfa_token` с purpose `enroll`/`verify`.
+- [x] 10 одноразовых резервных кодов (SHA-256), блокировка 5 попыток/15 минут,
+  аудит `mfa_enrollment_started`, `mfa_enabled`, `mfa_verified`, `mfa_failed`.
+- [x] `refresh_tokens.mfa_verified` закрывает обход MFA через refresh-сессию;
+  старые токены `superadmin` без MFA отклоняются.
+- [x] Миграция `0011_mfa`: поля `iam.users`, `iam.mfa_recovery_codes`,
+  `iam.refresh_tokens.mfa_verified`; offline SQL проверен.
+- [x] API: `/auth/mfa/enroll/start`, `/enroll/verify`, `/verify`, `/status`;
+  экран входа с TOTP/резервным кодом и показом резервных кодов; бейдж MFA в
+  профиле.
+- [x] Тесты: backend 216 passed, frontend 11 passed; `scripts/check.ps1` —
+  `OK (155s)`, Ruff/typecheck чистые; `npm run build` — ok.
+- [x] Документы: ШК-03-03 0.18, ШК-03-06 1.9, ШК-04-01 0.8, ШК-05-01 0.5, ШК-07-01 1.10,
+  ШК-08-01 1.0, ШК-08-02 0.8, журнал 2.8, реестр 0.9.4.
+- [ ] На пилот не развёрнуто; деплой — только по отдельной команде с backup,
+  `MFA_ENCRYPTION_KEY` и enrollment `superadmin`.
+
 ## Админ-консоль кеша — подтверждение и история (09.11.2026)
 - [x] PATCH требует `confirm=true` и непустую `reason` для отключения кеша и
   смены `key_prefix`; без подтверждения — `428`, без причины — `400`.

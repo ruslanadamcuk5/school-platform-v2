@@ -86,6 +86,7 @@ SECRET_KEY=...
 JWT_ALGORITHM=RS256
 JWT_PRIVATE_KEY_PATH=./secrets/jwt_private.pem
 JWT_PUBLIC_KEY_PATH=./secrets/jwt_public.pem
+MFA_ENCRYPTION_KEY=...  # Fernet key; production/pilot only
 ADMIN_LOGIN=admin
 ADMIN_PASSWORD=...
 SEED_SCHOOL_CODE=pilot-school

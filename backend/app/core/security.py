@@ -138,6 +138,54 @@ def decode_access_token(token: str) -> dict:
     return payload
 
 
+def create_mfa_token(
+    *,
+    user_id: uuid.UUID,
+    purpose: str,
+    ttl_seconds: int,
+) -> tuple[str, datetime]:
+    """Create a short-lived token for the MFA challenge flow.
+
+    It is deliberately not an access token: ``type`` and ``purpose`` are
+    checked by ``decode_mfa_token``, and ``get_current_user`` rejects it.
+    """
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(seconds=ttl_seconds)
+    payload = {
+        "sub": str(user_id),
+        "type": "mfa",
+        "purpose": purpose,
+        "jti": uuid.uuid4().hex,
+        "iat": now,
+        "nbf": now,
+        "exp": expires_at,
+        "iss": settings.jwt_issuer,
+        "aud": settings.jwt_audience,
+    }
+    token = jwt.encode(payload, _private_key(), algorithm=settings.jwt_algorithm)
+    return token, expires_at
+
+
+def decode_mfa_token(token: str, *, purpose: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            _public_key(),
+            algorithms=[settings.jwt_algorithm],
+            audience=settings.jwt_audience,
+            issuer=settings.jwt_issuer,
+        )
+    except JWTError as exc:
+        raise TokenError("Invalid or expired MFA token") from exc
+    if (
+        payload.get("type") != "mfa"
+        or payload.get("purpose") != purpose
+        or not payload.get("sub")
+    ):
+        raise TokenError("Invalid MFA token payload")
+    return payload
+
+
 def new_refresh_token() -> tuple[str, str]:
     """Return ``(raw_token, sha256_hash)``. Only the hash is stored."""
     raw = secrets.token_urlsafe(48)

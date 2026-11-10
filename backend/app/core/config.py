@@ -56,6 +56,15 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     audit_log_enabled: bool = True
 
+    # MFA. The encryption key is a Fernet key; if absent, a key is derived
+    # from SECRET_KEY. Production should set MFA_ENCRYPTION_KEY explicitly.
+    mfa_encryption_key: str | None = None
+    mfa_issuer: str = "ВЕКТОР"
+    mfa_challenge_ttl_seconds: int = 300
+    mfa_enrollment_ttl_seconds: int = 600
+    mfa_max_failed_attempts: int = 5
+    mfa_lockout_minutes: int = 15
+
     # Optional Redis cache. Empty REDIS_URL disables caching completely.
     redis_url: str | None = None
     redis_cache_ttl_seconds: int = 60

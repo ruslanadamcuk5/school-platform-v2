@@ -6,6 +6,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -107,6 +108,25 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    mfa_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mfa_pending_secret_encrypted: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    mfa_enrolled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    mfa_last_used_counter: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True
+    )
+    mfa_failed_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    mfa_locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -121,6 +141,9 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="users", foreign_keys=[school_id]
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    mfa_recovery_codes: Mapped[list["MfaRecoveryCode"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     child_relations: Mapped[list["UserRelation"]] = relationship(
@@ -214,6 +237,9 @@ class RefreshToken(Base, UUIDPrimaryKeyMixin):
     revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    mfa_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -227,6 +253,29 @@ class RefreshToken(Base, UUIDPrimaryKeyMixin):
         return self.revoked_at is None and self.expires_at > datetime.now(
             self.expires_at.tzinfo
         )
+
+
+class MfaRecoveryCode(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "mfa_recovery_codes"
+    __table_args__ = {"schema": "iam"}
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("iam.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    code_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    user: Mapped["User"] = relationship(back_populates="mfa_recovery_codes")
 
 
 class UserGroup(Base, UUIDPrimaryKeyMixin, TimestampMixin):

@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-07-01 |
-| Версия | 1.9 |
+| Версия | 1.10 |
 | Статус | Рабочий |
-| Дата | 09.11.2026 |
+| Дата | 10.11.2026 |
 
 ## 1. Среды
 | Среда | Назначение | Домен |
@@ -109,6 +109,8 @@ npm run dev
 - `REDIS_SOCKET_TIMEOUT_SECONDS` — по умолчанию `1.0`
 - `SECRET_KEY`
 - `JWT_*`
+- `MFA_ENCRYPTION_KEY` — отдельный Fernet-ключ для TOTP-секретов
+- `MFA_ISSUER`, `MFA_CHALLENGE_TTL_SECONDS`, `MFA_ENROLLMENT_TTL_SECONDS`
 - `AI_*`
 - `S3_*`
 - `CORS_ORIGINS` — `https://school-platform-v2.alwaysdata.net`
@@ -451,6 +453,34 @@ cooldown.
 - Откат: остановить сайт, восстановить дамп БД, вернуть backend из архива и
   `dist.pre-admin-cache-console-20261106T124815Z`, перезапустить сайт.
   Откат миграций не требуется.
+
+### 3.4.13. Подготовлено 10.11.2026 (MFA для `superadmin`, не развёрнуто)
+- Добавлена миграция `0011_mfa`: поля MFA в `iam.users`, таблица
+  `iam.mfa_recovery_codes` и признак `iam.refresh_tokens.mfa_verified`.
+  Секрет TOTP хранится в зашифрованном виде, резервные коды — только хеши.
+- В `backend/.env` добавить отдельный ключ Fernet (не `SECRET_KEY`):
+  ```powershell
+  .\.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  ```
+  Значение записать как `MFA_ENCRYPTION_KEY=...`, права файла — `600`, в Git и
+  логи не коммитить. Без ключа локально используется производный от
+  `SECRET_KEY`; для пилота и production это не рекомендуется.
+- Порядок: backup → `alembic upgrade head` → перезапуск backend → `npm run
+  build` и доставка `frontend/dist` → smoke `/health` и `/openapi.json`.
+- После перезапуска первый вход `superadmin` вернёт
+  `mfa_enrollment_required`: нужно добавить секрет в TOTP-приложение,
+  подтвердить код и сохранить 10 резервных кодов. До подтверждения
+  access/refresh-токены не выдаются.
+- Старые refresh-токены `superadmin` без MFA отклоняются; access-токены,
+  выданные до включения MFA, действуют не дольше своего короткого TTL.
+- Проверка: `pytest tests/test_mfa.py -q`, `vitest run
+  src/pages/LoginPage.test.tsx`, затем сценарий входа с TOTP и резервным кодом.
+- При потере TOTP-устройства и резервных кодов используется только
+  защищённый доступ к БД/CLI с аудитом; отдельный reset-эндпоинт пока не
+  реализован (риск R-11).
+- Откат: вернуть прежний backend и `dist`; при необходимости
+  `alembic downgrade 0010_safety` (удалит MFA-поля и таблицу). Перед downgrade
+  сохранить backup: резервные коды и секреты будут потеряны.
 
 ### 3.5. Ограничения пилота
 Alwaysdata подходит для пилота и демонстрации, но не заменяет

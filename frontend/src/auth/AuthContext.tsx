@@ -17,13 +17,17 @@ import {
   meRequest,
   storeSession,
   storeUser,
+  verifyMfaEnrollment,
+  verifyMfaLogin,
 } from '../api/client';
-import type { User } from '../api/types';
+import type { LoginResult, TokenPair, User } from '../api/types';
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (login: string, password: string) => Promise<void>;
+  login: (login: string, password: string) => Promise<LoginResult>;
+  completeMfa: (mfaToken: string, code: string) => Promise<void>;
+  completeMfaEnrollment: (mfaToken: string, code: string) => Promise<string[]>;
   logout: () => Promise<void>;
   reloadUser: () => Promise<void>;
 }
@@ -72,11 +76,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:logout', onLogout);
   }, []);
 
-  const login = useCallback(async (loginValue: string, password: string) => {
-    const tokens = await loginRequest(loginValue, password);
+  const applyTokens = useCallback((tokens: TokenPair) => {
     storeSession(tokens);
     setUser(tokens.user);
   }, []);
+
+  const login = useCallback(
+    async (loginValue: string, password: string) => {
+      const result = await loginRequest(loginValue, password);
+      if ('access_token' in result) {
+        applyTokens(result);
+      }
+      return result;
+    },
+    [applyTokens],
+  );
+
+  const completeMfa = useCallback(
+    async (mfaToken: string, code: string) => {
+      applyTokens(await verifyMfaLogin(mfaToken, code));
+    },
+    [applyTokens],
+  );
+
+  const completeMfaEnrollment = useCallback(
+    async (mfaToken: string, code: string) => {
+      const result = await verifyMfaEnrollment(mfaToken, code);
+      applyTokens(result);
+      return result.recovery_codes;
+    },
+    [applyTokens],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -93,8 +123,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, reloadUser }),
-    [user, loading, login, logout, reloadUser],
+    () => ({
+      user,
+      loading,
+      login,
+      completeMfa,
+      completeMfaEnrollment,
+      logout,
+      reloadUser,
+    }),
+    [
+      user,
+      loading,
+      login,
+      completeMfa,
+      completeMfaEnrollment,
+      logout,
+      reloadUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

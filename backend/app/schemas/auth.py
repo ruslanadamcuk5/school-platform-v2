@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -48,8 +49,40 @@ class UserOut(BaseModel):
     is_active: bool
     is_verified: bool
     must_change_password: bool
+    mfa_enabled: bool = False
     last_login_at: datetime | None
     created_at: datetime
+
+
+class MfaChallenge(BaseModel):
+    status: Literal["mfa_required", "mfa_enrollment_required"]
+    mfa_token: str
+    expires_in: int
+    user: UserOut
+
+
+class MfaTokenRequest(BaseModel):
+    mfa_token: str = Field(min_length=16)
+
+
+class MfaEnrollStart(BaseModel):
+    secret: str
+    otpauth_uri: str
+    expires_in: int
+
+
+class MfaVerifyRequest(MfaTokenRequest):
+    code: str = Field(min_length=6, max_length=32)
+
+
+class MfaEnrollmentComplete(TokenPair):
+    recovery_codes: list[str]
+
+
+class MfaStatus(BaseModel):
+    enabled: bool
+    recovery_codes_remaining: int
+    enrolled_at: datetime | None = None
 
 
 class UserCreate(BaseModel):
@@ -100,3 +133,4 @@ class AuditList(BaseModel):
 
 
 TokenPair.model_rebuild()
+MfaEnrollmentComplete.model_rebuild()

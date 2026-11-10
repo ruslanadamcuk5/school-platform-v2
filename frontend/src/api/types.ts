@@ -27,6 +27,7 @@ export interface User {
   is_active: boolean;
   is_verified: boolean;
   must_change_password: boolean;
+  mfa_enabled: boolean;
   last_login_at: string | null;
   created_at: string;
 }
@@ -38,6 +39,31 @@ export interface TokenPair {
   expires_in: number;
   refresh_expires_in: number;
   user: User;
+}
+
+export interface MfaChallenge {
+  status: 'mfa_required' | 'mfa_enrollment_required';
+  mfa_token: string;
+  expires_in: number;
+  user: User;
+}
+
+export type LoginResult = TokenPair | MfaChallenge;
+
+export interface MfaEnrollStart {
+  secret: string;
+  otpauth_uri: string;
+  expires_in: number;
+}
+
+export interface MfaEnrollmentComplete extends TokenPair {
+  recovery_codes: string[];
+}
+
+export interface MfaStatus {
+  enabled: boolean;
+  recovery_codes_remaining: number;
+  enrolled_at: string | null;
 }
 
 export interface Service {

@@ -1,8 +1,8 @@
 # Индекс эндпоинтов API
 
 > Сгенерировано `scripts/gen_api_index.py`. Не редактировать вручную.
-> Дата генерации: 09.11.2026.
-> Версия OpenAPI: `0.9.0`. Путей: 175; операций: 236.
+> Дата генерации: 10.11.2026.
+> Версия OpenAPI: `0.9.0`. Путей: 179; операций: 240.
 
 ## Как пользоваться
 1. Найдите маршрут по тегу, пути или summary.
@@ -43,6 +43,10 @@
 - `POST` `/api/v1/auth/login` — Вход по логину и паролю
 - `POST` `/api/v1/auth/logout` — Выход из системы
 - `GET` `/api/v1/auth/me` — Текущий пользователь
+- `POST` `/api/v1/auth/mfa/enroll/start` — Начать настройку MFA
+- `POST` `/api/v1/auth/mfa/enroll/verify` — Завершить настройку MFA
+- `GET` `/api/v1/auth/mfa/status` — Статус MFA
+- `POST` `/api/v1/auth/mfa/verify` — Подтвердить вход кодом MFA
 - `POST` `/api/v1/auth/refresh` — Обновление access-токена
 
 ## communication

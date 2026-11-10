@@ -3,9 +3,9 @@
 | Параметр | Значение |
 |---|---|
 | Код документа | ШК-04-01 |
-| Версия | 0.7 |
+| Версия | 0.8 |
 | Статус | Рабочий |
-| Дата | 05.11.2026 |
+| Дата | 10.11.2026 |
 
 ## 1. Общие принципы
 - СУБД: PostgreSQL 16+.
@@ -53,9 +53,29 @@
 | status | text | active/blocked/pending |
 | parent_code | text unique null | Код привязки родителя |
 | last_login_at | timestamptz null | Последний вход |
+| mfa_enabled | boolean | TOTP включён |
+| mfa_secret_encrypted | text null | TOTP-секрет, Fernet |
+| mfa_pending_secret_encrypted | text null | Секрет до подтверждения |
+| mfa_enrolled_at | timestamptz null | Когда включена MFA |
+| mfa_last_used_counter | bigint null | Защита от повторного TOTP |
+| mfa_failed_attempts | integer | Неудачные попытки |
+| mfa_locked_until | timestamptz null | Блокировка MFA |
 | created_at, updated_at, deleted_at | timestamptz | Служебные |
 
 Индексы: `login`, `email`, `school_id`, `class_id`, `parent_code`.
+
+### 3.1.1. `iam.mfa_recovery_codes`
+| Поле | Тип | Описание |
+|---|---|---|
+| id | uuid PK | Идентификатор |
+| user_id | uuid FK | Пользователь, `on delete cascade` |
+| code_hash | varchar(64) unique | SHA-256 нормализованного кода |
+| used_at | timestamptz null | Время использования |
+| created_at | timestamptz | Создание |
+
+Сырые резервные коды не хранятся. Один код используется один раз.
+`iam.refresh_tokens.mfa_verified` фиксирует, что refresh-сессия выдана после
+пройденной MFA; иначе обновление токена для MFA-пользователя отклоняется.
 
 ### 3.2. `iam.groups`, `iam.group_memberships`, `iam.permissions`, `iam.group_permissions`
 - `groups`: id, code, name, description, category, scope_type, scope_id, depth,

@@ -139,6 +139,22 @@ export function ProfilePage() {
                       Подтверждён
                     </Badge>
                   ) : null}
+                  {user.mfa_enabled || user.role === 'superadmin' ? (
+                    <Badge
+                      className={
+                        user.mfa_enabled
+                          ? 'border border-accent-400/20 bg-accent-400/10 text-accent-200 ring-accent-400/20'
+                          : 'border border-amber-300/20 bg-amber-300/10 text-amber-200 ring-amber-300/20'
+                      }
+                    >
+                      {user.mfa_enabled ? (
+                        <Shield className="h-3 w-3" />
+                      ) : (
+                        <ShieldOff className="h-3 w-3" />
+                      )}
+                      {user.mfa_enabled ? 'MFA включён' : 'MFA не настроен'}
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
             </div>

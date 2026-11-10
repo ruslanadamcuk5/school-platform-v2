@@ -4,15 +4,18 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
+  Copy,
   Eye,
   EyeOff,
   GraduationCap,
+  KeyRound,
   Layers,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
 
-import { apiErrorMessage } from '../api/client';
+import { apiErrorMessage, startMfaEnrollment } from '../api/client';
+import type { MfaChallenge, MfaEnrollStart } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui';
 
@@ -34,8 +37,10 @@ const features = [
   },
 ];
 
+type LoginStep = 'credentials' | 'mfa' | 'enroll' | 'recovery';
+
 export function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, completeMfa, completeMfaEnrollment } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
@@ -45,8 +50,14 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<LoginStep>('credentials');
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
+  const [enrollment, setEnrollment] = useState<MfaEnrollStart | null>(null);
+  const [code, setCode] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
 
-  if (user) {
+  if (user && step !== 'recovery') {
     return <Navigate to="/" replace />;
   }
 
@@ -55,13 +66,75 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(loginValue.trim(), password);
+      const result = await login(loginValue.trim(), password);
+      if ('access_token' in result) {
+        navigate(from, { replace: true });
+        return;
+      }
+      setChallenge(result);
+      if (result.status === 'mfa_enrollment_required') {
+        const started = await startMfaEnrollment(result.mfa_token);
+        setEnrollment(started);
+        setStep('enroll');
+      } else {
+        setStep('mfa');
+      }
+    } catch (caught) {
+      setError(apiErrorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleMfaSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!challenge) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await completeMfa(challenge.mfa_token, code.trim());
       navigate(from, { replace: true });
     } catch (caught) {
       setError(apiErrorMessage(caught));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleEnrollmentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!challenge) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const codes = await completeMfaEnrollment(challenge.mfa_token, code.trim());
+      setRecoveryCodes(codes);
+      setStep('recovery');
+    } catch (caught) {
+      setError(apiErrorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copySecret() {
+    if (!enrollment) return;
+    try {
+      await navigator.clipboard.writeText(enrollment.secret);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Не удалось скопировать секрет. Выделите его вручную.');
+    }
+  }
+
+  function resetLogin() {
+    setStep('credentials');
+    setChallenge(null);
+    setEnrollment(null);
+    setCode('');
+    setRecoveryCodes([]);
+    setError(null);
   }
 
   return (
@@ -162,73 +235,235 @@ export function LoginPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card sm:p-8">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
-                Вход в систему
+                {step === 'credentials'
+                  ? 'Вход в систему'
+                  : step === 'mfa'
+                    ? 'Двухфакторная аутентификация'
+                    : step === 'enroll'
+                      ? 'Настройка MFA'
+                      : 'Резервные коды'}
               </p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                С возвращением
+                {step === 'credentials'
+                  ? 'С возвращением'
+                  : step === 'mfa'
+                    ? 'Подтвердите вход'
+                    : step === 'enroll'
+                      ? 'Защитите аккаунт'
+                      : 'Сохраните коды'}
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Используйте учётную запись, выданную администратором платформы.
+                {step === 'credentials'
+                  ? 'Используйте учётную запись, выданную администратором платформы.'
+                  : step === 'mfa'
+                    ? 'Введите 6-значный код из приложения-аутентификатора или резервный код.'
+                    : step === 'enroll'
+                      ? 'Для superadmin MFA обязательна. Добавьте секрет в приложение и подтвердите первый код.'
+                      : 'Эти коды показываются один раз. Каждый код можно использовать только один раз.'}
               </p>
             </div>
 
-            <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
-                  Логин
-                </span>
-                <input
-                  type="text"
-                  value={loginValue}
-                  onChange={(event) => setLoginValue(event.target.value)}
-                  autoComplete="username"
-                  required
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                  placeholder="admin"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
-                  Пароль
-                </span>
-                <span className="relative block">
+            {step === 'credentials' ? (
+              <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                    Логин
+                  </span>
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    autoComplete="current-password"
+                    type="text"
+                    value={loginValue}
+                    onChange={(event) => setLoginValue(event.target.value)}
+                    autoComplete="username"
                     required
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                    placeholder="••••••••"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                    placeholder="admin"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                    aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </span>
-              </label>
+                </label>
 
-              {error ? (
-                <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>{error}</span>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                    Пароль
+                  </span>
+                  <span className="relative block">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                      required
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </span>
+                </label>
+
+                {error ? (
+                  <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                ) : null}
+
+                <Button type="submit" size="lg" loading={loading} className="w-full">
+                  Войти
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </form>
+            ) : null}
+
+            {step === 'mfa' ? (
+              <form className="mt-7 space-y-4" onSubmit={handleMfaSubmit}>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                    Код или резервный код
+                  </span>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    autoComplete="one-time-code"
+                    required
+                    autoFocus
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-center font-mono text-lg tracking-[0.2em] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                    placeholder="000000"
+                    aria-label="Код подтверждения"
+                  />
+                </label>
+
+                {error ? (
+                  <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                ) : null}
+
+                <Button type="submit" size="lg" loading={loading} className="w-full">
+                  Подтвердить
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={resetLogin}
+                  className="w-full text-center text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Вернуться к вводу пароля
+                </button>
+              </form>
+            ) : null}
+
+            {step === 'enroll' ? (
+              <form className="mt-7 space-y-4" onSubmit={handleEnrollmentSubmit}>
+                <div className="rounded-xl border border-brand-100 bg-brand-50/60 p-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-brand-800">
+                    <KeyRound className="h-4 w-4" />
+                    Секрет для приложения
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-2.5 py-2 font-mono text-xs text-slate-700 ring-1 ring-brand-100">
+                      {enrollment?.secret ?? '—'}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => void copySecret()}
+                      className="rounded-lg p-2 text-brand-600 hover:bg-white"
+                      aria-label="Скопировать секрет"
+                    >
+                      {copied ? (
+                        <CheckCircle2 className="h-4 w-4 text-accent-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-4 text-brand-700">
+                    Добавьте аккаунт вручную в Google Authenticator, Aegis или
+                    аналогичном приложении. Ссылка для импорта:
+                  </p>
+                  <code className="mt-1 block break-all text-[10px] leading-4 text-slate-500">
+                    {enrollment?.otpauth_uri ?? ''}
+                  </code>
                 </div>
-              ) : null}
 
-              <Button type="submit" size="lg" loading={loading} className="w-full">
-                Войти
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                    Первый 6-значный код
+                  </span>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-center font-mono text-lg tracking-[0.2em] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                    placeholder="000000"
+                    aria-label="Первый код MFA"
+                  />
+                </label>
+
+                {error ? (
+                  <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                ) : null}
+
+                <Button type="submit" size="lg" loading={loading} className="w-full">
+                  Включить MFA
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={resetLogin}
+                  className="w-full text-center text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Вернуться к вводу пароля
+                </button>
+              </form>
+            ) : null}
+
+            {step === 'recovery' ? (
+              <div className="mt-7 space-y-4">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                  Сохраните коды в защищённом месте. Они понадобятся, если телефон
+                  или приложение-аутентификатор станут недоступны.
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {recoveryCodes.map((recoveryCode) => (
+                    <code
+                      key={recoveryCode}
+                      className="rounded-lg bg-slate-50 px-3 py-2 text-center font-mono text-xs text-slate-700 ring-1 ring-slate-200"
+                    >
+                      {recoveryCode}
+                    </code>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => navigate(from, { replace: true })}
+                >
+                  Я сохранил коды, продолжить
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
 
             <div className="mt-6 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[11px] leading-4 text-slate-500">
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-600" />

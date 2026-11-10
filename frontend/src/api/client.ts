@@ -32,6 +32,10 @@ import type {
   GroupDetail,
   GroupList,
   Health,
+  LoginResult,
+  MfaEnrollStart,
+  MfaEnrollmentComplete,
+  MfaStatus,
   MyPermissions,
   MyServices,
   NotificationCreatePayload,
@@ -208,8 +212,50 @@ export function apiErrorMessage(error: unknown): string {
   return 'Неизвестная ошибка.';
 }
 
-export async function loginRequest(login: string, password: string): Promise<TokenPair> {
-  const { data } = await api.post<TokenPair>('/auth/login', { login, password });
+export async function loginRequest(
+  login: string,
+  password: string,
+): Promise<LoginResult> {
+  const { data } = await api.post<LoginResult>('/auth/login', { login, password });
+  return data;
+}
+
+export async function startMfaEnrollment(
+  mfaToken: string,
+): Promise<MfaEnrollStart> {
+  const { data } = await api.post<MfaEnrollStart>('/auth/mfa/enroll/start', {
+    mfa_token: mfaToken,
+  });
+  return data;
+}
+
+export async function verifyMfaLogin(
+  mfaToken: string,
+  code: string,
+): Promise<TokenPair> {
+  const { data } = await api.post<TokenPair>('/auth/mfa/verify', {
+    mfa_token: mfaToken,
+    code,
+  });
+  return data;
+}
+
+export async function verifyMfaEnrollment(
+  mfaToken: string,
+  code: string,
+): Promise<MfaEnrollmentComplete> {
+  const { data } = await api.post<MfaEnrollmentComplete>(
+    '/auth/mfa/enroll/verify',
+    {
+      mfa_token: mfaToken,
+      code,
+    },
+  );
+  return data;
+}
+
+export async function fetchMfaStatus(): Promise<MfaStatus> {
+  const { data } = await api.get<MfaStatus>('/auth/mfa/status');
   return data;
 }
 
